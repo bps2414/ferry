@@ -18,7 +18,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     readonly HashSet<string> _dropped = new(StringComparer.OrdinalIgnoreCase);
     readonly HashSet<string> _removed = new(StringComparer.OrdinalIgnoreCase); // grupos tirados da fila pelo usuário
     readonly Dictionary<string, (string sig, DateTime since)> _stable = [];
-    // por jogo (Key): senha do arquivo cifrada com DPAPI; e arquivo remoto → tamanho esperado dos envios
+    // por jogo (Key): senha do arquivo cifrada (Secret: DPAPI no Windows); e arquivo remoto → tamanho esperado dos envios
     // que ESTE app começou (só esses podem continuar com APPE: outro arquivo menor no PS5 pode ser outra versão)
     Dictionary<string, string> _passwords = new(StringComparer.OrdinalIgnoreCase);
     Dictionary<string, Dictionary<string, long>> _started = new(StringComparer.OrdinalIgnoreCase);
@@ -59,13 +59,6 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     // jogo saiu da fila: esquece senha e envios começados
     void Forget(string key) { lock (_dropped) { _removed.Add(key); _passwords.Remove(key); _started.Remove(key); } }
-
-    static string Protect(string pw) => Convert.ToBase64String(System.Security.Cryptography.ProtectedData.Protect(System.Text.Encoding.UTF8.GetBytes(pw), null, System.Security.Cryptography.DataProtectionScope.CurrentUser));
-    static string? Unprotect(string? b64)
-    {
-        try { return b64 == null ? null : System.Text.Encoding.UTF8.GetString(System.Security.Cryptography.ProtectedData.Unprotect(Convert.FromBase64String(b64), null, System.Security.Cryptography.DataProtectionScope.CurrentUser)); }
-        catch { return null; }
-    }
 
     public void AddFiles(IEnumerable<string> paths)
     {
@@ -125,7 +118,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             foreach (var j in Jobs.Where(j => j.Stage == Stage.AguardandoPartes && !groups.ContainsKey(j.Key)).ToList()) Jobs.Remove(j);
             foreach (var g in groups.Values.Where(g => !Jobs.Any(j => j.Key == g.Key)))
             {
-                string? pw; lock (_dropped) pw = Unprotect(_passwords.GetValueOrDefault(g.Key)); // lembrada de antes de fechar o app
+                string? pw; lock (_dropped) pw = Secret.Unprotect(_passwords.GetValueOrDefault(g.Key)); // lembrada de antes de fechar o app
                 Jobs.Add(new Job { Key = g.Key, Name = g.Name, Stage = Stage.AguardandoPartes, ArchivePassword = pw });
             }
         }
@@ -204,7 +197,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                     try { settings.Save(); } catch { }
                     log($"[{job.Name}] senha nova adicionada às senhas conhecidas");
                 }
-                lock (_dropped) _passwords[job.Key] = Protect(okPw);
+                lock (_dropped) _passwords[job.Key] = Secret.Protect(okPw);
                 SaveQueue();
             }
             ct.ThrowIfCancellationRequested();
@@ -258,7 +251,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 if (need.Count == 0) break;
 
                 listFile ??= Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
-                File.WriteAllLines(listFile, need.Select(i => entries[i].Path.Replace('/', '\\')));
+                File.WriteAllLines(listFile, need.Select(i => Archives.Native(entries[i].Path)));
                 using var p = loose ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
                 using var src = p?.StandardOutput.BaseStream ?? File.OpenRead(job.MainFile);
                 using var reg = ct.Register(() => { try { p?.Kill(true); } catch { } });

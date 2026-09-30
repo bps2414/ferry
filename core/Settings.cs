@@ -6,7 +6,8 @@ namespace Ferry;
 public class Settings
 {
     static readonly string LocalData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    public static readonly string AppDir = Path.Combine(LocalData, "Ferry");
+    /// FERRY_DATA troca a pasta de dados (no container: /data)
+    public static readonly string AppDir = Environment.GetEnvironmentVariable("FERRY_DATA") is { Length: > 0 } d ? d : Path.Combine(LocalData, "Ferry");
     /// Pasta do nome antigo do app (PS5Sender); só é lida na migração.
     public static readonly string OldAppDir = Path.Combine(LocalData, "PS5Sender");
     public static string FilePath { get; set; } = Path.Combine(AppDir, "settings.json"); // o E2E aponta para outro lugar
@@ -69,7 +70,7 @@ public class Settings
     }
 }
 
-/// <summary>Log em %LOCALAPPDATA%\Ferry\log.txt; passando de ~5 MB vira log.1.txt (só uma geração).</summary>
+/// <summary>Log em log.txt na pasta de dados; passando de ~5 MB vira log.1.txt (só uma geração).</summary>
 public static class FileLog
 {
     public static string FilePath { get; set; } = Path.Combine(Settings.AppDir, "log.txt");

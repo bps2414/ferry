@@ -87,21 +87,22 @@ public static class Archives
         return groups;
     }
 
-    static string? _exe;
-    static string SevenZip()
+    /// Caminho do 7-Zip. O app Windows define (7z.exe embutido); senão procura ao lado do programa e no PATH.
+    public static string? SevenZipPath { get; set; }
+    public static string SevenZip() => SevenZipPath ??= Find7z();
+
+    static string Find7z()
     {
-        if (_exe != null) return _exe;
-        var dir = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath)!, "7z"); // ao lado do .exe
-        Directory.CreateDirectory(dir);
-        foreach (var name in new[] { "7z.exe", "7z.dll" })
-        {
-            using var src = typeof(Archives).Assembly.GetManifestResourceStream(name)!;
-            var dst = Path.Combine(dir, name);
-            if (File.Exists(dst) && new FileInfo(dst).Length == src.Length) continue;
-            using var fs = File.Create(dst); src.CopyTo(fs);
-        }
-        return _exe = Path.Combine(dir, "7z.exe");
+        string[] names = OperatingSystem.IsWindows() ? ["7z.exe"] : ["7zz", "7z"];
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator).Prepend(Path.GetDirectoryName(Environment.ProcessPath)!);
+        foreach (var d in dirs.Where(d => d != ""))
+            foreach (var n in names)
+                if (File.Exists(Path.Combine(d, n))) return Path.Combine(d, n);
+        throw new Exception("7-Zip não encontrado: instale o 7zz (ou 7z) ou deixe-o ao lado do programa");
     }
+
+    /// Caminho de dentro do arquivo ("a/b") como o 7-Zip do sistema espera na lista de arquivos e no "7z t".
+    public static string Native(string path) => path.Replace('/', Path.DirectorySeparatorChar);
 
     // Senha fictícia quando não há senha: evita o 7z travar pedindo senha no console.
     static string Pw(string? pw) => "-p" + (string.IsNullOrEmpty(pw) ? "x-sem-senha" : pw);
@@ -145,7 +146,7 @@ public static class Archives
         var list = Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
         try
         {
-            File.WriteAllLines(list, items.Select(e => e.Path.Replace('/', '\\')));
+            File.WriteAllLines(list, items.Select(e => Native(e.Path)));
             using var p = OpenStream(main, pw, list);
             _ = p.StandardError.ReadToEndAsync();
             var s = p.StandardOutput.BaseStream;
@@ -178,7 +179,7 @@ public static class Archives
     /// <summary>Testa a senha só no primeiro arquivo criptografado (barato), para não mandar lixo ao FTP.</summary>
     public static async Task<bool> PasswordOkAsync(string main, string? pw, Entry first)
     {
-        using var p = Start("t", "-sccUTF-8", Pw(pw), main, first.Path.Replace('/', '\\'));
+        using var p = Start("t", "-sccUTF-8", Pw(pw), main, Native(first.Path));
         var outTask = p.StandardOutput.ReadToEndAsync();
         await p.StandardError.ReadToEndAsync();
         await outTask;
