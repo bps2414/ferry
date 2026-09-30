@@ -42,7 +42,7 @@ static class WebhookChecks
             settings.Password = "ftp-secret";
             settings.KnownPasswords = ["known-secret"];
             var logs = new ConcurrentQueue<Message>();
-            await using var webhook = new Webhooks(settings, logs.Enqueue, timeout: TimeSpan.FromMilliseconds(350));
+            await using var webhook = new Webhooks(settings, logs.Enqueue);
             var job = new Job { Key = "test-game", Name = "Ação @everyone.rar", Title = "Título", TitleId = "PPSA12345", Stage = Stage.Verificado, ArchivePassword = "archive-secret" };
             webhook.OnDone(job);
             await Task.Delay(80);
@@ -53,11 +53,18 @@ static class WebhookChecks
                 receiver.Reply(status);
                 var result = await webhook.TestAsync();
                 await receiver.NextAsync();
-                Check(!result.Ok && result.Message.Key == "core.webhook.httpFailed" && Equals(result.Message.Args[0], status), "HTTP " + status + " fails without retry or redirect");
+                Check(!result.Ok && result.Message.Key == "core.webhook.httpFailed" && Equals(result.Message.Args[0], status), "HTTP " + status + " fails without retry or redirect (" + result.Message.Key + ")");
             }
-            receiver.Reply(200, TimeSpan.FromSeconds(2));
-            Check(!(await webhook.TestAsync()).Ok, "timeout returns failure");
-            await receiver.NextAsync();
+            await using (var timed = new Webhooks(settings, logs.Enqueue))
+            {
+                var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                receiver.Reply(200, gate: hold.Task);
+                var attempt = timed.TestAsync();
+                await receiver.NextAsync();
+                var result = await attempt;
+                Check(!result.Ok && result.Message.Key == "core.webhook.timeout", "timeout returns its specific failure");
+                hold.SetResult();
+            }
             Check(logs.All(m => !m.Render().Contains("url-secret")), "logs never include URL credentials");
 
             foreach (var locale in new[] { "pt-BR", "en" })
@@ -126,18 +133,21 @@ static class WebhookChecks
             var ntfy = await receiver.NextAsync();
             Check(ntfy.Method == "POST" && ntfy.ContentType.StartsWith("text/plain") && Encoding.UTF8.GetByteCount(ntfy.Body) <= 4096 && ntfy.Body.Contains("Envio concluído"), "ntfy topic receives bounded UTF-8 text");
 
-            receiver.Reply(500, TimeSpan.FromSeconds(2));
-            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var failedResponse = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            receiver.Reply(500, gate: failedResponse.Task);
             webhook.OnDone(job);
-            Check(watch.ElapsedMilliseconds < 100, "enqueue does not wait for HTTP");
             await receiver.NextAsync();
-            await Task.Delay(400);
+            Check(!failedResponse.Task.IsCompleted, "enqueue returns while HTTP is still waiting");
+            var failuresBefore = logs.Count(m => m.Key == "core.webhook.httpFailed");
+            failedResponse.SetResult();
+            await WaitUntilAsync(() => logs.Count(m => m.Key == "core.webhook.httpFailed") > failuresBefore);
             Check(job.Stage == Stage.Verificado, "webhook failure does not change game completion");
 
             var snapshotSettings = new Settings { WebhookEnabled = true, WebhookKind = "generic", WebhookUrl = receiver.Url, Language = "en" };
-            await using (var bounded = new Webhooks(snapshotSettings, logs.Enqueue, timeout: TimeSpan.FromMilliseconds(350), capacity: 1))
+            await using (var bounded = new Webhooks(snapshotSettings, logs.Enqueue, capacity: 1))
             {
-                receiver.Reply(200, TimeSpan.FromSeconds(2));
+                var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                receiver.Reply(200, gate: hold.Task);
                 bounded.OnDone(job);
                 await receiver.NextAsync();
                 job.Title = "Snapshot";
@@ -146,13 +156,14 @@ static class WebhookChecks
                 job.Title = "Changed later";
                 bounded.OnDone(job);
                 Check(logs.Any(m => m.Key == "core.webhook.queueFull"), "full queue drops with a safe diagnostic instead of blocking");
+                hold.SetResult();
                 using var queued = JsonDocument.Parse((await receiver.NextAsync()).Body);
                 Check(queued.RootElement.GetProperty("language").GetString() == "en" && queued.RootElement.GetProperty("job").GetProperty("title").GetString() == "Snapshot", "queued messages keep immutable game and locale snapshots");
             }
 
             using var stopped = new CancellationTokenSource();
             await using var shutdown = new Webhooks(settings, logs.Enqueue, stopped.Token);
-            receiver.Reply(200, TimeSpan.FromSeconds(5));
+            receiver.Reply(200, gate: new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task);
             shutdown.OnDone(job);
             await receiver.NextAsync();
             stopped.Cancel();
@@ -172,6 +183,11 @@ static class WebhookChecks
             Directory.Delete(folder, true);
         }
     }
+    static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (!condition()) await Task.Delay(20, stop.Token);
+    }
 }
 
 sealed class WebhookReceiver : IAsyncDisposable
@@ -180,7 +196,7 @@ sealed class WebhookReceiver : IAsyncDisposable
     readonly HttpListener _listener = new();
     readonly CancellationTokenSource _stop = new();
     readonly Channel<Request> _requests = Channel.CreateUnbounded<Request>();
-    readonly ConcurrentQueue<(int Status, TimeSpan Delay)> _replies = new();
+    readonly ConcurrentQueue<(int Status, TimeSpan Delay, Task? Gate)> _replies = new();
     readonly ConcurrentBag<Task> _handlers = [];
     readonly Task _loop;
     int _count, _disposed;
@@ -196,8 +212,8 @@ sealed class WebhookReceiver : IAsyncDisposable
         _listener.Start();
         _loop = ListenAsync();
     }
-    public void Reply(int status, TimeSpan delay = default) => _replies.Enqueue((status, delay));
-    public async Task<Request> NextAsync() => await _requests.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+    public void Reply(int status, TimeSpan delay = default, Task? gate = null) => _replies.Enqueue((status, delay, gate));
+    public async Task<Request> NextAsync() => await _requests.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
     async Task ListenAsync()
     {
         try
@@ -212,9 +228,10 @@ sealed class WebhookReceiver : IAsyncDisposable
         {
             using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
             var body = await reader.ReadToEndAsync(_stop.Token);
-            var reply = _replies.TryDequeue(out var scripted) ? scripted : (Status: 200, Delay: TimeSpan.Zero);
+            var reply = _replies.TryDequeue(out var scripted) ? scripted : (Status: 200, Delay: TimeSpan.Zero, Gate: (Task?)null);
             Interlocked.Increment(ref _count);
             await _requests.Writer.WriteAsync(new(context.Request.HttpMethod, context.Request.RawUrl!, context.Request.ContentType ?? "", body));
+            if (reply.Gate is { } gate) await gate.WaitAsync(_stop.Token);
             await Task.Delay(reply.Delay, _stop.Token);
             context.Response.StatusCode = reply.Status;
             if (reply.Status == 302) context.Response.RedirectLocation = Url + "redirected";
