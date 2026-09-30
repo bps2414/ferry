@@ -1,5 +1,7 @@
 # Testes E2E
 
+[English](en/TESTS.md) · **Português (BR)** · [Español](es/PRUEBAS.md)
+
 Dois testes ponta a ponta:
 
 - `e2e/` (C#), sem interface: usa a mesma `Engine` (Ferry.Core) contra um servidor FTP local. Roda no **Windows e no Linux** (o CI roda nos dois).

@@ -281,7 +281,7 @@ foreach (var c in cases)
     var extra = Directory.Exists(remoteGame) ? Directory.GetFiles(remoteGame, "*", SearchOption.AllDirectories).Length - files.Length : -1;
     var origDeleted = !Directory.GetFiles(c.dropIn ? dropped : input).Any(f => Path.GetFileName(f).StartsWith(name + "."));
     var pwOk = passwordAsked.Contains(name) ? $"diálogo aberto {passwordAsked.Count(n => n == name)}x (esperado 0)" : c.pw == null ? "n/a" : "senha conhecida, sem diálogo";
-    var gi = Array.IndexOf(cases, c) + 1;
+    var gi = int.Parse(name[1..]); // G2 → Jogo Teste 2 (no modo rápido a lista é filtrada, a posição não serve)
     var coverOk = j != null && j.Title == $"Jogo Teste {gi}" && j.TitleId == $"PPSA0{gi:0000}" && j.Icon is { } icon && icon.SequenceEqual(File.ReadAllBytes(Path.Combine(g, "sce_sys", "icon0.png")));
     var cover = coverOk ? $"{j!.TitleId} · {j.Title} · capa ok" : $"FALHA (\"{j?.Title}\" / \"{j?.TitleId}\" / capa {j?.Icon?.Length ?? 0} bytes)";
     var order = PublishOrder(ftpLog, Path.GetFileName(g));

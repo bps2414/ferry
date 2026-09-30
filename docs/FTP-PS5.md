@@ -1,5 +1,7 @@
 # Compatibilidade FTP com o PS5
 
+[English](en/FTP-PS5.md) · **Português (BR)** · [Español](es/FTP-PS5.md)
+
 O [ps5-payload-ftpsrv](https://github.com/john-tornblom/ps5-payload-ftpsrv) implementa só um conjunto mínimo de comandos (lista do `main.c`):
 
 ```
@@ -58,6 +60,8 @@ O que o app faz:
 
 - Reenviar por cima de uma imagem **já montada**: o app apaga o nome final e renomeia o novo. `sm_image.c: cleanup_stale_image_mounts` só desmonta quando o caminho some e a montagem continua legível. Como o caminho volta a existir logo depois do `RNTO`, o SM+ pode continuar usando a imagem antiga (inode apagado) até reiniciar o PS5 ou o SM+. Não testado no console.
 - Não achei como o SM+ reage ao `DELE` de uma imagem montada (se o ftpsrv consegue apagar o arquivo aberto pelo `lvd`/`md`). No FreeBSD o `unlink` de arquivo aberto funciona, mas não conferi no PS5.
+
+Outros formatos de imagem (`.ffpkg`, `.ffpfsc`) e pacotes `.pkg`/fPKG: ver [PKG-PS5.md](PKG-PS5.md).
 
 ## Notificação no PS5
 

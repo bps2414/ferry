@@ -1,6 +1,8 @@
 # Roadmap
 
-Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → payload.
+[English](en/ROADMAP.md) · **Português (BR)** · [Español](es/ROADMAP.md)
+
+Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → payload.
 
 Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 ainda sem tag de release). **Próxima: Fase 4 (inglês).**
 
@@ -90,6 +92,7 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 ainda sem tag de release). **Próxi
 - Textos saem do código para arquivos de recurso (`pt-BR`, `en`), incluindo log visível, avisos e erros.
 - Vem depois da Fase 3 para traduzir uma interface só (a web).
 - **E2E**: roda o fluxo principal nos dois idiomas e confere que não sobra texto sem tradução.
+- Já feito: README em inglês (padrão), português e espanhol, e as docs nos três idiomas. Quando a interface estiver em inglês, tirar a nota "interface em português" e os nomes de botão em português do README em inglês.
 
 ## Fase 5 — Webhook configurável
 
@@ -98,7 +101,19 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 ainda sem tag de release). **Próxi
 - Botão "Testar" que manda uma mensagem de exemplo.
 - **E2E**: servidor HTTP falso recebe o webhook e confere evento, jogo e idioma.
 
-## Fase 6 — Payload (hello world)
+## Fase 6 — PKG e fPKG
+
+Pesquisa completa (firmwares, kstuff, instaladores) em [PKG-PS5.md](PKG-PS5.md).
+
+- **Imagens `.ffpkg`, `.ffpfs` e `.ffpfsc`** (ShadowMount+) aceitas como o `.exfat`: mesmo destino, `.ferry-part` e renomear no fim. Vale em qualquer firmware com jailbreak.
+- **`.pkg` solto** (fPKG de PS4 ou de PS5): o Ferry serve o arquivo por HTTP (com *range* e um token na URL) e pede a instalação ao etaHEN DPI (porta 9090, `{ "url": … }`). O PS5 baixa direto.
+- **`.pkg` dentro de um compactado**: enviar por FTP ao PS5 e instalar pelo caminho local, ou extrair no servidor e servir. Decidir depois de confirmar se o DPI aceita caminho local.
+- **Card**: PS4 ou PS5 pelo cabeçalho do `.pkg`, com aviso quando o tipo não roda no firmware (ex.: fPKG de PS5 em 12.xx e 13.xx ainda não funciona).
+- **Configurações**: instalador de pacotes (etaHEN DPI, porta), com teste de conexão e o lembrete de ligar `DPI=1` no `config.ini` do etaHEN.
+- **E2E**: DPI falso recebe o pedido e baixa a URL com *range* e retomada; confere hash, token e erro sem DPI.
+- **Antes de começar**: rever a pesquisa (a cena muda rápido) e fechar os pontos "a confirmar".
+
+## Fase 7 — Payload (hello world)
 
 - ELF feito com o [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compilado no WSL (Ubuntu, WSL2, já instalado).
 - O app manda o ELF para a porta 9021, o PS5 mostra "Ferry conectado" e o payload termina. Nada fica residente.

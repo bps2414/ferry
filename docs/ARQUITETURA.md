@@ -1,5 +1,7 @@
 # Arquitetura
 
+[English](en/ARCHITECTURE.md) · **Português (BR)** · [Español](es/ARQUITECTURA.md)
+
 .NET 10. A lógica fica em `core/` (sem interface) e tem duas caras: o app Windows (WPF, `.exe` único) e o servidor web self-hosted (Docker ou binário Linux).
 
 | Arquivo | Papel |
