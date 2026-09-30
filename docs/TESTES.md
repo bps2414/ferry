@@ -19,7 +19,7 @@ Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª 
 
 ## Casos
 
-Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ps5sender-e2e-cache-v2`; cada um tem `param.sfo` real, `param.json` e `icon0.png` de verdade; mude `GenVersion` ao alterar o gerador).
+Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ps5sender-e2e-cache-v3`; cada um tem `param.sfo` real, `param.json` e `icon0.png` de verdade; mude `GenVersion` ao alterar o gerador).
 
 | Caso | Formato |
 |---|---|
@@ -43,6 +43,10 @@ Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`
   - `EBOOT.BIN` menor e de outra versão: `STOR` inteiro;
   - `icon0.png` maior no PS5: fica do tamanho certo.
 - **Jogo já instalado**: avisa sem enviar; "Tentar de novo" reenvia por cima.
+- **Imagem `.exfat` (ShadowMount+)**: servidor com APPE, `ImageDir = /data/homebrew`. Os arquivos (`IMG1.exfat` de 40 MB solto e `IMG2.exfat` de 12 MB dentro de `.part1.rar`) têm bytes aleatórios determinísticos e ficam em cache.
+  - envio novo: hash igual, sem capa, sem sobra de `.ferry-part`, e pela ordem do log do servidor o `RNTO` para o nome final vem depois do último `STOR`/`APPE`. Pausar e retomar no meio continua com `APPE`;
+  - reabrir: o parcial registrado na fila continua com `APPE` (só a metade que faltava) e o parcial menor de outra versão vai inteiro com `STOR`;
+  - já existente: avisa "Jogo já instalado…" sem enviar, e "Tentar de novo" reenvia por cima.
 - **Log persistente**: `log.txt` tem comando e resposta de STOR/APPE/SIZE.
 - **Senha aprendida e lembrada** (G6, na fase fechar/reabrir):
   - diálogo com a 1ª senha errada;

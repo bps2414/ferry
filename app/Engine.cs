@@ -27,8 +27,8 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     /// Sufixo dos arquivos que fazem o loader reconhecer o jogo, até o jogo inteiro estar no PS5 e conferido.
     public const string PartSuffix = ".ferry-part";
-    // ShadowMount+ detecta pelo sce_sys/param.json; param.sfo também, por garantia (ver docs/FTP-PS5.md)
-    static bool Held(string rel) => rel.Equals("sce_sys/param.json", StringComparison.OrdinalIgnoreCase) || rel.Equals("sce_sys/param.sfo", StringComparison.OrdinalIgnoreCase);
+    // ShadowMount+ detecta pelo sce_sys/param.json; param.sfo também, por garantia; e monta imagem .exfat pela extensão (ver docs/FTP-PS5.md)
+    static bool Held(string rel) => rel.Equals("sce_sys/param.json", StringComparison.OrdinalIgnoreCase) || rel.Equals("sce_sys/param.sfo", StringComparison.OrdinalIgnoreCase) || Archives.IsImage(rel);
     // arquivos que o overlay de backport do loader (ShadowMount+) troca por cima de um jogo instalado
     static bool Backport(string rel) => System.Text.RegularExpressions.Regex.IsMatch(rel, @"^(eboot\.bin|fakelib/.*|sce_module/.*\.prx|sce_sys/about/right\.sprx)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
@@ -148,7 +148,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             if (!_stable.TryGetValue(g.Key, out var st) || st.sig != sig) { _stable[g.Key] = (sig, DateTime.UtcNow); job.Detail = "Aguardando o tamanho dos arquivos estabilizar"; continue; }
             if ((DateTime.UtcNow - st.since).TotalSeconds < StableSeconds) continue;
 
-            if (await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
+            if (!Archives.IsImage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
             {
                 job.Detail = lost.Length > 0 ? Missing(g, lost) : "Faltam volumes ou arquivo incompleto"; // .001: o 7z não diz qual
                 _stable[g.Key] = (sig, DateTime.UtcNow); // reavalia depois de outra janela
@@ -176,7 +176,10 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         {
             job.Stage = Stage.Extraindo; job.ResetRate();
             job.Detail = "Lendo o conteúdo do arquivo…";
-            var (res, entries, _) = await Archives.ListAsync(job.MainFile, job.ArchivePassword);
+            // .exfat solto: um item só, lido direto do disco
+            var loose = Archives.IsImage(job.MainFile);
+            var (res, entries, _) = loose ? (ListResult.Ok, [new(Path.GetFileName(job.MainFile), new FileInfo(job.MainFile).Length, false, false)], [])
+                : await Archives.ListAsync(job.MainFile, job.ArchivePassword);
             // senha lembrada → senhas conhecidas (em silêncio) → diálogo
             var known = new Queue<string>(settings.KnownPasswords.ToList());
             var asked = false;
@@ -206,8 +209,10 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             }
             ct.ThrowIfCancellationRequested();
 
-            var (gameName, targets) = Archives.Plan(entries, job.Name) ?? throw new Exception("Nenhuma pasta com EBOOT.BIN ou sce_sys/param.sfo");
-            var remote = settings.RemoteDir.TrimEnd('/') + "/" + gameName;
+            // pasta de jogo → RemoteDir/<jogo>; senão imagem(ns) .exfat → ImageDir/<nome>.exfat
+            string remote; string?[] targets;
+            if (Archives.Plan(entries, job.Name) is (var gameName, var t)) (remote, targets) = (settings.RemoteDir.TrimEnd('/') + "/" + gameName, t);
+            else (remote, targets) = (settings.ImageDir.TrimEnd('/'), Archives.ImagePlan(entries) ?? throw new Exception("Nenhuma pasta com EBOOT.BIN ou sce_sys/param.sfo, nem imagem .exfat"));
             await LoadCover(job, entries, targets);
 
             // Publicação atômica: param.json/param.sfo sobem com sufixo e só ganham o nome final depois que todo o
@@ -251,9 +256,10 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
                 listFile ??= Path.Combine(Path.GetTempPath(), $"ps5sender-{Guid.NewGuid():N}.txt");
                 File.WriteAllLines(listFile, need.Select(i => entries[i].Path.Replace('/', '\\')));
-                using var p = Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
-                using var reg = ct.Register(() => { try { p.Kill(true); } catch { } });
-                var err = p.StandardError.ReadToEndAsync();
+                using var p = loose ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
+                using var src = p?.StandardOutput.BaseStream ?? File.OpenRead(job.MainFile);
+                using var reg = ct.Register(() => { try { p?.Kill(true); } catch { } });
+                var err = p?.StandardError.ReadToEndAsync();
                 Exception? fail = null;
                 void Started(int i)
                 {
@@ -262,13 +268,13 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 }
                 try
                 {
-                    await Ftp.StreamAsync(settings, p.StandardOutput.BaseStream, entries, paths, have, append, need, job.Report,
+                    await Ftp.StreamAsync(settings, src, entries, paths, have, append, need, job.Report,
                         f => job.CurrentFile = f[(remote.Length + 1)..], Started, Lenient, m => log($"[{job.Name}] {m}"), ct);
                 }
-                catch (Exception e) { fail = e; try { p.Kill(true); } catch { } }
-                await p.WaitForExitAsync();
+                catch (Exception e) { fail = e; try { p?.Kill(true); } catch { } }
+                if (p != null) await p.WaitForExitAsync();
                 ct.ThrowIfCancellationRequested();
-                var sevenErr = p.ExitCode != 0 ? (await err).Trim() : "";
+                var sevenErr = p is { ExitCode: not 0 } ? (await err!).Trim() : "";
                 // Erro do lado do 7z (senha, CRC, volume ruim) aparece como stream curto + exit != 0.
                 if ((fail is null || fail.Message.StartsWith("Saída do 7-Zip")) && sevenErr != "") throw new Exception("7-Zip falhou: " + sevenErr);
                 if (fail != null && append && !noAppend && fail.Message.Contains("(APPE)"))

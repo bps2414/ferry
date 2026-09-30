@@ -103,6 +103,7 @@ public static class Ftp
             var buf = new byte[1 << 20];
             async Task Skip(long n)
             {
+                if (src.CanSeek) { src.Seek(n, SeekOrigin.Current); return; } // .exfat solto: pula no disco
                 while (n > 0) { var k = await src.ReadAsync(buf.AsMemory(0, (int)Math.Min(buf.Length, n)), tk); if (k == 0) throw new EndOfStreamException(); n -= k; }
             }
 

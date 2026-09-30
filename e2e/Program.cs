@@ -25,7 +25,7 @@ string Dir(string name) => Directory.CreateDirectory(Path.Combine(work, name)).F
 var input = Dir("input"); var dropped = Dir("dropped"); var ftpRoot = Dir("ftproot");
 // Jogos falsos e arquivos compactados são determinísticos: ficam em cache entre rodadas.
 // Mude GenVersion quando mexer no gerador.
-const string GenVersion = "v2";
+const string GenVersion = "v3";
 var cache = Path.Combine(Path.GetTempPath(), "ps5sender-e2e-cache-" + GenVersion);
 var cached = File.Exists(Path.Combine(cache, "ok"));
 if (!cached && Directory.Exists(cache)) Directory.Delete(cache, true);
@@ -104,6 +104,21 @@ for (var i = 0; i < cases.Length; i++)
     var made = Directory.GetFiles(outDir).Select(Path.GetFileName).ToList();
     if (made.Count < (i == 6 ? 1 : 2) || !made.All(n => System.Text.RegularExpressions.Regex.IsMatch(n!, c.names)))
         throw new Exception($"Gerador de {c.format} produziu nomes inesperados: {string.Join(", ", made)}");
+}
+// imagens .exfat (ShadowMount+): IMG1 solta, IMG2 dentro de um .part1.rar numa subpasta
+var img1 = Path.Combine(src, "_exfat", "IMG1.exfat");
+var img2 = Path.Combine(src, "IMG2", "Pasta Img", "IMG2.exfat");
+if (!cached)
+{
+    foreach (var (p, seed, size) in new[] { (img1, 2001, 40_000_000), (img2, 2002, 12_000_000) })
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(p)!); var b = new byte[size]; new Random(seed).NextBytes(b); File.WriteAllBytes(p, b);
+    }
+    var img2Out = Directory.CreateDirectory(Path.Combine(archives, "IMG2.rar")).FullName;
+    Run(rar, Path.Combine(src, "IMG2"), "a", "-m0", "-v5000000b", "-r", "-idq", Path.Combine(img2Out, "IMG2.rar"), "Pasta Img");
+    var madeImg = Directory.GetFiles(img2Out).Select(Path.GetFileName).ToList();
+    if (madeImg.Count < 2 || !madeImg.All(n => System.Text.RegularExpressions.Regex.IsMatch(n!, @"^IMG2\.part\d\.rar$")))
+        throw new Exception($"Gerador de IMG2 produziu nomes inesperados: {string.Join(", ", madeImg)}");
 }
 if (!cached) File.WriteAllText(Path.Combine(cache, "ok"), "");
 Console.WriteLine($"Arquivos de teste: {(cached ? "cache" : "gerados")} ({sw.Elapsed.TotalSeconds:0.0}s)");
@@ -339,6 +354,108 @@ var fileLog = File.Exists(FileLog.FilePath) ? File.ReadAllText(FileLog.FilePath)
 var logOk = fileLog.Contains($"APPE {RemoteDir}/{g7Name}/data/big.bin → 226") && fileLog.Contains($"STOR {RemoteDir}/{g7Name}/EBOOT.BIN → 226")
     && fileLog.Contains($"SIZE {RemoteDir}/{g7Name}/EBOOT.BIN → 213 {Local7("EBOOT.BIN").Length}");
 
+// ---------- imagem .exfat (ShadowMount+): servidor COM APPE, destino ImageDir ≠ RemoteDir ----------
+var exRoot = Dir("ftproot-exfat");
+var (ftp3, port3, ftp3Log) = StartFtp(exRoot, appe: true);
+var inEx = Dir("input-exfat"); var img1Drop = Path.Combine(Dir("dropped-exfat"), "IMG1.exfat");
+File.Copy(img1, img1Drop);
+foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(inEx, Path.GetFileName(f)));
+var sEx = new Settings { Host = "127.0.0.1", Port = port3, User = "ps5", Password = "ps5pass", RemoteDir = RemoteDir, ImageDir = "/data/homebrew", Connections = 4, DeleteOriginal = false, InputFolder = inEx };
+var imgDir = Path.Combine(exRoot, "data", "homebrew");
+var part1 = Path.Combine(imgDir, "IMG1.exfat" + Engine.PartSuffix); var part2 = Path.Combine(imgDir, "IMG2.exfat" + Engine.PartSuffix);
+var img1Bytes = File.ReadAllBytes(img1); var img2Len = new FileInfo(img2).Length;
+List<string> After(int m) { lock (ftp3Log) return ftp3Log.Skip(m).ToList(); }
+int Mark() { lock (ftp3Log) return ftp3Log.Count; }
+Job? ExJob(Engine e, string n) { lock (e.Lock) return e.Jobs.FirstOrDefault(x => x.Name == n); }
+bool ExHash(string n, string local) { var r = Path.Combine(imgDir, n); return File.Exists(r) && Sha(r) == Sha(local); }
+string[] ImgFiles() => Directory.Exists(imgDir) ? Directory.GetFiles(imgDir).Select(Path.GetFileName).Order().ToArray()! : [];
+int ExLeft() => Directory.GetFiles(exRoot, "*" + Engine.PartSuffix, SearchOption.AllDirectories).Length;
+// RNTO para o nome final só depois do último STOR/APPE da imagem
+string ImgOrder(string name)
+{
+    var all = After(0).Select(l => l.Replace('\\', '/')).ToList();
+    var lastPut = all.FindLastIndex(l => (l.Contains("STOR ") || l.Contains("APPE ")) && l.Contains(name + ".exfat"));
+    var rnto = all.FindIndex(l => l.Contains("RNTO ") && l.Contains("/data/homebrew/" + name + ".exfat"));
+    return lastPut >= 0 && rnto > lastPut ? "ok" : $"FALHA ({name}: último STOR/APPE na linha {lastPut}, RNTO na {rnto})";
+}
+
+// Passo I: envio novo (IMG1 arrastado, IMG2 pela pasta monitorada) + pausar/retomar no meio do IMG1
+var eEx = new Engine(sEx, m => Console.WriteLine("[exfat] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-exfat.json") };
+eEx.AddFiles([img1Drop]);
+using var stopEx = new CancellationTokenSource();
+var runEx = Task.Run(() => eEx.RunAsync(stopEx.Token));
+var exPaused = false;
+for (var exEnd = DateTime.UtcNow.AddMinutes(2); DateTime.UtcNow < exEnd; await Task.Delay(20))
+{
+    Job? ex1;
+    lock (eEx.Lock)
+    {
+        if (eEx.Jobs.Count == 2 && eEx.Jobs.All(x => x.Stage is Stage.Verificado or Stage.Erro)) break;
+        ex1 = eEx.Jobs.FirstOrDefault(x => x.Name == "IMG1");
+    }
+    // Progress do card só atualiza 4x/s (e o loopback é rápido): o parcial no servidor, ainda incompleto, é quem diz que está no meio
+    if (!exPaused && ex1 is { Stage: Stage.Enviando, Progress: < 70 } && File.Exists(part1) && new FileInfo(part1).Length is > 0 and var pl && pl < img1Bytes.Length)
+    {
+        exPaused = true; eEx.Pause(ex1); await Task.Delay(1500); eEx.Resume(ex1);
+    }
+}
+stopEx.Cancel(); await runEx;
+var exA1 = ExJob(eEx, "IMG1"); var exA2 = ExJob(eEx, "IMG2");
+var exAppe1 = Lines(ftp3Log, "APPE", "IMG1.exfat" + Engine.PartSuffix).Count;
+var exMnt = Path.Combine(exRoot, "mnt");
+var exNoMnt = !Directory.Exists(exMnt) || Directory.GetFiles(exMnt, "*", SearchOption.AllDirectories).Length == 0;
+var exOrder = ImgOrder("IMG1") == "ok" && ImgOrder("IMG2") == "ok" ? "ok" : ImgOrder("IMG1") + " " + ImgOrder("IMG2");
+var ex1Ok = exPaused && exA1 is { Stage: Stage.Verificado, Title: "", Icon: null } && exA2 is { Stage: Stage.Verificado, Title: "", Icon: null }
+    && ExHash("IMG1.exfat", img1) && ExHash("IMG2.exfat", img2) && ExLeft() == 0 && ImgFiles().SequenceEqual(new[] { "IMG1.exfat", "IMG2.exfat" })
+    && exAppe1 >= 1 && exNoMnt && exOrder == "ok";
+var ex1Line = ex1Ok
+    ? $"✅ IMG1 arrastado e IMG2 (dentro do .part1.rar) enviados para ImageDir com o nome do arquivo, sem capa; hash confere; pausou/retomou e continuou com APPE ({exAppe1}x); RNTO para o nome final só depois do último envio; sem sobra .ferry-part; nada em {RemoteDir}"
+    : $"❌ FALHA: pausou={exPaused}, IMG1 {exA1?.Stage} \"{exA1?.Detail}\" (título \"{exA1?.Title}\"), IMG2 {exA2?.Stage} \"{exA2?.Detail}\" (título \"{exA2?.Title}\"), arquivos [{string.Join(", ", ImgFiles())}], sobras {ExLeft()}, APPE IMG1 {exAppe1}x, mnt vazio={exNoMnt}, ordem {exOrder}";
+
+// Passo II: reabrir com parcial nosso (registrado na fila → APPE) e parcial de outra versão (STOR inteiro)
+File.Delete(Path.Combine(imgDir, "IMG1.exfat")); File.Delete(Path.Combine(imgDir, "IMG2.exfat"));
+File.WriteAllBytes(part1, img1Bytes[..(img1Bytes.Length / 2)]);
+var exOther = new byte[6_000_000]; new Random(9).NextBytes(exOther); File.WriteAllBytes(part2, exOther);
+var qEx2 = Path.Combine(work, "queue-exfat2.json");
+File.WriteAllText(qEx2, System.Text.Json.JsonSerializer.Serialize(new
+{
+    Dropped = new[] { img1Drop }, Removed = Array.Empty<string>(), Passwords = new Dictionary<string, string>(),
+    Started = new Dictionary<string, Dictionary<string, long>> { [img1Drop] = new() { [$"/data/homebrew/IMG1.exfat{Engine.PartSuffix}"] = img1Bytes.Length } },
+}));
+var mark2 = Mark();
+var eEx2 = new Engine(sEx, m => Console.WriteLine("[exfat2] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = qEx2 };
+eEx2.Restore();
+await RunUntil(eEx2, _ => eEx2.Jobs.Count(x => x.Stage is Stage.Verificado or Stage.Erro) == 2, TimeSpan.FromMinutes(2));
+var log2 = After(mark2);
+var exB1 = ExJob(eEx2, "IMG1"); var exB2 = ExJob(eEx2, "IMG2");
+var exAppeBytes = Bytes(Lines(log2, "APPE", "IMG1.exfat" + Engine.PartSuffix));
+var exAppe2 = Lines(log2, "APPE", "IMG2.exfat").Count;
+var exStor2 = Bytes(Lines(log2, "STOR", "IMG2.exfat" + Engine.PartSuffix));
+var ex2Ok = exB1?.Stage == Stage.Verificado && exB2?.Stage == Stage.Verificado && exAppeBytes == img1Bytes.Length - img1Bytes.Length / 2 && exAppe2 == 0 && exStor2 == img2Len
+    && ExHash("IMG1.exfat", img1) && ExHash("IMG2.exfat", img2) && ExLeft() == 0;
+var ex2Line = ex2Ok
+    ? $"✅ parcial nosso do IMG1 (registrado na fila): só a metade que faltava (APPE, {exAppeBytes} bytes); parcial de outra versão do IMG2: STOR inteiro ({exStor2} bytes), sem APPE; hashes conferem, sem sobra .ferry-part"
+    : $"❌ FALHA: IMG1 {exB1?.Stage} \"{exB1?.Detail}\", IMG2 {exB2?.Stage} \"{exB2?.Detail}\", APPE IMG1 {exAppeBytes} bytes (esperado {img1Bytes.Length - img1Bytes.Length / 2}), APPE IMG2 {exAppe2}x, STOR IMG2 {exStor2} bytes (esperado {img2Len}), sobras {ExLeft()}";
+
+// Passo III: imagem final já existe no PS5 → avisa; "Tentar de novo" reenvia por cima (STOR inteiro)
+var eEx3 = new Engine(sEx, m => Console.WriteLine("[exfat3] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-exfat3.json") };
+eEx3.AddFiles([img1Drop]);
+var mark3 = Mark();
+await RunUntil(eEx3, _ => eEx3.Jobs.Count(x => x.Stage == Stage.Erro) == 2, TimeSpan.FromMinutes(1));
+var exC1 = ExJob(eEx3, "IMG1"); var exC2 = ExJob(eEx3, "IMG2");
+var exWarned = exC1 is { Stage: Stage.Erro, Installed: true } && exC1.Detail.StartsWith("Jogo já instalado") && exC2 is { Stage: Stage.Erro, Installed: true } && exC2.Detail.StartsWith("Jogo já instalado");
+var exSent3 = After(mark3).Count(l => l.Contains("STOR ") || l.Contains("APPE "));
+if (exC1 != null) eEx3.Retry(exC1);
+if (exC2 != null) eEx3.Retry(exC2);
+var exRetried = await RunUntil(eEx3, _ => eEx3.Jobs.Count(x => x.Stage == Stage.Verificado) == 2, TimeSpan.FromMinutes(1));
+var log3 = After(mark3);
+var exStor31 = Bytes(Lines(log3, "STOR", "IMG1.exfat" + Engine.PartSuffix)); var exStor32 = Bytes(Lines(log3, "STOR", "IMG2.exfat" + Engine.PartSuffix));
+var ex3Ok = exWarned && exSent3 == 0 && exRetried && exStor31 == img1Bytes.Length && exStor32 == img2Len && ExHash("IMG1.exfat", img1) && ExHash("IMG2.exfat", img2) && ExLeft() == 0;
+var ex3Line = ex3Ok
+    ? "✅ IMG1 e IMG2 já no PS5: avisou \"Jogo já instalado…\" sem enviar nada; \"Tentar de novo\" reenviou por cima (STOR inteiro) e conferiu o hash"
+    : $"❌ FALHA: avisou={exWarned} (IMG1 {exC1?.Stage} \"{exC1?.Detail}\", IMG2 {exC2?.Stage} \"{exC2?.Detail}\"), envios antes do Retry={exSent3}, reenviou={exRetried}, STOR IMG1 {exStor31} / IMG2 {exStor32} bytes, sobras {ExLeft()}";
+ftp3.Kill(true);
+
 // ---------- fechar e reabrir o app no meio do envio (G6: senha aprendida no diálogo e lembrada ao reabrir) ----------
 var inRe = Dir("reabrir");
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "G6.7z"))) File.Copy(f, Path.Combine(inRe, Path.GetFileName(f)));
@@ -395,6 +512,11 @@ extraRows.Add($"| Senha aprendida e lembrada (G6) | {(pwOkRe ? "✅ diálogo 2x 
 extraRows.Add($"| Salvar atômico | {(atomicOk ? "✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos" : "❌ FALHA")} |");
 extraRows.Add($"| Pausar/retomar no meio do stream (G5) | {(pauseResult.StartsWith("❌") ? pauseResult : "✅ " + pauseResult + "; hash confere")} |");
 extraRows.Add($"| Remover da fila (G6) | {removeResult} |");
+var exfatOk = ex1Ok && ex2Ok && ex3Ok;
+allOk &= exfatOk;
+extraRows.Add($"| Imagem .exfat solta e dentro de .part1.rar (ShadowMount+) | {ex1Line} |");
+extraRows.Add($"| Imagem .exfat: reabrir com parcial nosso (APPE) e parcial de outra versão (STOR inteiro) | {ex2Line} |");
+extraRows.Add($"| Imagem .exfat já no PS5: aviso + Tentar de novo | {ex3Line} |");
 }
 ftp.Kill(true);
 

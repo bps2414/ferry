@@ -49,7 +49,9 @@ public static class Archives
         (new(@"^(?<n>.+)\.(?<e>z)(?<i>\d{2})$", RegexOptions.IgnoreCase), true, 1),
         (new(@"^(?<n>.+)\.(?<e>r)(?<i>\d{2})$", RegexOptions.IgnoreCase), true, 0),
     ];
-    static readonly Regex PlainRe = new(@"^(.+)\.(zip|7z|rar)$", RegexOptions.IgnoreCase);
+    // .exfat solto = imagem do ShadowMount+, enviada como está (sem 7-Zip)
+    static readonly Regex PlainRe = new(@"^(.+)\.(zip|7z|rar|exfat)$", RegexOptions.IgnoreCase);
+    public static bool IsImage(string path) => path.EndsWith(".exfat", StringComparison.OrdinalIgnoreCase);
 
     public static Dictionary<string, ArchiveGroup> Group(IEnumerable<string> files)
     {
@@ -230,6 +232,13 @@ public static class Archives
             if (targets[i] != null && fromDec.Contains(targets[i]!) && !(decRoot != null && entries[i].Path.StartsWith(decRoot, StringComparison.OrdinalIgnoreCase)))
                 targets[i] = null; // o dec vence
         return (gameName, targets);
+    }
+
+    /// <summary>Arquivo sem pasta de jogo mas com imagem(ns) .exfat: cada imagem vai com o próprio nome, o resto é descartado.</summary>
+    public static string?[]? ImagePlan(List<Entry> entries)
+    {
+        var targets = entries.Select(e => !e.IsDir && IsImage(e.Path) ? e.Path[(e.Path.LastIndexOf('/') + 1)..] : null).ToArray();
+        return targets.Any(t => t != null) ? targets : null;
     }
 }
 

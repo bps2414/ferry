@@ -33,6 +33,7 @@ Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho 
 | RAR novo | `Jogo.part1.rar` … `Jogo.partN.rar` |
 | RAR antigo | `Jogo.rar` + `Jogo.r00`, `Jogo.r01`… |
 | Com senha | abre um diálogo pedindo a senha (avisa se estiver errada) |
+| Imagem do ShadowMount+ | `Jogo.exfat` solto ou dentro de qualquer formato acima. Vai inteira para a pasta de imagens (Configurações) |
 
 O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** antes de começar (dá para deixar o download terminando).
 

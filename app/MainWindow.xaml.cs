@@ -121,8 +121,9 @@ public partial class MainWindow : Window
         HostBox.Text = _settings.Host;
         PortBox.Text = _settings.Port.ToString();
         FolderBox.Text = _settings.InputFolder;
+        ImageBox.Text = _settings.ImageDir;
         _loading = false;
-        Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null);
+        Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null); Validate(ImageBox, ImageHint, null);
     }
 
     void Validate(TextBox box, TextBlock hint, string? error)
@@ -160,6 +161,16 @@ public partial class MainWindow : Window
         Validate(FolderBox, FolderHint, ok ? null : "Essa pasta não existe.");
         if (!ok || t == _settings.InputFolder) return;
         _settings.InputFolder = t; Persist();
+    }
+
+    void OnImageDirChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var t = ImageBox.Text;
+        var ok = t.StartsWith('/') && !t.Any(char.IsControl);
+        Validate(ImageBox, ImageHint, ok ? null : "Caminho no PS5, começando com / (ex.: /mnt/ext1/homebrew).");
+        if (!ok || t == _settings.ImageDir) return;
+        _settings.ImageDir = t; Persist();
     }
 
     void OnPwListChanged(object s, TextChangedEventArgs e)
@@ -362,7 +373,7 @@ public partial class MainWindow : Window
         {
             Title = "Escolher jogos (selecione todas as partes)",
             Multiselect = true,
-            Filter = "Jogos compactados|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*|Todos os arquivos|*.*",
+            Filter = "Jogos compactados ou imagem|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat|Todos os arquivos|*.*",
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         };
         if (d.ShowDialog(this) != true) return;

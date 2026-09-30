@@ -5,7 +5,7 @@ WPF (.NET 10), publicado como `.exe` único. Quatro arquivos de lógica, uma jan
 | Arquivo | Papel |
 |---|---|
 | `app/Engine.cs` | Fila: varre entradas, agrupa partes, decide quando começar, processa um jogo por vez, salva a fila |
-| `app/Archives.cs` | 7-Zip: agrupar volumes, listar, testar senha, abrir o stream `7z x -so`, achar a pasta do jogo e o `dec` |
+| `app/Archives.cs` | 7-Zip: agrupar volumes, listar, testar senha, abrir o stream `7z x -so`, achar a pasta do jogo e o `dec` (ou a imagem `.exfat`) |
 | `app/Ftp.cs` | FTP: estado remoto (`SIZE`), envio em streaming com conexões paralelas, verificação |
 | `app/Job.cs` | Um item da fila (estado, progresso, velocidade, ETA) |
 | `app/MainWindow.xaml(.cs)` | Interface |
@@ -61,6 +61,12 @@ Regex por nome de arquivo (`Archives.Group`):
 ## Pasta do jogo e `dec`
 
 `FindGameRoot`: a pasta mais rasa com `EBOOT.BIN` ou `sce_sys/param.sfo`, ignorando pastas chamadas `dec` (que também têm `EBOOT.BIN`). `Plan`: se existir `dec/` ao lado da pasta do jogo (ou `dec/<pasta do jogo>/`), cada arquivo do `dec` vira destino e o arquivo do jogo com o mesmo caminho é descartado.
+
+## Imagem `.exfat` (ShadowMount+)
+
+- `.exfat` solto: `Archives.Group` o trata como arquivo único (`X.exfat`). A `Engine` pula o `7z l` e monta uma lista de um item só. O envio lê um `FileStream` do disco em vez do stdout do 7z. Na retomada com `APPE`, o trecho já enviado é pulado com `Seek`, sem ler.
+- Dentro de um compactado: se `Plan` não acha pasta de jogo, `Archives.ImagePlan` escolhe os itens `.exfat` (pelo nome do arquivo, sem as pastas de dentro) e descarta o resto. Daí em diante é o mesmo stream `7z x -so`.
+- Destino `Settings.ImageDir`. A imagem entra em `Engine.Held`, então sobe com `.ferry-part` e é renomeada no fim, como o `param.json`.
 
 ## Interface
 

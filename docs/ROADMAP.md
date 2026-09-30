@@ -34,6 +34,17 @@ Decidido em 2026-09-30. Ordem: lógica → UI/marca → payload.
   - publicação atômica de `param.json`/`param.sfo`;
   - aviso de jogo já instalado (ver `FTP-PS5.md`).
 
+## Fase 1.5 — Imagem `.exfat` do ShadowMount+ (release `v1.1.0-beta.2`)
+
+- **Aceita como jogo**:
+  - `.exfat` solto (arrastar, seletor, pasta monitorada), com stream direto do disco;
+  - arquivo compactado (qualquer split aceito) com uma imagem `.exfat` dentro em vez de pasta de jogo, com stream `7z -so` → FTP.
+- **Destino**: campo "Imagens .exfat (ShadowMount+)" nas Configurações (`ImageDir`, padrão `/mnt/ext1/homebrew`). Salva sozinho e valida (caminho começando com `/`). O nome remoto é o nome do `.exfat`.
+- **Publicação atômica**: sobe como `<nome>.exfat.ferry-part` e só é renomeada depois do `SIZE` conferido. O SM+ reconhece imagem só pela extensão, e o sufixo fica de fora (pesquisa em `FTP-PS5.md`).
+- **Retomada, aviso de já instalado, log**: mesmas regras da Fase 1.
+- **Card**: sem capa (o app não abre a imagem), mostra o nome grande.
+- **E2E**: `.exfat` solto e dentro de `.part1.rar`, pausar/retomar, reabrir com parcial nosso (APPE) e de outra versão (STOR), já existente + "Tentar de novo".
+
 ## Fase 2 — Marca e interface: **Ferry**
 
 - **Nome**: Ferry, com o subtítulo "envio de jogos para PS5".

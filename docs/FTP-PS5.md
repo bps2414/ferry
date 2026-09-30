@@ -39,6 +39,26 @@ O que o app faz:
 - **Publicação atômica**: `sce_sys/param.json` e `sce_sys/param.sfo` sobem como `*.ferry-part`. Só depois que todo o resto foi enviado e conferido eles são renomeados (`RNFR`/`RNTO`, apagando antes o nome final se existir). O `param.sfo` entra por garantia: não achei código do itemzflow para confirmar o que ele usa. A retomada reconhece o arquivo com sufixo.
 - **Jogo já instalado**: se o `param.json` ou o `param.sfo` com o nome final já existe no destino, o card avisa e não envia. "Tentar de novo" reenvia mesmo assim. Nesse reenvio, uma divergência nos arquivos típicos de backport vira aviso no log, não erro.
 
+## Imagens `.exfat` (ShadowMount+)
+
+Conferido no código (cópia em [aloksaurabh/elf-arsenal](https://github.com/aloksaurabh/elf-arsenal), `ShadowMountPlus-main`, set/2026):
+
+- **Onde procura**: nos *scanpaths*. Padrão (`include/sm_paths.h: SM_DEFAULT_SCAN_PATHS_INITIALIZER`): `/data/homebrew`, `/data/etaHEN/games`, `/mnt/ext0|ext1/homebrew`, `/mnt/ext0|ext1/etaHEN/games`, `/mnt/usb0..7/homebrew`, `/mnt/usb0..7/etaHEN/games`, `/mnt/usb0..7`, `/mnt/ext0`, `/mnt/ext1`. É configurável: uma ou mais linhas `scanpath=` em `/data/shadowmount/config.ini` substituem a lista inteira (`sm_config_mount.c`, parser da chave `scanpath`; README "Scan paths").
+- **Profundidade**: `sm_scan_tree.c: sm_scan_tree_walk` visita imagens nos arquivos da pasta listada. Com `scan_depth=1` (padrão, `include/sm_limits.h: DEFAULT_SCAN_DEPTH`), só a raiz do scanpath é listada, então a imagem tem que estar **direto** em `<scanpath>/<nome>.exfat`. Com `scan_depth=2` ou `recursive_scan=1`, um nível de subpasta também vale.
+- **Como reconhece**: só pela extensão, sem diferenciar maiúsculas: `sm_image.c: detect_image_fs_type` (`strrchr(name, '.')` + `strcasecmp`) aceita `.ffpkg` (UFS), `.exfat` e `.ffpfs` (PFS). Arquivos que começam com `.` são ignorados. **`X.exfat.ferry-part` tem extensão `.ferry-part` e é ignorado**, então o sufixo da Fase 1 serve.
+- **Estabilidade**: `sm_image.c: maybe_mount_image_file` chama `sm_mount_device.c: is_source_stable_for_mount`, que usa `sm_stability.c: is_path_stable_now`. Essa função compara o maior entre `st_ctime` e `st_mtime` **do próprio arquivo** com `stability_wait_seconds` (padrão 10 s, `DEFAULT_STABILITY_WAIT_SECONDS`, até 3600). Não olha tamanho. Um envio pausado ou lento (mais de 10 s sem escrita) com o nome final seria montado pela metade. Por isso a publicação atômica é necessária.
+- **Conteúdo esperado**: os arquivos do jogo na raiz da imagem (`/sce_sys/param.json` direto, sem pasta extra; README "Image layout requirement"). O app não abre a imagem e não confere isso.
+
+O que o app faz:
+
+- Aceita `.exfat` solto (stream direto do disco) ou dentro de um arquivo compactado sem pasta de jogo (stream do `7z x -so`). Destino: `ImageDir` nas Configurações (padrão `/mnt/ext1/homebrew`), com o nome do arquivo.
+- A imagem sobe como `<nome>.exfat.ferry-part` e só é renomeada (`RNFR`/`RNTO`) depois do `SIZE` conferido. A retomada (APPE só em parcial começado pelo app) e o aviso "Jogo já instalado" (se `<nome>.exfat` já existe) seguem as regras das pastas de jogo.
+
+**Em aberto:**
+
+- Reenviar por cima de uma imagem **já montada**: o app apaga o nome final e renomeia o novo. `sm_image.c: cleanup_stale_image_mounts` só desmonta quando o caminho some e a montagem continua legível. Como o caminho volta a existir logo depois do `RNTO`, o SM+ pode continuar usando a imagem antiga (inode apagado) até reiniciar o PS5 ou o SM+. Não testado no console.
+- Não achei como o SM+ reage ao `DELE` de uma imagem montada (se o ftpsrv consegue apagar o arquivo aberto pelo `lvd`/`md`). No FreeBSD o `unlink` de arquivo aberto funciona, mas não conferi no PS5.
+
 ## Notificação no PS5
 
 Não há comando FTP nem API de rede para notificações no ftpsrv ou no etaHEN. O caminho seria um payload ELF (compilado com o SDK do PS5, chamando `sceKernelSendNotificationRequest`) enviado ao elfldr na porta 9021. Não implementado.

@@ -114,7 +114,7 @@
                         </Border>
                         <TextBlock Text="Clique para escolher os jogos" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
                         <TextBlock Text="ou arraste os arquivos para esta janela" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                        <TextBlock Text=".zip · .rar · .7z · .001 · .z01 · .part1.rar · .r00  —  selecione todas as partes de uma vez"
+                        <TextBlock Text=".zip · .rar · .7z · .001 · .z01 · .part1.rar · .r00 · .exfat  —  selecione todas as partes de uma vez"
                                    Foreground="{StaticResource Muted}" FontSize="12" HorizontalAlignment="Center" Margin="0,14,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -286,6 +286,10 @@
                                 <TextBox Text="{Binding RemoteDir, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}"/>
                             </DockPanel>
                             <TextBlock Style="{StaticResource Hint}" Text="Cada jogo vai para uma pasta com o nome dele dentro deste caminho. M.2 = /mnt/ext1/homebrew · SSD interno = /data/homebrew"/>
+                            <TextBlock Text="Imagens .exfat (ShadowMount+)" Style="{StaticResource Label}" Margin="0,14,0,4"/>
+                            <TextBox x:Name="ImageBox" TextChanged="OnImageDirChanged"/>
+                            <TextBlock x:Name="ImageHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                            <TextBlock Style="{StaticResource Hint}" Text="A imagem vai com o próprio nome para esta pasta. Tem que ser uma pasta que o ShadowMount+ varre (padrão: /data/homebrew, /mnt/ext1/homebrew, /mnt/usbN…)."/>
                         </StackPanel>
                     </Border>
 
