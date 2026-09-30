@@ -18,7 +18,7 @@ Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª 
 
 ## O servidor de teste imita o ftpsrv
 
-`e2e/ftpserver.py` (pyftpdlib) aceita **só os comandos do ftpsrv** e responde `502 Command not recognized` ao resto — foi assim que apareceram os problemas de `NLST`, `SIZE` e UTF-8 que um servidor completo escondia. Comandos recusados ficam em `%TEMP%\ferry-e2e\ftproot.recusados.txt`. Upload limitado a 40 MB/s por conexão.
+`e2e/ftpserver.py` (pyftpdlib) aceita **só os comandos do ftpsrv** e responde `502 Command not recognized` ao resto — foi assim que apareceram os problemas de `NLST`, `SIZE` e UTF-8 que um servidor completo escondia. Comandos recusados ficam em `%TEMP%\ferry-e2e\ftproot.recusados.txt`. Upload limitado a 40 MB/s por conexão (10 MB/s nos casos .exfat e "Transferir agora", que precisam pegar o envio no meio).
 
 ## Casos
 

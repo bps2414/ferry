@@ -2,6 +2,7 @@
 # (lista do main.c do ps5-payload-ftpsrv) e "502 Command not recognized" para o resto.
 # Upload limitado (~40 MB/s por conexão) para simular rede e dar tempo de pausar no meio.
 # 3º argumento: "appe" (ftpsrv novo do ps5-payload-dev / etaHEN) ou "noappe" (versão antiga do john-tornblom).
+# 4º argumento (opcional): limite de upload em MB/s por conexão (padrão 40).
 # O "appe" imita também o SELF do ftpsrv novo: ligado por padrão, faz o SIZE de um SELF (aqui: eboot.bin)
 # devolver o tamanho do ELF de dentro (aqui: 1 byte a menos). O comando SELF liga/desliga.
 import logging, os, sys
@@ -11,6 +12,7 @@ from pyftpdlib.log import config_logging
 from pyftpdlib.servers import FTPServer
 
 port, root, mode = int(sys.argv[1]), sys.argv[2], sys.argv[3]
+rate = int(sys.argv[4]) if len(sys.argv) > 4 else 40
 FTPSRV = {"CDUP", "CWD", "DELE", "LIST", "MKD", "NOOP", "PASV", "PORT", "PWD", "QUIT", "REST", "RETR",
           "RMD", "RNFR", "RNTO", "SIZE", "STOR", "SYST", "TYPE", "USER", "PASS"}
 if mode == "appe":
@@ -41,7 +43,7 @@ class Ftpsrv(FTPHandler):
 config_logging(level=logging.INFO)
 auth = DummyAuthorizer()
 auth.add_user("ps5", "ps5pass", root, perm="elradfmwMT")
-ThrottledDTPHandler.read_limit = 40 * 1024 * 1024
+ThrottledDTPHandler.read_limit = rate * 1024 * 1024
 Ftpsrv.authorizer = auth
 Ftpsrv.dtp_handler = ThrottledDTPHandler
 FTPServer(("127.0.0.1", port), Ftpsrv).serve_forever()

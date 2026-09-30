@@ -359,7 +359,7 @@ var logOk = fileLog.Contains($"APPE {RemoteDir}/{g7Name}/data/big.bin → 226") 
 
 // ---------- imagem .exfat (ShadowMount+): servidor COM APPE, destino ImageDir ≠ RemoteDir ----------
 var exRoot = Dir("ftproot-exfat");
-var (ftp3, port3, ftp3Log) = StartFtp(exRoot, appe: true);
+var (ftp3, port3, ftp3Log) = StartFtp(exRoot, appe: true, mbps: 10); // 10 MB/s: dá tempo de pausar o IMG1 (40 MB) no meio
 var inEx = Dir("input-exfat"); var img1Drop = Path.Combine(Dir("dropped-exfat"), "IMG1.exfat");
 File.Copy(img1, img1Drop);
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(inEx, Path.GetFileName(f)));
@@ -461,9 +461,9 @@ ftp3.Kill(true);
 
 // ---------- Transferir agora: passa na frente do que está enviando; o preemptado volta para a fila e continua com APPE ----------
 var agRoot = Dir("ftproot-agora");
-var (ftp4, port4, ftp4Log) = StartFtp(agRoot, appe: true);
+var (ftp4, port4, ftp4Log) = StartFtp(agRoot, appe: true, mbps: 10); // 10 MB/s: ImgA (80 MB) ainda enviando quando o IMG2 fica pronto
 var inAg = Dir("input-agora"); var dropAg = Dir("dropped-agora");
-var agA = Path.Combine(inAg, "ImgA.exfat"); // 80 MB (~2 s a 40 MB/s): dá tempo de B ficar pronto e de pegar A no meio
+var agA = Path.Combine(inAg, "ImgA.exfat"); // 80 MB (~8 s a 10 MB/s): dá tempo de B ficar pronto e de pegar A no meio
 var agABytes = new byte[80_000_000]; new Random(3001).NextBytes(agABytes); File.WriteAllBytes(agA, agABytes);
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(dropAg, Path.GetFileName(f)));
 var sAg = new Settings { Host = "127.0.0.1", Port = port4, User = "ps5", Password = "ps5pass", RemoteDir = RemoteDir, ImageDir = "/data/homebrew", Connections = 4, DeleteOriginal = false, InputFolder = inAg };
@@ -671,10 +671,11 @@ static async Task<bool> RunUntil(Engine e, Func<Job, bool> done, TimeSpan timeou
     return ok;
 }
 
-(Process, int, List<string>) StartFtp(string ftpRootDir, bool appe)
+// mbps: limite de upload por conexão. Os casos que precisam pegar o envio no meio usam menos, para não depender da máquina.
+(Process, int, List<string>) StartFtp(string ftpRootDir, bool appe, int mbps = 40)
 {
     var p = FreePort();
-    var proc = Process.Start(new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3",$"\"{Path.Combine(root, "e2e", "ftpserver.py")}\" {p} \"{ftpRootDir}\" {(appe ? "appe" : "noappe")}")
+    var proc = Process.Start(new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3", $"\"{Path.Combine(root, "e2e", "ftpserver.py")}\" {p} \"{ftpRootDir}\" {(appe ? "appe" : "noappe")} {mbps}")
         { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true })!;
     var log = new List<string>();
     proc.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (log) log.Add(e.Data); }; proc.BeginErrorReadLine();
