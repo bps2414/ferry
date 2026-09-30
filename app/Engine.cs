@@ -231,7 +231,9 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
             var decCount = entries.Count(e => !e.IsDir && e.Path.Split('/').Contains("dec", StringComparer.OrdinalIgnoreCase));
             // 2ª volta só se o APPE do servidor falhar: aí o arquivo parcial é reenviado inteiro com STOR.
-            for (var noAppend = false; ; noAppend = true)
+            // Erro de rede (timeout, conexão caída) refaz a volta sozinho: reconsulta o PS5 e manda só o que falta.
+            var noAppend = false;
+            for (var tries = 0; ; tries++)
             {
                 job.Detail = "Conferindo o que já está no PS5…";
                 var (have, append, probe) = await Ftp.RemoteStateAsync(settings, paths, ct, noAppend);
@@ -281,6 +283,13 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 if (fail != null && append && !noAppend && fail.Message.Contains("(APPE)"))
                 {
                     log($"[{job.Name}] servidor recusou APPE ({Ftp.Flatten(fail)}); reenviando parciais inteiros");
+                    noAppend = true;
+                    continue;
+                }
+                if (fail != null && tries < 3 && Transient(fail))
+                {
+                    log($"[{job.Name}] erro de rede ({Ftp.Flatten(fail)}); reconectando e continuando ({tries + 1}/3)");
+                    await Task.Delay(3000, ct);
                     continue;
                 }
                 if (fail != null) throw fail;
@@ -315,6 +324,13 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         }
         catch { } // pausado/cancelado: Stage já foi definido por Pause/Cancel
         finally { if (listFile != null) try { File.Delete(listFile); } catch { } }
+    }
+
+    static bool Transient(Exception e)
+    {
+        for (Exception? x = e; x != null; x = x.InnerException)
+            if (x is TimeoutException or System.Net.Sockets.SocketException || x is IOException and not EndOfStreamException) return true;
+        return false;
     }
 
     /// <summary>Confere o tamanho no PS5 de cada caminho; devolve quantas divergências viraram só aviso (backport).</summary>

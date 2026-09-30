@@ -12,6 +12,8 @@ public static class Ftp
     {
         var c = new AsyncFtpClient(s.Host, s.User, s.Password, s.Port);
         c.Config.ConnectTimeout = 10000;
+        // ftpsrv do PS5 às vezes demora >15 s (padrão) para responder o STOR com várias conexões gravando no disco
+        c.Config.ReadTimeout = c.Config.DataConnectionReadTimeout = 60000;
         c.Config.DataConnectionType = FtpDataConnectionType.PASV; // ftpsrv não tem EPSV
         c.Encoding = System.Text.Encoding.UTF8; // sem FEAT o FluentFTP cairia em ASCII e trocaria acentos por "?"
         c.Config.TransferChunkSize = 1 << 20;
