@@ -111,6 +111,14 @@ Requer Docker, Python com `pyftpdlib` e 7-Zip (para montar os arquivos de teste)
 
 ## WPF Windows: idioma e bandeja
 
+O modo de energia roda separadamente, com relógio controlado e serviço de energia falso, inclusive na janela WPF real:
+
+```powershell
+dotnet run --project e2e/windows -c Release -- --power
+```
+
+Confere fila vazia/histórico, sucesso de todos os itens, 60 segundos completos, cancelamento, pausa, erro, senha, resultado DPI incerto, alteração da fila, chegada de fontes antes dos cards, pasta indisponível, troca de idioma e restauração da janela durante a contagem. Também confere liberação do bloqueio de suspensão ao parar ou fechar. Os dois modos WPF injetam energia falsa; não desligam nem suspendem o PC. A CI Windows executa ambos. O modo de energia não comprova a execução dos comandos nativos do Windows; veja [UX e energia](UX-PRODUTO.md).
+
 ```powershell
 dotnet run --project e2e/windows -c Release
 ```

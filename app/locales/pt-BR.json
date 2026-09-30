@@ -44,5 +44,17 @@
   "app.pickFiles": "Escolher jogos (selecione todas as partes)",
   "app.fileFilter": "Compactados, imagens ou PKG|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat;*.pkg;*.ffpkg;*.ffpfs;*.ffpfsc|Todos os arquivos|*.*",
   "app.trayOpen": "Abrir Ferry",
-  "app.trayExit": "Sair"
+  "app.trayExit": "Sair",
+  "app.shutdownAfter": "Desligar este PC ao terminar as transferências (nesta sessão)",
+  "app.powerHint": "PKG enviado ou instalação solicitada indica fim da transferência; a instalação no PS5 não está comprovada. Adicionar ou remover trabalho cancela o desligamento.",
+  "app.cancelShutdown": "Cancelar desligamento do PC",
+  "app.keepAwake": "Impedir suspensão deste PC durante envios (nesta sessão)",
+  "app.powerOff": "Desligamento desativado. Adicione trabalho pendente para habilitar.",
+  "app.powerWaiting": "Armado nesta sessão. Aguardando sucesso de todas as transferências; pausas, erros, partes faltantes, senhas e resultados incertos bloqueiam o desligamento.",
+  "app.powerCountdown": "Este PC será desligado em {0} segundos. Cancele aqui ou feche o Ferry.",
+  "app.powerCancelled": "Desligamento do PC cancelado. Ative novamente para trabalho pendente se precisar.",
+  "app.powerQueueChanged": "O trabalho mudou. Desligamento do PC cancelado; ative novamente para trabalho pendente.",
+  "app.powerUnobserved": "Desligamento bloqueado: trabalho novo ainda não apareceu na fila ou não foi possível conferir as fontes.",
+  "app.powerRequested": "Desligamento deste PC solicitado. O Windows pode pedir para salvar os aplicativos abertos.",
+  "app.powerFailed": "Não foi possível confirmar a ação de energia do Windows. Desligamento desarmado no Ferry; confira este PC antes de ativar novamente."
 }

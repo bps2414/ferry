@@ -96,6 +96,14 @@ Requires Docker, Python with `pyftpdlib` and 7-Zip (to build the test archives).
 
 ## Windows WPF: language and tray
 
+The power mode runs separately with a controlled clock and a fake power service, including the real WPF window:
+
+```powershell
+dotnet run --project e2e/windows -c Release -- --power
+```
+
+It checks empty queues/history, success of every item, the full 60-second countdown, cancellation, pauses, errors, passwords, uncertain DPI results, queue changes, sources arriving before cards, unavailable folders, language switching and restoring the window during the countdown. It also checks that sleep inhibition is released when work stops or the window closes. Both WPF modes inject fake power services; they never shut down or suspend the PC. Windows CI runs both. Native Windows power commands are not exercised.
+
 ```powershell
 dotnet run --project e2e/windows -c Release
 ```

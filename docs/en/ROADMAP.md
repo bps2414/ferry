@@ -2,9 +2,9 @@
 
 **English** · [Português (BR)](../ROADMAP.md) · [Español](../es/ROADMAP.md)
 
-Decided on 2026-09-30. Order: logic → UI/brand → self-hosted (Docker) → English → webhook → PKG/fPKG → progressive upload → payload.
+Reassessed on 2026-09-30. Order: logic → UI/brand → self-hosted (Docker) → English → webhook → PKG/fPKG → service and destination diagnostics. Progressive RAR requires a future technical proof; payload is outside the next phase.
 
-Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Phases 5, 5.1 and 6 implemented. Phase 6 covers loose PKG and one PKG per ZIP/RAR/7z; real installation still requires PS5 validation. Next: Phase 7 (progressive sending). Publication depends on CI.**
+Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Phases 5, 5.1 and 6 implemented. Phase 6 covers loose PKG and one PKG per ZIP/RAR/7z; real installation still requires PS5 validation. Proposed next phase: 6.1, diagnostics without payload, not implemented. Publication depends on CI.** See the [current research (Portuguese)](../PESQUISA-CENARIO-PS5-2026-09.md) and [future contract (Portuguese)](../plans/next/proxima-fase-sem-payload.md). Windows session power controls are documented in [UX and power (Portuguese)](../UX-PRODUTO.md).
 
 ## Phase 1 — Logic (release `v1.1.0-beta.1`)
 
@@ -119,15 +119,23 @@ Initial delivery implemented: loose PKG and one PKG per archive through FTP for 
 
 [PKG](PKG-PS5.md)
 
-## Phase 7 — Progressive upload (multi-part RAR)
+## Phase 6.1 — Service and destination diagnostics (proposal)
+
+- Explicit, temporary results for FTP authentication, dump/image/PKG destinations and DPI TCP reachability, using existing configured services.
+- No writes, installation requests, payload, firmware inference or claim that an open socket proves compatibility. Timeouts, cancellation, configuration revisions and localization are part of the contract.
+- Proposed only; not implemented by this delivery. See the [future contract (Portuguese)](../plans/next/proxima-fase-sem-payload.md).
+
+## Phase 7 — Progressive upload (future technical proof)
+
+Deferred; not the next delivery and not implemented. The ideas below require the [technical gate in the research (Portuguese)](../PESQUISA-CENARIO-PS5-2026-09.md#reavaliação-da-fase-7-rar-progressivo), including late manifests/dec overlays, CRC, decoder state and safe publication.
 
 - **Goal**: while the download is still running into the watched folder (e.g. JDownloader on the server), start extracting and sending to the PS5 the parts that have already arrived, in order, instead of waiting for all of them.
 - **Format limit**:
-  - `.zip` and `.7z` keep their index at the end (last part), so they can't start before it arrives. For those, the behavior stays as today;
-  - feasible for multi-part RAR (`.partN.rar` and `.rar` + `.rNN`): the files come in sequence, each with its own header.
+  - ZIP/7z continue waiting for the complete set in Ferry's current listing/extraction path; header/index placement is not a universal rule for every layout;
+  - RAR has sequential structures and UnRAR volume callbacks, but incremental extraction integrated with Ferry remains unproven.
 - **How** (research first):
-  - 7-Zip seems to open every volume at the start (to confirm);
-  - alternatives: `unrar` extracting volume by volume and waiting for the next one, or reading the RAR sequentially ourselves;
+  - the current 7-Zip listing path opens successive volumes and reports a missing volume; it does not provide Ferry with the complete manifest early;
+  - investigate UnRAR callbacks in an isolated proof; do not write a custom RAR parser/decoder;
   - a game file that spans two parts only finishes when the next part arrives. The upload either waits with the FTP connection open, or closes and continues with `APPE` (to decide).
 - **Order**: only moves on with the next part in the sequence (part3 doesn't count if part2 is missing). A part still downloading (name ending in `.part`, size changing) doesn't count.
 - **Safety**:
@@ -142,6 +150,8 @@ Initial delivery implemented: loose PKG and one PKG per archive through FTP for 
   - `.zip`/`.7z` still wait for all parts.
 
 ## Phase 8 — Payload (hello world)
+
+Deferred at the user's request. Outside the current work and the proposed next phase; the items below remain future ideas.
 
 - ELF built with the [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compiled in WSL (Ubuntu, WSL2, already installed).
 - The app sends the ELF to port 9021, the PS5 shows "Ferry connected" and the payload exits. Nothing stays resident.

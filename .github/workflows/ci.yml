@@ -49,6 +49,9 @@ jobs:
       - name: Windows WPF (idioma e bandeja)
         run: dotnet run --project e2e/windows -c Release
 
+      - name: Windows WPF (energia da sessão, sem ação real)
+        run: dotnet run --project e2e/windows -c Release -- --power
+
       - name: E2E
         run: dotnet run --project e2e
 

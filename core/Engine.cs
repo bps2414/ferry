@@ -76,6 +76,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
 
     public void AddFiles(IEnumerable<string> paths)
     {
+        Interlocked.Increment(ref _workRevision); // observable before discovery or cards, including a repeated source
         var list = paths.Where(File.Exists).ToList();
         var keys = Archives.Group(list).Keys.ToList();
         lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in keys) { _removed.Remove(k); _done.Remove(k); } }
@@ -343,7 +344,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             Done?.Invoke(job);
             if (settings.DeleteOriginal)
             {
-                foreach (var f in job.Parts) File.Delete(f);
+                foreach (var f in job.Parts) DeleteOriginalObserved(f);
                 SaveQueue();
                 JobLog(job, new("core.originalsDeleted", job.Parts.Count));
             }

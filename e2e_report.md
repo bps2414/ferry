@@ -1,8 +1,8 @@
 # Relatório E2E — Ferry
 
-- Data: 2026-09-30 13:53:07 · Windows
-- Resultado geral: **PASSOU**  (63s)
-- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; upload limitado a 40 MB/s por conexão) em 127.0.0.1:53206, destino `/mnt/ext1/homebrew`, 4 conexões, apagar original = sim
+- Data: 2026-09-30 17:59:23 · Windows
+- Resultado geral: **PASSOU**  (67s)
+- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; upload limitado a 40 MB/s por conexão) em 127.0.0.1:50153, destino `/mnt/ext1/homebrew`, 4 conexões, apagar original = sim
 - Ferramentas: 7-Zip 24.07 (embutido no app), RAR 6.24.0 (só para gerar os testes)
 - Jogo falso: 6 arquivos (~24 MB, incompressíveis) dentro de 2 pastas casca; volumes de 5 MB
 
@@ -24,7 +24,7 @@
 | Já no PS5, servidor com APPE e SELF (ftpsrv novo) | ✅ big.bin nosso pela metade: só a metade que faltava (APPE, 11000000 bytes); EBOOT.BIN menor de outra versão: STOR inteiro; icon0.png maior: ficou do tamanho certo; SELF desligado (SIZE real); 8/8 hashes; param.json/sfo renomeados só depois do último envio |
 | Jogo já instalado no PS5 | ✅ avisou "Jogo já instalado…" sem enviar; "Tentar de novo" reenviou por cima e conferiu |
 | Log persistente (log.txt) | ✅ comando e resposta de STOR/APPE/SIZE gravados |
-| Fechar e reabrir o app no meio do envio (G6) | ✅ fechou em 100% com 4 arquivo(s) completos no PS5; ao reabrir a fila voltou sozinha, nenhum deles foi extraído/reenviado; hash confere |
+| Fechar e reabrir o app no meio do envio (G6) | ✅ fechou em 0% com 1 arquivo(s) completos no PS5; ao reabrir a fila voltou sozinha, nenhum deles foi extraído/reenviado; hash confere |
 | Senha aprendida e lembrada (G6) | ✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (cifrada na fila), sem diálogo |
 | Salvar atômico | ✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos |
 | Pausar/retomar no meio do stream (G5) | ✅ pausou em 0% (progresso congelado por 1,5 s), retomou; hash confere |

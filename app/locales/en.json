@@ -44,5 +44,17 @@
   "app.pickFiles": "Choose games (select all parts)",
   "app.fileFilter": "Archives, images or PKG|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat;*.pkg;*.ffpkg;*.ffpfs;*.ffpfsc|All files|*.*",
   "app.trayOpen": "Open Ferry",
-  "app.trayExit": "Exit"
+  "app.trayExit": "Exit",
+  "app.shutdownAfter": "Shut down this PC when transfers finish (this session)",
+  "app.powerHint": "PKG uploaded or installation requested means transfer finished; installation on the PS5 is not confirmed. New or removed work cancels shutdown.",
+  "app.cancelShutdown": "Cancel PC shutdown",
+  "app.keepAwake": "Keep this PC awake while sending (this session)",
+  "app.powerOff": "Shutdown is off. Add pending work to enable it.",
+  "app.powerWaiting": "Armed for this session. Waiting for all transfers to succeed; pauses, errors, missing parts, passwords and uncertain results block shutdown.",
+  "app.powerCountdown": "This PC will shut down in {0} seconds. Cancel here or close Ferry.",
+  "app.powerCancelled": "PC shutdown cancelled. Enable it again for pending work if needed.",
+  "app.powerQueueChanged": "Work changed. PC shutdown cancelled; enable it again for pending work.",
+  "app.powerUnobserved": "Shutdown blocked: new work has not appeared in the queue yet, or sources could not be checked.",
+  "app.powerRequested": "Shutdown of this PC requested. Windows may ask you to save open apps.",
+  "app.powerFailed": "The Windows power action could not be confirmed. Shutdown is disarmed in Ferry; check this PC before enabling it again."
 }

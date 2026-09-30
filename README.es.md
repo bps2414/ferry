@@ -58,6 +58,8 @@ Opcional: una **carpeta vigilada** — todo lo que caiga en ella entra solo en l
 
 **Transferir agora** (Transferir ahora): en un juego en cola o pausado, lo pasa al frente. El envío en curso vuelve a la cola y después continúa donde se quedó.
 
+**Envíos largos en Windows**: la Cola permite mantener este PC despierto durante los envíos y apagarlo cuando terminen todas las transferencias. Ambas opciones valen solo para la sesión actual. El apagado tiene 60 segundos para cancelar y queda bloqueado por trabajo pendiente, errores o resultados inciertos. Para PKG, una transferencia terminada no confirma la instalación en la consola. Consulta [UX y energía (portugués)](docs/UX-PRODUTO.md).
+
 ## Formatos aceptados
 
 | Formato | Ejemplo |

@@ -14,6 +14,9 @@ public partial class MainWindow : Window
 {
     readonly Settings _settings = Settings.Load();
     readonly Engine _engine;
+    readonly TransferPowerSession _powerSession;
+    bool _renderingPower;
+    bool _countdownShown;
     readonly Webhooks _webhooks;
     readonly CancellationTokenSource _stop = new();
     readonly System.Windows.Forms.NotifyIcon _tray = new();
@@ -22,7 +25,9 @@ public partial class MainWindow : Window
     bool _loading; // preenchendo os campos por código: não conta como edição do usuário
     (string Ip, int Port)? _found; // PS5 achado na varredura, aguardando "Usar este"
 
-    public MainWindow()
+    public MainWindow() : this(new WindowsPowerService()) { }
+
+    public MainWindow(IPowerService power, TimeProvider? clock = null, bool startEngine = true)
     {
         _loading = true;
         WpfText.Current.Apply(_settings.Language);
@@ -70,6 +75,7 @@ public partial class MainWindow : Window
         BindingOperations.EnableCollectionSynchronization(_engine.Jobs, _engine.Lock);
         JobList.ItemsSource = _engine.Jobs;
         _engine.Restore();
+        _powerSession = new(_engine.Jobs, _engine.Lock, power, clock, _engine.ObserveWork);
 
         // resumo da fila (contagens, velocidade total) 2x por segundo
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -78,13 +84,14 @@ public partial class MainWindow : Window
         RefreshSummary();
         UpdateStatusCard();
 
-        Task.Run(() => _engine.RunAsync(_stop.Token));
+        if (startEngine) Task.Run(() => _engine.RunAsync(_stop.Token));
         RoutedEventHandler? initialLoad = null;
         initialLoad = async (_, _) => { Loaded -= initialLoad; if (!await TestConnection(silent: true)) await Discover(silent: true); };
-        Loaded += initialLoad;
+        if (startEngine) Loaded += initialLoad;
         Closing += (_, _) =>
         {
             timer.Stop();
+            _powerSession.Dispose();
             WpfText.Current.PropertyChanged -= OnPresentationChanged;
             _stop.Cancel(); _ = _webhooks.DisposeAsync();
             try { _settings.Save(); } catch { }
@@ -146,6 +153,7 @@ public partial class MainWindow : Window
 
     void RefreshSummary()
     {
+        RefreshPower();
         List<Job> jobs;
         lock (_engine.Lock) jobs = [.. _engine.Jobs];
         int Count(params Stage[] s) => jobs.Count(j => s.Contains(j.Stage));
@@ -178,6 +186,36 @@ public partial class MainWindow : Window
         QueueBadge.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
         QueueBadgeText.Text = pending.ToString(WpfText.Current.Culture);
     }
+
+    void RefreshPower()
+    {
+        _powerSession.Tick();
+        _renderingPower = true;
+        ShutdownAfterBox.IsChecked = _powerSession.Armed;
+        ShutdownAfterBox.IsEnabled = _powerSession.Armed || _powerSession.CanArm;
+        KeepAwakeBox.IsChecked = _powerSession.KeepAwake;
+        _renderingPower = false;
+        SetText(PowerStatusText, _powerSession.StatusKey, _powerSession.RemainingSeconds);
+        CancelShutdownBtn.Visibility = _powerSession.Armed ? Visibility.Visible : Visibility.Collapsed;
+        if (_powerSession.RemainingSeconds != null && (!_countdownShown || !IsVisible)) RestoreWindow();
+        _countdownShown = _powerSession.RemainingSeconds != null;
+    }
+
+    void OnShutdownAfterChanged(object s, RoutedEventArgs e)
+    {
+        if (_loading || _renderingPower) return;
+        if (ShutdownAfterBox.IsChecked == true) _powerSession.Arm(); else _powerSession.Cancel();
+        RefreshPower();
+    }
+
+    void OnKeepAwakeChanged(object s, RoutedEventArgs e)
+    {
+        if (_loading || _renderingPower) return;
+        _powerSession.KeepAwake = KeepAwakeBox.IsChecked == true;
+        RefreshPower();
+    }
+
+    void OnCancelShutdown(object s, RoutedEventArgs e) { _powerSession.Cancel(); RefreshPower(); }
 
     void OnNav(object s, RoutedEventArgs e)
     {
@@ -448,7 +486,10 @@ public partial class MainWindow : Window
         LogBox.ScrollToVerticalOffset(offset);
     }
 
-    Task<string?> AskPassword(Job job) => Dispatcher.InvokeAsync(() =>
+    async Task<string?> AskPassword(Job job)
+    {
+        _powerSession.PasswordPending = true;
+        try { return await Dispatcher.InvokeAsync(() =>
     {
         Toast(new("core.webhook.passwordTitle"), new("core.webhook.passwordText", job.Name));
         RestoreWindow();
@@ -481,7 +522,9 @@ public partial class MainWindow : Window
         ok.Click += (_, _) => w.DialogResult = true;
         w.Loaded += (_, _) => box.Focus();
         return w.ShowDialog() == true ? box.Password : null;
-    }).Task;
+        }).Task; }
+        finally { _powerSession.PasswordPending = false; }
+    }
 
     static Job JobOf(object sender) => (Job)((FrameworkElement)sender).DataContext;
     void OnPause(object s, RoutedEventArgs e) => _engine.Pause(JobOf(s));

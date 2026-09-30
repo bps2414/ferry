@@ -69,9 +69,28 @@
 
         <!-- ============ CONTEÚDO ============ -->
         <Grid Grid.Column="1" Margin="32,26,32,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Border BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,14" Margin="0,0,0,18">
+                <StackPanel>
+                    <CheckBox x:Name="ShutdownAfterBox" Content="{text:Loc app.shutdownAfter}" Checked="OnShutdownAfterChanged" Unchecked="OnShutdownAfterChanged"
+                              AutomationProperties.Name="{text:Loc app.shutdownAfter}"/>
+                    <TextBlock Text="{text:Loc app.powerHint}" Style="{StaticResource Hint}"/>
+                    <DockPanel Margin="0,6,0,0">
+                        <Button x:Name="CancelShutdownBtn" DockPanel.Dock="Right" Content="{text:Loc app.cancelShutdown}" Style="{StaticResource Btn}"
+                                Click="OnCancelShutdown" Visibility="Collapsed" Margin="12,0,0,0" AutomationProperties.Name="{text:Loc app.cancelShutdown}"/>
+                        <TextBlock x:Name="PowerStatusText" Text="{text:Loc app.powerOff}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </DockPanel>
+                    <CheckBox x:Name="KeepAwakeBox" Content="{text:Loc app.keepAwake}" Margin="0,8,0,0"
+                              Checked="OnKeepAwakeChanged" Unchecked="OnKeepAwakeChanged" AutomationProperties.Name="{text:Loc app.keepAwake}"/>
+                </StackPanel>
+            </Border>
 
             <!-- == FILA == -->
-            <Grid x:Name="QueuePage">
+            <Grid x:Name="QueuePage" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -296,7 +315,7 @@
             </Grid>
 
             <!-- == CONFIGURAÇÕES: duas colunas, sem rolar no tamanho padrão (rola só se a janela ficar menor) == -->
-            <ScrollViewer x:Name="SettingsPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed" Focusable="False">
+            <ScrollViewer x:Name="SettingsPage" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed" Focusable="False">
                 <Grid x:Name="SettingsPanel" MinHeight="800" Binding.SourceUpdated="OnSourceUpdated">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -476,7 +495,7 @@
             </ScrollViewer>
 
             <!-- == LOG == -->
-            <DockPanel x:Name="LogPage" Visibility="Collapsed">
+            <DockPanel x:Name="LogPage" Grid.Row="1" Visibility="Collapsed">
                 <Border DockPanel.Dock="Top" BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18" Margin="0,0,0,18">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">

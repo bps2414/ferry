@@ -58,6 +58,8 @@ Optional: a **watched folder** — anything that lands in it is queued automatic
 
 **Transfer now**: on a queued or paused game, moves it to the front. The current upload goes back to the queue and later continues where it stopped.
 
+**Long transfers on Windows**: the Queue can keep this PC awake during transfers and shut it down once all transfers finish. Both options apply only to the current session. Shutdown has a cancellable 60-second countdown and is blocked by pending work, errors or uncertain results. For PKG, a finished transfer does not confirm console installation. See [UX and power controls (Portuguese)](docs/UX-PRODUTO.md).
+
 ## Supported formats
 
 | Format | Example |

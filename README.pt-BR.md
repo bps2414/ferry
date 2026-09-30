@@ -58,6 +58,8 @@ Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho 
 
 **Transferir agora**: num jogo na fila ou pausado, passa ele na frente. O envio em andamento volta para a fila e depois continua de onde parou.
 
+**Envios longos no Windows**: na Fila, você pode manter este PC acordado durante os envios e pedir que ele desligue quando todas as transferências terminarem. As opções valem só para a sessão atual; o desligamento tem 60 segundos para cancelar e fica bloqueado por trabalho pendente, erro ou resultado incerto. Para PKG, transferência concluída não confirma a instalação no console. Veja [UX e energia](docs/UX-PRODUTO.md).
+
 ## Formatos aceitos
 
 | Formato | Exemplo |

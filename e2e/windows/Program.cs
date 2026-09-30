@@ -14,17 +14,17 @@ using System.Windows.Threading;
 using Ferry;
 using Localization = Ferry.Localization;
 
-internal static class Program
+internal static partial class Program
 {
     static int checks;
 
     [STAThread]
-    static int Main()
+    static int Main(string[] args)
     {
         var data = Path.Combine(Path.GetTempPath(), "ferry-windows-checks-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(data);
         Environment.SetEnvironmentVariable("FERRY_DATA", data);
-        try { Run(data); Console.WriteLine($"PASS: {checks} Windows checks; isolated data: {data}"); return 0; }
+        try { if (args.Contains("--power")) RunPower(data); else Run(data); Console.WriteLine($"PASS: {checks} Windows checks; isolated data: {data}"); return 0; }
         catch (Exception error) { Console.Error.WriteLine(error); Console.Error.WriteLine($"FAIL; isolated data: {data}"); return 1; }
     }
 
@@ -43,7 +43,7 @@ internal static class Program
 
         var application = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         application.InitializeComponent();
-        var window = new MainWindow();
+        var window = new MainWindow(new FakePowerService());
         application.MainWindow = window;
         window.Show();
         try

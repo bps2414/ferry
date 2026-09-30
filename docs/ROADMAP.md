@@ -2,9 +2,9 @@
 
 [English](en/ROADMAP.md) · **Português (BR)** · [Español](es/ROADMAP.md)
 
-Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → envio progressivo → payload.
+Reavaliado em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → diagnóstico de serviços e destinos. RAR progressivo passa a prova técnica futura; payload fica fora da próxima fase.
 
-Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fases 5, 5.1 e 6 implementadas. A fase 6 cobre PKG solto e um PKG por ZIP/RAR/7z; instalação real ainda exige validação no PS5. Próxima: Fase 7 (envio progressivo). Publicação depende da CI.**
+Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fases 5, 5.1 e 6 implementadas. A fase 6 cobre PKG solto e um PKG por ZIP/RAR/7z; instalação real ainda exige validação no PS5. Próxima fase proposta: 6.1, diagnóstico sem payload, ainda não implementada. Publicação depende da CI.** Pesquisa primária e ranking em [PESQUISA-CENARIO-PS5-2026-09.md](PESQUISA-CENARIO-PS5-2026-09.md); contrato futuro em [proxima-fase-sem-payload.md](plans/next/proxima-fase-sem-payload.md). A rodada de UX Windows foi integrada e validada localmente: [opções de energia da sessão](UX-PRODUTO.md) e [resultados](RELATORIO-PRODUTO-2026-09.md).
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -119,34 +119,32 @@ Entrega inicial implementada: PKG solto e um PKG por compactado por FTP para ins
 
 [PKG](PKG-PS5.md)
 
-## Fase 7 — Envio progressivo (RAR em partes)
+## Fase 6.1 — Diagnóstico de serviços e destinos (proposta)
 
-- **Objetivo**: com o download ainda em andamento na pasta monitorada (ex.: JDownloader no servidor), começar a extrair e enviar ao PS5 as partes que já chegaram, na ordem, em vez de esperar todas.
-- **Limite do formato**:
-  - `.zip` e `.7z` guardam o índice no fim (última parte), então não dá para começar antes dela. Nesses, o comportamento continua o de hoje;
-  - viável para RAR em partes (`.partN.rar` e `.rar` + `.rNN`): os arquivos vêm em sequência, cada um com cabeçalho próprio.
-- **Como** (pesquisar antes):
-  - o 7-Zip parece abrir todos os volumes no início (confirmar);
-  - alternativas: `unrar` extraindo volume a volume e esperando o próximo, ou ler o RAR em sequência por conta própria;
-  - um arquivo do jogo que atravessa duas partes só termina quando a próxima chega. O envio fica esperando com o FTP aberto, ou fecha e continua com `APPE` (decidir).
-- **Ordem**: só avança com a próxima parte da sequência (part3 não vale se falta a part2). Parte ainda baixando (nome terminando em `.part`, tamanho mudando) não conta.
-- **Segurança**:
-  - a publicação atômica continua: `param.json`/`param.sfo` só no fim, depois da última parte e da verificação, para o ShadowMount+ não instalar o jogo pela metade;
-  - a senha do RAR é pedida antes de começar.
-- **Card**: mostra "Enviando parte 3 de ?" enquanto o total não é conhecido, e "Aguardando part4" quando parar esperando.
-- **Configurações**: liga/desliga (padrão: desligado até estar maduro).
-- **E2E**:
-  - um RAR em partes chega na pasta uma parte de cada vez, devagar;
-  - o envio começa antes da última parte;
-  - confere o SHA-256 de cada arquivo no PS5 falso e que `param.json`/`param.sfo` só aparecem no fim;
-  - `.zip`/`.7z` continuam esperando todas as partes.
+**Única próxima fase recomendada, sem implementação nesta rodada.** O usuário verifica o FTP autenticado e cada destino configurado (dump, imagens, PKG), vê quando a observação foi feita e entende o limite do teste DPI: porta TCP acessível não confirma protocolo ou instalação.
 
-## Fase 8 — Payload (hello world)
+- Ação explícita e cancelável, resultado efêmero por serviço/caminho; revisão de configuração impede resposta antiga de substituir a nova.
+- Consultas sem escrita, sem comando de instalação, montagem, energia ou payload. Não identifica firmware/HEN pela porta e não promete permissão de escrita.
+- WPF e web compartilham o contrato; web autenticada, strings pt-BR/en, sem afetar fila, ledger PKG, retomada ou publicação.
+- Falhas primeiro com servidores falsos: protocolo errado, credencial inválida, pasta negada/ausente/ambígua, timeout, cancelamento, edição concorrente, resposta fora de ordem e ausência de efeitos remotos.
+- Aceite e comandos futuros no [plano](plans/next/proxima-fase-sem-payload.md). Diagnóstico não equivale a instalação validada no console.
 
-- ELF feito com o [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compilado no WSL (Ubuntu, WSL2, já instalado).
-- O app manda o ELF para a porta 9021, o PS5 mostra "Ferry conectado" e o payload termina. Nada fica residente.
-- **Depois**: agente residente (notificação, espaço livre, lista de jogos), protocolo de envio próprio e integração com o loader (pesquisar antes).
+## Fase 7 — RAR progressivo (prova futura; não implementada)
+
+Objetivo preservado: começar a extrair/enviar RAR multivolume enquanto o download das próximas partes ainda ocorre. A pesquisa de 2026-09-30 encontrou fundamentos na especificação RAR5 e nos callbacks de troca de volume/dados do UnRAR oficial. Isso **não demonstra viabilidade integrada ao Ferry**.
+
+- O caminho atual usa `7z l` completo para conhecer ordem/tamanhos e planejar pasta raiz, `dec`, imagens e PKG. O código RAR5 do 7-Zip abre volumes na etapa de abertura e registra volume faltante. Trocar apenas o comando não resolve manifesto tardio nem retomada do decoder.
+- Uma prova futura, separadamente autorizada, deve avaliar UnRAR/callbacks, licença/ABI Windows/Linux, sólido/não sólido, senha/headers cifrados, arquivo atravessando volumes, `dec` tardio e origens mutáveis. Não escrever parser/decoder RAR próprio.
+- Publicar metadados/imagens/PKG, solicitar DPI, marcar sucesso e apagar original somente após validação completa/CRC e última parte. APPE apenas de parcial de identidade conhecida; espera não pode prender FTP indefinidamente.
+- Gate: arquivos sintéticos, FTP falso, hash final, RAM limitada, cancelamento/pausa/reinício, corrupção final e prova de ausência de publicação antecipada. Se manifesto/decoder não forem seguros, rejeitar ou limitar explicitamente o subconjunto.
+- ZIP/7z continuam esperando o conjunto no fluxo atual. A frase anterior “índice sempre no fim” era ampla demais para afirmar impossibilidade em todos os layouts.
+
+Fontes, limites e gate em [pesquisa RAR](PESQUISA-CENARIO-PS5-2026-09.md#reavaliação-da-fase-7-rar-progressivo). Nenhuma prova incremental ou medição foi executada nesta rodada; não há prazo nem recurso aprovado.
+
+## Fase 8 — Payload (explicitamente adiada)
+
+A ideia anterior de ELF hello world, envio para 9021 e agente residente fica fora da próxima fase e sem autorização de implementação. Nesta rodada e no plano 6.1: **nenhum payload próprio e nenhum envio de payload**, inclusive de terceiros. O Ferry continua consumindo serviços que o usuário já disponibilizou no console. Qualquer retomada desta ideia exige decisão de produto e contrato separados.
 
 ## Pesquisa, sem data
 
-- **Ideias soltas**: biblioteca do PS5, aviso de duplicado, perfis de console, enviar pasta extraída, limite de velocidade, auto-update, histórico.
+- **Backlog sem compromisso**: limite de velocidade, pasta extraída com manifesto, HTTP Range de PKG solto, metadata/famílias base-update-DLC, biblioteca do PS5, perfis de console, auto-update e histórico. Ordem e valor/esforço/risco na [pesquisa](PESQUISA-CENARIO-PS5-2026-09.md#ranking-de-oportunidades); nenhuma destas ideias amplia a fase 6.1.
