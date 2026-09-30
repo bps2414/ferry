@@ -34,7 +34,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function until(fn, ms, what) {
   const end = Date.now() + ms;
   for (; ;) {
-    try { const v = await fn(); if (v) return v; } catch { }
+    try { const v = await fn(); if (v) return v; } catch (e) { if (e.fatal) throw e; }
     if (Date.now() > end) throw new Error("tempo esgotado esperando: " + what);
     await sleep(100);
   }
@@ -170,7 +170,11 @@ try {
   await until(async () => (await page.locator("#pwTitle").textContent()) === "Senha incorreta" && await page.locator("#pwDialog").evaluate(d => d.open), 20000, "pedido de novo (senha incorreta)");
   await page.fill("#pwInput", "webpass");
   await page.click('#pwDialog button[value="ok"]');
-  await until(async () => (await stage("Jogo Web")) === "Enviando" && await pct("Jogo Web") > 5, 60000, "Jogo Web enviando");
+  await until(async () => {
+    const e = await page.locator('.job[data-stage="Erro"] .detail').allTextContents();
+    if (e.length) throw Object.assign(new Error("erro no card: " + e.join(" / ")), { fatal: true });
+    return (await stage("Jogo Web")) === "Enviando" && await pct("Jogo Web") > 5;
+  }, 60000, "Jogo Web enviando");
   shotsTaken.enviando = await shot("05-enviando");
   const cardDuring = await page.locator("#statusTitle").textContent();
   await until(async () => ["Verificado", "Erro"].includes(await stage("Jogo Web")), 120000, "Jogo Web terminar");
@@ -260,6 +264,8 @@ try {
   failed = e;
   check("Execução", false, e.message);
   try { await shot("erro"); } catch { }
+  // o que a página mostrava: título, estado e detalhe de cada card
+  try { console.log("\n--- cards ---\n" + (await page.locator(".job").evaluateAll(els => els.map(e => `${e.querySelector(".title").textContent} | ${e.dataset.stage} | ${e.querySelector(".detail").textContent}`))).join("\n")); } catch { }
 }
 
 await browser.close();
@@ -292,5 +298,12 @@ const md = [
 ].join("\n");
 fs.writeFileSync(path.join(root, "e2e_report_web.md"), md);
 console.log("\n" + md);
-if (!ok) console.log("\n--- log do container ---\n" + logs.slice(-6000));
+if (!ok) {
+  console.log("\n--- log do container ---\n" + logs.slice(-6000));
+  const ferryLog = path.join(data, "log.txt");
+  if (fs.existsSync(ferryLog)) console.log("\n--- log.txt do Ferry ---\n" + fs.readFileSync(ferryLog, "utf8").slice(-12000));
+  // para o artefato do CI
+  for (const f of ["container.log", "ftp.log"]) fs.copyFileSync(path.join(work, f), path.join(shots, f));
+  if (fs.existsSync(ferryLog)) fs.copyFileSync(ferryLog, path.join(shots, "ferry-log.txt"));
+}
 process.exit(ok ? 0 : 1);
