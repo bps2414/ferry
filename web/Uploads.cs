@@ -28,12 +28,7 @@ public static class Uploads
             if (name == "" || name != Path.GetFileName(name) || name.StartsWith('.') || name.Any(char.IsControl) || body.Size < 0)
                 return Results.BadRequest(new { error = "Nome de arquivo inválido." });
             var s = hub.Settings;
-            var final = Path.Combine(Dir(s), name);
-            if (new FileInfo(final) is { Exists: true } fi && fi.Length == body.Size)
-            {
-                hub.Engine.AddFiles([final]);
-                return Results.Ok(new { id = "", offset = body.Size, done = true });
-            }
+            // arquivo com o mesmo nome na pasta: sobe de novo e substitui no fim (mesmo tamanho não quer dizer mesmo conteúdo)
             // mesmo arquivo (nome, tamanho, data) = mesmo id: reenviar continua o parcial
             var id = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{name}|{body.Size}|{body.LastModified}")))[..16].ToLowerInvariant();
             Directory.CreateDirectory(Temp(s));

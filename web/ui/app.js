@@ -76,7 +76,7 @@ $$(".nav").forEach(b => b.addEventListener("click", () => showPage(b.dataset.pag
 function showPage(page) {
   $$(".nav").forEach(b => b.classList.toggle("on", b.dataset.page === page));
   $$(".page").forEach(p => p.hidden = p.id !== "page-" + page);
-  if (page === "settings") api("GET", "/api/settings").then(s => { settings = s; fillSettings(); }); // a Engine pode ter aprendido senhas
+  if (page === "settings") reloadSettings(); // a Engine pode ter aprendido senhas
   if (page === "log") $("#logBox").scrollTop = $("#logBox").scrollHeight;
 }
 
@@ -193,24 +193,39 @@ $("#pwDialog").addEventListener("close", () => {
 function fillSettings() {
   for (const el of $$("[data-set]")) {
     const k = el.dataset.set, v = settings[k];
-    if (document.activeElement === el) continue; // não atropela o que está sendo digitado
+    // não atropela o que está sendo digitado nem o que ainda vai ser salvo (a resposta do GET pode chegar depois)
+    if (document.activeElement === el || edits[k]) continue;
     if (el.type === "checkbox") el.checked = !!v;
     else if (k === "knownPasswords") el.value = (v || []).join("\n");
     else el.value = v ?? "";
     el.classList.remove("bad");
+    const hint = $(`[data-err="${k}"]`);
+    if (hint) hint.textContent = "";
   }
-  $("#connVal").textContent = settings.connections;
-  const opt = [...$("#preset").options].find(o => o.value === settings.remoteDir);
-  $("#preset").value = opt ? opt.value : "";
-  $$("[data-err]").forEach(e => e.textContent = "");
+  if (!edits.connections) $("#connVal").textContent = settings.connections;
+  if (!edits.remoteDir) {
+    const opt = [...$("#preset").options].find(o => o.value === settings.remoteDir);
+    $("#preset").value = opt ? opt.value : "";
+  }
 }
 
-const timers = {};
+const timers = {}, edits = {}; // edits[k]: nº da última edição ainda não salva (0/undefined = nada pendente)
+let editSeq = 0;
+
+// Resposta que chega depois de uma edição é velha: descarta (o PUT de cada campo já devolve as configurações atuais).
+async function reloadSettings() {
+  const at = editSeq;
+  const s = await api("GET", "/api/settings");
+  if (editSeq !== at) return;
+  settings = s;
+  fillSettings();
+}
 for (const el of $$("[data-set]")) {
   const k = el.dataset.set;
   const ev = el.type === "checkbox" || el.type === "range" ? "change" : "input";
   el.addEventListener(ev, () => {
     if (k === "connections") $("#connVal").textContent = el.value;
+    edits[k] = ++editSeq;
     clearTimeout(timers[k]);
     timers[k] = setTimeout(() => save(k, el), el.tagName === "TEXTAREA" || el.type === "text" || el.type === "password" || !el.type ? 500 : 0);
   });
@@ -218,6 +233,7 @@ for (const el of $$("[data-set]")) {
 }
 
 async function save(k, el) {
+  const mine = edits[k];
   let v = el.type === "checkbox" ? el.checked : el.value;
   if (k === "port" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
   if (k === "knownPasswords") v = el.value.split("\n").map(s => s.trim()).filter(Boolean);
@@ -230,6 +246,7 @@ async function save(k, el) {
     settings = r.settings;
     if (k === "remoteDir") $("#preset").value = [...$("#preset").options].some(o => o.value === v) ? v : "";
   } catch (e) { toast("error", "Não salvou", e.message); }
+  finally { if (edits[k] === mine) delete edits[k]; } // editou de novo enquanto salvava: continua pendente
 }
 
 $("#preset").addEventListener("change", () => {
@@ -261,8 +278,7 @@ $("#findBtn").addEventListener("click", async () => {
 });
 $("#useFound").addEventListener("click", async () => {
   await api("POST", "/api/ps5/use-found");
-  settings = await api("GET", "/api/settings");
-  fillSettings();
+  reloadSettings();
 });
 $("#dismissFound").addEventListener("click", () => api("POST", "/api/ps5/dismiss-found"));
 $("#logout").addEventListener("click", async () => { await api("POST", "/api/auth/logout"); showAuth(false); });

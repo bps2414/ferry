@@ -66,7 +66,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     public void AddFiles(IEnumerable<string> paths)
     {
         var list = paths.Where(File.Exists).ToList();
-        lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in Archives.Group(list).Keys) { _removed.Remove(k); _done.Remove(k); } } // adicionar de novo = enviar de novo
+        var keys = Archives.Group(list).Keys.ToList();
+        lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in keys) { _removed.Remove(k); _done.Remove(k); } }
+        // adicionar de novo um jogo concluído = enviar de novo: o card volta para a checagem de partes
+        lock (Lock)
+            foreach (var j in Jobs.Where(j => j.Stage == Stage.Verificado && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
+            {
+                j.Detail = ""; j.Progress = 0; j.Stage = Stage.AguardandoPartes;
+            }
         SaveQueue();
     }
 

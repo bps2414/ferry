@@ -141,6 +141,13 @@ try {
     `tela "${title}", senha curta: "${short}", auth.json criado`);
 
   // ---------- 2. configurações salvas campo a campo, com validação ----------
+  // a resposta do GET das configurações chega DEPOIS de digitar (rede lenta): não pode desfazer o que foi digitado
+  const slowGet = async (r) => {
+    if (r.request().method() !== "GET") return r.continue();
+    const resp = await r.fetch(); // resposta de agora (valores antigos), entregue 1,5 s depois
+    setTimeout(() => r.fulfill({ response: resp }).catch(() => { }), 1500);
+  };
+  await page.route("**/api/settings", slowGet);
   await page.click('.nav[data-page="settings"]');
   await page.fill('[data-set="host"]', "127.0.0.1");
   await page.fill('[data-set="port"]', "abc");
@@ -150,8 +157,11 @@ try {
   await page.fill('[data-set="user"]', "ps5");
   await page.fill('[data-set="password"]', "ps5pass");
   const saved = await until(async () => { const s = await getSettings(); return s.port === ftpPort && s.password === "ps5pass" && s.host === "127.0.0.1" && s.user === "ps5" ? s : null; }, 8000, "configurações salvas");
-  check("Configurações salvam sozinhas e recusam o inválido", portErr.includes("1 a 65535") && portKept === 2121 && saved.inputFolder === "/games",
-    `porta "abc" → "${portErr}" (continuou ${portKept}); host/porta/usuário/senha salvos; pasta monitorada = ${saved.inputFolder}`);
+  await sleep(2000); // o GET lento já chegou: os campos continuam com o que foi digitado
+  const kept = await page.inputValue('[data-set="host"]') === "127.0.0.1" && await page.inputValue('[data-set="user"]') === "ps5";
+  await page.unroute("**/api/settings", slowGet);
+  check("Configurações salvam sozinhas e recusam o inválido", portErr.includes("1 a 65535") && portKept === 2121 && saved.inputFolder === "/games" && kept,
+    `porta "abc" → "${portErr}" (continuou ${portKept}); host/porta/usuário/senha salvos; pasta monitorada = ${saved.inputFolder}; GET atrasado 1,5 s não desfez o que foi digitado=${kept}`);
   await page.click("#testBtn");
   const test = await until(async () => { const t = await page.locator("#testResult").textContent(); return t.startsWith("Conectado") ? t : null; }, 15000, "teste de conexão");
   await until(async () => (await page.locator("#statusTitle").textContent()) === "PS5 online", 5000, "cartão PS5 online");
@@ -208,7 +218,7 @@ try {
   await until(async () => (await stage("IMGW")) === "Verificado", 180000, "IMGW concluído depois de reiniciar");
   const stillIn = await page.locator("#shell").isVisible() && !(await page.locator("#auth").isVisible());
   // o jogo já enviado (partes ainda na pasta monitorada) volta como Concluído, não como "já instalado"
-  const w1After = await stage("W1"), w1AfterDetail = await row("W1").locator(".detail").textContent(); // sem reenviar, o card volta com o nome do arquivo
+  const w1After = await until(() => stage("W1"), 15000, "card W1 depois de reiniciar"), w1AfterDetail = await row("W1").locator(".detail").textContent(); // sem reenviar, o card volta com o nome do arquivo
   const w1Sent = ftpLog.filter(l => (l.includes("STOR ") || l.includes("APPE ")) && l.includes(game)).length;
   const remoteImg = path.join(ftpRoot, "mnt", "ext1", "homebrew", "IMGW.exfat");
   const appe = ftpLog.filter(l => l.includes("APPE ") && l.includes("IMGW.exfat.ferry-part"));
@@ -233,6 +243,14 @@ try {
   const upOk = r1.ok() && wrong.status() === 409 && partialHidden && offsets[0] === first.length && fs.existsSync(remoteUp) && sha(remoteUp) === sha(up) && sha(path.join(games, "UP.exfat")) === sha(up);
   check("Upload continua de onde parou", upOk,
     `1º bloco (16 MB) pela API; bloco repetido → ${wrong.status()}; parcial não entrou na fila=${partialHidden}; a página continuou do byte ${offsets[0]} (${offsets.length} bloco(s)); arquivo no servidor e no PS5 com o mesmo hash`);
+
+  // mesmo arquivo de novo (mesmo nome e tamanho): sobe inteiro e o card concluído volta para a fila (e avisa "já instalado")
+  offsets.length = 0;
+  await page.setInputFiles("#fileInput", [up]);
+  await until(async () => (await stage("UP")) === "Erro", 60000, "UP de novo → aviso de já instalado");
+  const again = await row("UP").locator(".detail").textContent();
+  check("Adicionar de novo um jogo concluído", offsets[0] === 0 && offsets.length >= 4 && again.startsWith("Jogo já instalado"),
+    `reenvio pela página começou do byte ${offsets[0]} (${offsets.length} blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "${again.slice(0, 40)}…"`);
 
   // ---------- 6. sair e entrar ----------
   await page.click('.nav[data-page="settings"]');
