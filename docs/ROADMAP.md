@@ -2,7 +2,7 @@
 
 [English](en/ROADMAP.md) · **Português (BR)** · [Español](es/ROADMAP.md)
 
-Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → payload.
+Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → envio progressivo → payload.
 
 Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Próxima: Fase 4 (inglês).**
 
@@ -113,7 +113,29 @@ Pesquisa completa (firmwares, kstuff, instaladores) em [PKG-PS5.md](PKG-PS5.md).
 - **E2E**: DPI falso recebe o pedido e baixa a URL com *range* e retomada; confere hash, token e erro sem DPI.
 - **Antes de começar**: rever a pesquisa (a cena muda rápido) e fechar os pontos "a confirmar".
 
-## Fase 7 — Payload (hello world)
+## Fase 7 — Envio progressivo (RAR em partes)
+
+- **Objetivo**: com o download ainda em andamento na pasta monitorada (ex.: JDownloader no servidor), começar a extrair e enviar ao PS5 as partes que já chegaram, na ordem, em vez de esperar todas.
+- **Limite do formato**:
+  - `.zip` e `.7z` guardam o índice no fim (última parte), então não dá para começar antes dela. Nesses, o comportamento continua o de hoje;
+  - viável para RAR em partes (`.partN.rar` e `.rar` + `.rNN`): os arquivos vêm em sequência, cada um com cabeçalho próprio.
+- **Como** (pesquisar antes):
+  - o 7-Zip parece abrir todos os volumes no início (confirmar);
+  - alternativas: `unrar` extraindo volume a volume e esperando o próximo, ou ler o RAR em sequência por conta própria;
+  - um arquivo do jogo que atravessa duas partes só termina quando a próxima chega. O envio fica esperando com o FTP aberto, ou fecha e continua com `APPE` (decidir).
+- **Ordem**: só avança com a próxima parte da sequência (part3 não vale se falta a part2). Parte ainda baixando (nome terminando em `.part`, tamanho mudando) não conta.
+- **Segurança**:
+  - a publicação atômica continua: `param.json`/`param.sfo` só no fim, depois da última parte e da verificação, para o ShadowMount+ não instalar o jogo pela metade;
+  - a senha do RAR é pedida antes de começar.
+- **Card**: mostra "Enviando parte 3 de ?" enquanto o total não é conhecido, e "Aguardando part4" quando parar esperando.
+- **Configurações**: liga/desliga (padrão: desligado até estar maduro).
+- **E2E**:
+  - um RAR em partes chega na pasta uma parte de cada vez, devagar;
+  - o envio começa antes da última parte;
+  - confere o SHA-256 de cada arquivo no PS5 falso e que `param.json`/`param.sfo` só aparecem no fim;
+  - `.zip`/`.7z` continuam esperando todas as partes.
+
+## Fase 8 — Payload (hello world)
 
 - ELF feito com o [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compilado no WSL (Ubuntu, WSL2, já instalado).
 - O app manda o ELF para a porta 9021, o PS5 mostra "Ferry conectado" e o payload termina. Nada fica residente.
@@ -121,5 +143,4 @@ Pesquisa completa (firmwares, kstuff, instaladores) em [PKG-PS5.md](PKG-PS5.md).
 
 ## Pesquisa, sem data
 
-- **Envio progressivo** (part1 enquanto a part2 baixa): revisitar só se download lento virar gargalo.
 - **Ideias soltas**: biblioteca do PS5, aviso de duplicado, perfis de console, enviar pasta extraída, limite de velocidade, auto-update, histórico.
