@@ -1,7 +1,7 @@
 # Relatório E2E web — Ferry self-hosted
 
-- Data: 2026-09-30 10:29:15 UTC
-- Resultado geral: **PASSOU**  (71s)
+- Data: 2026-09-30 10:35:17 UTC
+- Resultado geral: **PASSOU**  (81s)
 - Imagem: `ferry:e2e` rodando com `--network host` e `--user 0:0`, volumes /data e /games; navegador Chromium (Playwright)
 - PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
 
@@ -12,8 +12,8 @@
 | Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "A porta é um número de 1 a 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = /games; GET atrasado 1,5 s não desfez o que foi digitado=true |
 | Testar conexão | ✅ Conectado, mas /mnt/ext1/homebrew não existe (será criado no envio). |
 | Upload pelo navegador → senha no navegador → envio ao PS5 | ✅ 8 volumes .7z enviados pela página; diálogo "Arquivo protegido por senha", 1ª senha errada → "Senha incorreta", 2ª certa; estado Verificado (/mnt/ext1/homebrew/PPSA09001-Jogo Web); 7/7 SHA-256 iguais; capa e PPSA09001; senha entrou nas senhas conhecidas=true; cartão durante o envio "PS5 online" |
-| Pausar e retomar pela página | ✅ congelou em 22.5% por 1,5 s e retomou |
-| Reiniciar o container no meio do envio | ✅ docker restart em 65.7% (340321137 bytes no PS5); voltou sozinho, continuou com APPE (1x), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
+| Pausar e retomar pela página | ✅ congelou em 15.2% por 1,5 s e retomou |
+| Reiniciar o container no meio do envio | ✅ docker restart em 35.3% (168910848 bytes no PS5); voltou sozinho, continuou com APPE (2x), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Jogo já instalado no PS5 — o loader pode…" |
 | Sair e entrar de novo | ✅ depois de sair a API responde 401; senha errada → "Usuário ou senha incorretos."; certa → entrou |

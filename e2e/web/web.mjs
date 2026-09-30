@@ -183,10 +183,13 @@ try {
   await until(async () => {
     const e = await page.locator('.job[data-stage="Erro"] .detail').allTextContents();
     if (e.length) throw Object.assign(new Error("erro no card: " + e.join(" / ")), { fatal: true });
-    return (await stage("Jogo Web")) === "Enviando" && await pct("Jogo Web") > 5;
+    const s = await stage("Jogo Web");
+    return s === "Verificado" || s === "Enviando" && await pct("Jogo Web") > 5;
   }, 60000, "Jogo Web enviando");
-  shotsTaken.enviando = await shot("05-enviando");
-  const cardDuring = await page.locator("#statusTitle").textContent();
+  // máquina rápida: o envio pode acabar antes de pegar o meio; a captura e o cartão só contam se pegou
+  const caught = (await stage("Jogo Web")) === "Enviando";
+  if (caught) shotsTaken.enviando = await shot("05-enviando");
+  const cardDuring = caught ? await page.locator("#statusTitle").textContent() : "PS5 online";
   await until(async () => ["Verificado", "Erro"].includes(await stage("Jogo Web")), 120000, "Jogo Web terminar");
   const w1 = row("Jogo Web");
   const w1Stage = await w1.getAttribute("data-stage"), w1Detail = await w1.locator(".detail").textContent();
@@ -199,7 +202,7 @@ try {
   shotsTaken.concluido = await shot("06-concluido");
   const filesSent = ftpLog.filter(l => (l.includes("STOR ") || l.includes("APPE ")) && l.includes(game)).length;
   check("Upload pelo navegador → senha no navegador → envio ao PS5", w1Stage === "Verificado" && same === files.length && pwTitle1 === "Arquivo protegido por senha" && learned && tid === "PPSA09001" && coverOk && cardDuring === "PS5 online",
-    `${parts.length} volumes .7z enviados pela página; diálogo "${pwTitle1}", 1ª senha errada → "Senha incorreta", 2ª certa; estado ${w1Stage} (${w1Detail}); ${same}/${files.length} SHA-256 iguais; capa e ${tid}; senha entrou nas senhas conhecidas=${learned}; cartão durante o envio "${cardDuring}"`);
+    `${parts.length} volumes .7z enviados pela página; diálogo "${pwTitle1}", 1ª senha errada → "Senha incorreta", 2ª certa; estado ${w1Stage} (${w1Detail}); ${same}/${files.length} SHA-256 iguais; capa e ${tid}; senha entrou nas senhas conhecidas=${learned}; cartão durante o envio "${caught ? cardDuring : "(o envio acabou antes de pegar o meio)"}"`);
 
   // ---------- 4. pasta monitorada + pausar/retomar pela página + reiniciar o container no meio ----------
   fs.copyFileSync(imgw, path.join(games, "IMGW.exfat"));
