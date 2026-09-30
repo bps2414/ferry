@@ -46,9 +46,17 @@ public static class Secret
             if (File.Exists(KeyFile)) return File.ReadAllBytes(KeyFile);
             Directory.CreateDirectory(Path.GetDirectoryName(KeyFile)!);
             var key = RandomNumberGenerator.GetBytes(32);
-            using (var fs = new FileStream(KeyFile, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite }))
-                fs.Write(key);
+            WritePrivate(KeyFile, key);
             return key;
         }
+    }
+
+    /// Cria um arquivo novo que só o dono lê (fora do Windows: permissão 600 já na criação).
+    public static void WritePrivate(string path, byte[] data)
+    {
+        var o = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows()) o.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        using var fs = new FileStream(path, o);
+        fs.Write(data);
     }
 }

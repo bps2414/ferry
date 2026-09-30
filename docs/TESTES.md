@@ -1,17 +1,20 @@
 # Testes E2E
 
-Um único teste ponta a ponta (`e2e/`), sem interface: usa a mesma `Engine` do app contra um servidor FTP local.
+Dois testes ponta a ponta:
+
+- `e2e/` (C#), sem interface: usa a mesma `Engine` (Ferry.Core) contra um servidor FTP local. Roda no **Windows e no Linux** (o CI roda nos dois).
+- `e2e/web/` (Node + Playwright): sobe a **imagem Docker** e dirige a interface web num Chromium de verdade (ver [E2E web](#e2e-web-docker) abaixo).
 
 ## Rodar
 
-Requer Python 3 com `pyftpdlib` (`pip install pyftpdlib`).
+Requer Python 3 com `pyftpdlib` (`pip install pyftpdlib`). No Linux, também o 7-Zip com RAR no PATH (`apt install 7zip 7zip-rar`).
 
 ```bash
 dotnet run --project e2e              # completo (~40 s)
 dotnet run --project e2e -- G2 G7     # modo rápido: só esses casos, sem fases extras (~15 s)
 ```
 
-Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª execução baixa o `Rar.exe` 6.24 oficial do rarlab.com para `e2e/tools/` (usado só para **criar** os arquivos de teste; o app só extrai, com o 7-Zip).
+Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª execução baixa o RAR 6.24 oficial do rarlab.com para `e2e/tools/` (Windows: `Rar.exe` do instalador; Linux: `rar` do rarlinux), usado só para **criar** os arquivos de teste; o app só extrai, com o 7-Zip. No Windows o 7-Zip é o `app/tools/7z.exe` embutido no app; no Linux, o `7zz`/`7z` do sistema.
 
 ## O servidor de teste imita o ftpsrv
 
@@ -52,7 +55,25 @@ Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`
 - **Senha aprendida e lembrada** (G6, na fase fechar/reabrir):
   - diálogo com a 1ª senha errada;
   - a certa entra nas senhas conhecidas;
-  - ao reabrir sem senhas conhecidas, abre com a senha da fila (DPAPI), sem diálogo.
+  - ao reabrir sem senhas conhecidas, abre com a senha da fila (cifrada: DPAPI no Windows, AES-GCM no Linux), sem diálogo.
 - **Salvar atômico**: um `queue.json.tmp` pela metade não atrapalha reabrir.
 - **Fechar e reabrir**: para o engine no meio do envio, cria outro com a mesma `queue.json`; a fila volta sozinha e nada completo é reenviado.
 - **Pausar/retomar** no meio do stream; **remover da fila** e re-adicionar; **testar conexão** com senha certa e errada.
+
+## E2E web (Docker)
+
+`e2e/web/web.mjs` sobe a imagem com `--network host` e `--user <seu uid>` (como no `docker-compose.yml`), o mesmo `ftpserver.py` (com APPE) e abre a página num Chromium (Playwright). Gera `e2e_report_web.md` na raiz e as capturas em `e2e/web/report/`.
+
+```bash
+docker build -t ferry:e2e .
+cd e2e/web && npm ci && npx playwright install chromium && node web.mjs
+```
+
+Requer Docker, Python com `pyftpdlib` e 7-Zip (para montar os arquivos de teste). O que confere:
+
+- **Login**: sem login a API responde 401; a primeira abertura pede para criar o usuário (senha curta é recusada); sair → 401; senha errada → mensagem; certa → entra.
+- **Configurações**: cada campo salva sozinho; porta inválida mostra o erro e não é gravada; pasta monitorada já vem `/games`; "Testar conexão" e o cartão do PS5 ficam "online" (um teste antigo não sobrescreve o novo).
+- **Upload + senha no navegador**: os volumes de um `.7z.001…` com senha e cabeçalhos cifrados são enviados pela página; o diálogo de senha abre no navegador (1ª errada → "Senha incorreta", 2ª certa); SHA-256 de cada arquivo no PS5 falso, capa e `PPSA…`, senha aprendida.
+- **Pasta monitorada + pausar/retomar** pela página (progresso congela) e **reiniciar o container** no meio do envio de uma imagem `.exfat` de 400 MB: volta sozinho, continua com `APPE`, o login continua valendo, e o jogo já concluído volta como "Concluído" sem reenviar nada.
+- **Upload que continua**: 1º bloco enviado pela API, bloco repetido → 409, o parcial não entra na fila, e a página continua do byte 16 MB; hash confere no servidor e no PS5.
+- **Celular** (390 px): sem rolagem lateral; **nenhum erro de JavaScript** na página.

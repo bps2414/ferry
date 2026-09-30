@@ -1,0 +1,16 @@
+# Ferry no servidor de casa. Depois de subir, abra http://<ip-do-servidor>:8021 no navegador do PC.
+# Na primeira abertura a página pede para criar o usuário e a senha.
+services:
+  ferry:
+    image: ghcr.io/bps2414/ferry:latest
+    container_name: ferry
+    # rede do host: a busca do PS5 varre a rede de casa (numa rede do Docker só veria o próprio container)
+    # e o FTP com o PS5 funciona sem NAT. Com network_mode: host, a porta é a de FERRY_PORT (não precisa de "ports:").
+    network_mode: host
+    environment:
+      FERRY_PORT: "8021"
+    volumes:
+      - ./ferry-data:/data             # configurações, fila, log, login
+      - /caminho/dos/jogos:/games      # pasta monitorada: jogo que chega aqui entra na fila sozinho
+    # user: "1000:1000"                # descomente para gravar os arquivos com o seu usuário em vez de root
+    restart: unless-stopped

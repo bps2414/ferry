@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ferry</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 16 16"><path fill="var(--text)" d="M2,3 h2 v10 h-2 Z M12,3 h2 v10 h-2 Z"/><path fill="var(--accent)" d="M5,7 H7.6 L6,5.4 L7.4,4 L11.4,8 L7.4,12 L6,10.6 L7.6,9 H5 Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 16 16"><path d="M5 3.5v9M11 3.5v9" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M4.5 3 13 8l-8.5 5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="m3.5 3.5 9 9m0-9-9 9" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 16 16"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.6 6.5v5M9.4 6.5v5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+</svg>
+
+<!-- entrar / criar o usuário na primeira abertura -->
+<main id="auth" class="auth" hidden>
+  <form id="authForm" class="auth-card" novalidate>
+    <div class="brand"><svg class="logo"><use href="#logo"/></svg><div><b>Ferry</b><small>envio de jogos para PS5</small></div></div>
+    <h1 id="authTitle">Entrar</h1>
+    <p id="authHint" class="muted"></p>
+    <label class="field"><span>Usuário</span><input id="authUser" name="username" autocomplete="username" required></label>
+    <label class="field"><span>Senha</span><input id="authPass" name="password" type="password" required></label>
+    <p id="authError" class="error" role="alert"></p>
+    <button class="primary wide" id="authBtn" type="submit">Entrar</button>
+  </form>
+</main>
+
+<div id="shell" class="shell" hidden>
+  <aside class="side">
+    <div class="brand"><svg class="logo"><use href="#logo"/></svg><div><b>Ferry</b><small>envio de jogos para PS5</small></div></div>
+    <nav>
+      <button class="nav on" data-page="queue">Fila<span id="badge" class="badge" hidden></span></button>
+      <button class="nav" data-page="settings">Configurações</button>
+      <button class="nav" data-page="log">Log</button>
+    </nav>
+    <div class="side-bottom">
+      <div id="found" class="found" hidden>
+        <p id="foundText"></p>
+        <div class="row"><button id="useFound" class="btn small">Usar este</button><button id="dismissFound" class="link">Ignorar</button></div>
+      </div>
+      <div class="status">
+        <div class="status-title"><i id="dot" class="dot"></i><b id="statusTitle">PS5 não testado</b></div>
+        <div id="statusHost" class="status-host"></div>
+        <div id="statusDest" class="muted"></div>
+        <button id="sideTest" class="link">Testar conexão</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <!-- Fila -->
+    <section id="page-queue" class="page">
+      <header class="head">
+        <div>
+          <h1>Fila</h1>
+          <p id="summary" class="muted">Nenhum jogo na fila</p>
+        </div>
+        <div class="head-right">
+          <div id="speed" class="speed" hidden><div><span id="speedVal" class="num"></span><span id="speedUnit" class="unit"></span></div><small>total agora</small></div>
+          <button id="clearDone" class="btn" hidden>Limpar concluídos</button>
+          <button id="addBtn" class="primary"><svg class="ic"><use href="#i-plus"/></svg>Adicionar arquivos</button>
+          <input id="fileInput" type="file" multiple hidden>
+        </div>
+      </header>
+      <div id="uploads"></div>
+      <div id="jobs"></div>
+      <div id="empty" class="empty" hidden>
+        <h2>Nada na travessia.</h2>
+        <p>Arraste os arquivos do jogo para esta página ou clique para escolher. Selecione todas as partes de uma vez: elas sobem para o servidor e entram na fila quando todas chegarem.</p>
+        <p id="emptyFolder" class="muted"></p>
+        <p class="exts">.zip &nbsp; .rar &nbsp; .7z &nbsp; .001 &nbsp; .z01 &nbsp; .part1.rar &nbsp; .r00 &nbsp; .exfat</p>
+      </div>
+    </section>
+
+    <!-- Configurações -->
+    <section id="page-settings" class="page" hidden>
+      <header class="head">
+        <h1>Configurações</h1>
+        <p class="muted">Salvas automaticamente</p>
+      </header>
+      <div class="cols">
+        <div class="col">
+          <h3>PS5</h3>
+          <div class="row-2">
+            <label class="field grow"><span>IP ou nome</span><input data-set="host" autocomplete="off" spellcheck="false"></label>
+            <button id="findBtn" class="btn">Procurar na rede</button>
+          </div>
+          <p class="hint error" data-err="host"></p>
+          <div class="row-2">
+            <label class="field port"><span>Porta</span><input data-set="port" inputmode="numeric"></label>
+            <label class="field grow"><span>Usuário</span><input data-set="user" autocomplete="off" spellcheck="false"></label>
+          </div>
+          <p class="hint error" data-err="port"></p>
+          <p class="hint">ftpsrv usa 2121 · etaHEN usa 1337</p>
+          <label class="field"><span>Senha do FTP</span><input data-set="password" type="password" autocomplete="off"></label>
+          <div class="row-2 test">
+            <button id="testBtn" class="btn">Testar conexão</button>
+            <p id="testResult" class="test-result"></p>
+          </div>
+
+          <hr>
+          <h3>Destino no PS5</h3>
+          <div class="row-2">
+            <label class="field preset"><span>Pasta dos jogos</span>
+              <select id="preset"><option value="/mnt/ext1/homebrew">M.2</option><option value="/data/homebrew">SSD interno</option><option value="">Outra</option></select>
+            </label>
+            <label class="field grow"><span>&nbsp;</span><input data-set="remoteDir" spellcheck="false" aria-label="Pasta dos jogos no PS5"></label>
+          </div>
+          <p class="hint error" data-err="remoteDir"></p>
+          <label class="field"><span>Imagens .exfat (ShadowMount+)</span><input data-set="imageDir" spellcheck="false"></label>
+          <p class="hint error" data-err="imageDir"></p>
+        </div>
+
+        <div class="col">
+          <h3>Pasta monitorada</h3>
+          <label class="field"><span>Caminho no servidor</span><input data-set="inputFolder" spellcheck="false" placeholder="/games"></label>
+          <p class="hint error" data-err="inputFolder"></p>
+          <p class="hint">Opcional. Jogos que chegarem aqui entram na fila sozinhos, quando todas as partes chegarem. Os arquivos enviados pelo navegador também são gravados aqui (sem ela, na pasta de dados).</p>
+
+          <hr>
+          <h3>Envio</h3>
+          <label class="field"><span>Conexões paralelas</span>
+            <span class="range"><input data-set="connections" type="range" min="1" max="8" step="1"><b id="connVal"></b></span>
+          </label>
+          <label class="check"><input data-set="deleteOriginal" type="checkbox"><span>Apagar as partes originais depois do envio conferido</span></label>
+
+          <hr>
+          <h3>Senhas conhecidas <small>uma por linha, testadas antes de perguntar</small></h3>
+          <textarea data-set="knownPasswords" rows="6" spellcheck="false" aria-label="Senhas conhecidas"></textarea>
+
+          <hr>
+          <h3>Conta</h3>
+          <div class="row-2"><p class="muted grow">Entrou como <b id="whoami"></b>.</p><button id="logout" class="btn">Sair</button></div>
+          <div class="row-2"><p id="notifyText" class="muted grow"></p><button id="notifyBtn" class="btn" hidden>Ativar avisos</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section id="page-log" class="page" hidden>
+      <header class="head">
+        <h1>Log</h1>
+        <div class="head-right"><button id="copyLog" class="btn">Copiar</button><button id="clearLog" class="btn">Limpar</button></div>
+      </header>
+      <pre id="logBox" class="log" tabindex="0"></pre>
+    </section>
+  </main>
+</div>
+
+<div id="drop" class="drop" hidden><h2>Solte para enviar ao servidor.</h2></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<dialog id="pwDialog">
+  <form id="pwForm" method="dialog">
+    <h2 id="pwTitle">Arquivo protegido por senha</h2>
+    <p id="pwText" class="muted"></p>
+    <input id="pwInput" type="password" autocomplete="off" aria-label="Senha do arquivo">
+    <div class="row-2 end"><button class="primary" value="ok">Extrair</button><button class="btn" value="cancel" formnovalidate>Cancelar</button></div>
+  </form>
+</dialog>
+
+<template id="jobTpl">
+  <article class="job">
+    <img class="cover" alt="">
+    <div class="info">
+      <h2 class="title"></h2>
+      <p class="meta"><b class="stage"></b><span class="tid"></span><span class="amount"></span></p>
+      <p class="detail"></p>
+      <p class="file"></p>
+    </div>
+    <div class="stat pct"><div><span class="v"></span><span class="u">%</span></div><small>enviado</small></div>
+    <div class="stat rate"><div class="v"></div><small class="u"></small></div>
+    <div class="stat eta"><div class="v"></div><small class="u"></small></div>
+    <button class="btn sendnow" data-act="sendnow" title="Começa este agora. O envio em andamento volta para a fila e continua de onde parou.">Transferir agora</button>
+    <div class="acts">
+      <button class="icon" data-act="pause" title="Pausar" aria-label="Pausar"><svg><use href="#i-pause"/></svg></button>
+      <button class="icon" data-act="resume" title="Retomar" aria-label="Retomar"><svg><use href="#i-play"/></svg></button>
+      <button class="icon strong" data-act="retry" title="Tentar de novo (pede a senha de novo se estiver errada)" aria-label="Tentar de novo"><svg><use href="#i-retry"/></svg></button>
+      <button class="icon" data-act="cancel" title="Cancelar" aria-label="Cancelar"><svg><use href="#i-x"/></svg></button>
+      <button class="icon" data-act="remove" title="Remover da fila" aria-label="Remover da fila"><svg><use href="#i-trash"/></svg></button>
+    </div>
+    <div class="bar"><i></i><div class="track"><div class="fill"></div></div><i></i></div>
+  </article>
+</template>
+</body>
+</html>

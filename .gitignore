@@ -7,3 +7,4 @@ dist*/
 # E2E: Rar.exe é baixado do rarlab.com na 1ª execução (licença do WinRAR não permite redistribuir)
 e2e/tools/
 e2e/last-*.log
+e2e/web/node_modules/

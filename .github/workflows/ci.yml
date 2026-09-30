@@ -8,9 +8,17 @@ on:
 
 permissions:
   contents: write
+  packages: write
+
+env:
+  # 7-Zip oficial para o binário Linux sem Docker (7zzs: estático, com RAR)
+  SEVENZIP_URL: https://github.com/ip7z/7zip/releases/download/25.01/7z2501-linux
+  SEVENZIP_SHA_X64: 4ca3b7c6f2f67866b92622818b58233dc70367be2f36b498eb0bdeaaa44b53f4
+  SEVENZIP_SHA_ARM64: 39c5140f02ce4436599303c59a149f654cb1bbc47cdc105a942120d747ae040d
 
 jobs:
-  build:
+  # App Windows (WPF) + E2E do core no Windows
+  windows:
     runs-on: windows-latest
     steps:
       # versões que rodam em Node 24
@@ -44,21 +52,176 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: Ferry
+          name: Ferry-windows
           path: dist/Ferry.exe
 
-      # Tag v*: anexa o exe à release (cria se não existir; tag com "-" vira pré-release)
+  # E2E do core no Linux + servidor web como binário Linux (sem Docker)
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Dependências do E2E (pyftpdlib, 7-Zip com RAR)
+        run: |
+          pip install pyftpdlib
+          sudo add-apt-repository -y multiverse
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+
+      # rar do rarlinux 6.24 (só para gerar os arquivos de teste)
+      - uses: actions/cache@v6
+        with:
+          path: e2e/tools
+          key: rar-6.24-linux
+
+      - name: E2E
+        run: dotnet run --project e2e
+
+      - name: Relatório E2E
+        if: always()
+        run: cat e2e_report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Publicar binários Linux (x64, arm64)
+        run: |
+          set -eu
+          for arch in x64 arm64; do
+            dotnet publish web -c Release -r linux-$arch --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o out/$arch
+            sum=$([ $arch = x64 ] && echo "$SEVENZIP_SHA_X64" || echo "$SEVENZIP_SHA_ARM64")
+            curl -fsSLo 7z-$arch.tar.xz "$SEVENZIP_URL-$arch.tar.xz"
+            echo "$sum  7z-$arch.tar.xz" | sha256sum -c -
+            mkdir -p pkg/ferry-linux-$arch 7z-$arch
+            tar -xJf 7z-$arch.tar.xz -C 7z-$arch 7zzs License.txt
+            cp out/$arch/ferry pkg/ferry-linux-$arch/ferry
+            cp 7z-$arch/7zzs pkg/ferry-linux-$arch/7zz
+            cp 7z-$arch/License.txt pkg/ferry-linux-$arch/7zip-License.txt
+            cp LICENSE pkg/ferry-linux-$arch/LICENSE
+            chmod +x pkg/ferry-linux-$arch/ferry pkg/ferry-linux-$arch/7zz
+            tar -czf Ferry-linux-$arch.tar.gz -C pkg ferry-linux-$arch
+          done
+
+      # o binário x64 sobe e responde (a interface vem de dentro dele)
+      - name: Teste rápido do binário
+        run: |
+          set -eu
+          FERRY_DATA=$RUNNER_TEMP/ferry-data FERRY_PORT=18021 pkg/ferry-linux-x64/ferry &
+          pid=$!
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:18021/ >/dev/null && break; sleep 1; done
+          curl -fs http://127.0.0.1:18021/ | grep -q "<title>Ferry</title>"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18021/api/settings)" = 401
+          kill $pid
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Ferry-linux
+          path: Ferry-linux-*.tar.gz
+
+  # Imagem Docker de verdade + E2E web (Chromium) contra ela; publica no GHCR em main e nas tags
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Construir a imagem
+        run: docker build -t ferry:e2e .
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Dependências do E2E web
+        run: |
+          pip install pyftpdlib
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+          cd e2e/web
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: E2E web
+        run: cd e2e/web && node web.mjs
+
+      - name: Relatório E2E web
+        if: always()
+        run: cat e2e_report_web.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-web
+          path: |
+            e2e_report_web.md
+            e2e/web/report/
+
+      - name: Publicar no GHCR (amd64 + arm64)
+        if: github.event_name == 'push'
+        uses: docker/setup-qemu-action@v4
+
+      - if: github.event_name == 'push'
+        uses: docker/setup-buildx-action@v4
+
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # main → :main; tag v1.2.3 → :1.2.3 e :latest
+      - name: Tags da imagem
+        if: github.event_name == 'push'
+        id: tags
+        run: |
+          img=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "list=$img:${GITHUB_REF_NAME#v},$img:latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "list=$img:main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+
+  # Tag v*: junta o exe e os binários Linux na release (tag com "-" vira pré-release)
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+          pattern: Ferry-*
+
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release view $env:TAG *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:TAG dist/Ferry.exe --clobber
-          } elseif ($env:TAG -like '*-*') {
-            gh release create $env:TAG dist/Ferry.exe --title "Ferry $env:TAG" --generate-notes --prerelease
-          } else {
-            gh release create $env:TAG dist/Ferry.exe --title "Ferry $env:TAG" --generate-notes
-          }
+          files="dist/Ferry.exe dist/Ferry-linux-x64.tar.gz dist/Ferry-linux-arm64.tar.gz"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $files --clobber
+          elif [[ "$TAG" == *-* ]]; then
+            gh release create "$TAG" $files --title "Ferry $TAG" --generate-notes --prerelease
+          else
+            gh release create "$TAG" $files --title "Ferry $TAG" --generate-notes
+          fi

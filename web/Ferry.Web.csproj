@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Ferry self-hosted: servidor web (API + interface) sobre o mesmo Ferry.Core do app Windows -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ferry.Web</RootNamespace>
+    <AssemblyName>ferry</AssemblyName>
+    <!-- sem depender do ICU do sistema; o formato de número pt-BR é montado à mão no Program -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- a interface vai dentro do binário: o Linux sem Docker é um arquivo só -->
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\Ferry.Core.csproj" />
+    <EmbeddedResource Include="ui\**" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\app\fonts\*.ttf" LogicalName="ui/fonts/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

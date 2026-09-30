@@ -1,0 +1,11 @@
+{
+  "name": "ferry-e2e-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node web.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}
