@@ -1,0 +1,314 @@
+<Window x:Class="PS5Sender.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PS5Sender"
+        Title="PS5 Sender" Width="1120" Height="740" MinWidth="880" MinHeight="540"
+        Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
+        AllowDrop="True" DragEnter="OnDragEnter" DragOver="OnDragOver" DragLeave="OnDragLeave" Drop="OnDrop"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============ BARRA LATERAL ============ -->
+        <Border Background="{StaticResource Side}" BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="14,18,14,14">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,22">
+                    <Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource Accent}">
+                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="19" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="PS5 Sender" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="extrai e envia via FTP" FontSize="11" Foreground="{StaticResource Muted}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- status do PS5 -->
+                <Border DockPanel.Dock="Bottom" Background="{StaticResource Card}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="12">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="{StaticResource Muted}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="StatusTitle" Text="PS5 não testado" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock x:Name="StatusHost" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="StatusDest" Foreground="{StaticResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                        <Button x:Name="SideTestBtn" Content="Testar conexão" Margin="0,10,0,0" HorizontalAlignment="Stretch" Click="OnTest"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel>
+                    <RadioButton x:Name="NavQueue" Style="{StaticResource NavItem}" GroupName="nav" IsChecked="True" Checked="OnNav">
+                        <DockPanel>
+                            <Border x:Name="QueueBadge" DockPanel.Dock="Right" CornerRadius="9" Padding="7,1" Background="#243049" Visibility="Collapsed">
+                                <TextBlock x:Name="QueueBadgeText" FontSize="11" FontWeight="SemiBold" Foreground="#8DBBFF"/>
+                            </Border>
+                            <TextBlock Text="&#xE8FD;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center"/>
+                            <TextBlock Text="Fila" Margin="12,0,0,0" FontSize="14"/>
+                        </DockPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE713;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center"/>
+                            <TextBlock Text="Configurações" Margin="12,0,0,0" FontSize="14"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="NavLog" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9F9;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center"/>
+                            <TextBlock Text="Log" Margin="12,0,0,0" FontSize="14"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ CONTEÚDO ============ -->
+        <Grid Grid.Column="1" Margin="28,22,28,22">
+
+            <!-- == FILA == -->
+            <Grid x:Name="QueuePage">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,18">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="SpeedPill" CornerRadius="16" Padding="12,6" Background="#132136" Margin="0,0,10,0" Visibility="Collapsed" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" Foreground="#8DBBFF" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="SpeedText" Foreground="#8DBBFF" FontWeight="SemiBold" Margin="6,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Button x:Name="ClearBtn" Content="Limpar concluídos" Margin="0,0,8,0" Click="OnClearFinished" Visibility="Collapsed"/>
+                        <Button Style="{DynamicResource AccentButtonStyle}" Click="OnPickFiles" Padding="14,7">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Adicionar arquivos" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Fila" FontSize="26" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="SummaryText" Foreground="{StaticResource Muted}" Margin="0,2,0,0" Text="Nenhum jogo na fila"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- vazio: clique abre o seletor do Windows -->
+                <Grid Grid.Row="1" x:Name="EmptyHint" Cursor="Hand" MouseLeftButtonUp="OnPickFiles" Background="Transparent">
+                    <Rectangle RadiusX="14" RadiusY="14" Stroke="#2C3544" StrokeThickness="2" StrokeDashArray="5 4"/>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="68" Height="68" CornerRadius="34" Background="#132136" HorizontalAlignment="Center">
+                            <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" FontSize="28" Foreground="#8DBBFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Clique para escolher os jogos" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="ou arraste os arquivos para esta janela" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <TextBlock Text=".zip · .rar · .7z · .001 · .z01 · .part1.rar · .r00  —  selecione todas as partes de uma vez"
+                                   Foreground="{StaticResource Muted}" FontSize="12" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="JobList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:Job}">
+                                <Border x:Name="CardBd" Background="{StaticResource Card}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
+                                        CornerRadius="12" Padding="18,16" Margin="0,0,8,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border x:Name="IconBg" Width="44" Height="44" CornerRadius="12" Background="#1F2633" VerticalAlignment="Top">
+                                            <TextBlock x:Name="Icon" Text="&#xE823;" FontFamily="{StaticResource Icons}" FontSize="19" Foreground="{StaticResource Muted}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Margin="14,0,14,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="480" VerticalAlignment="Center"/>
+                                                <Border x:Name="Badge" CornerRadius="9" Padding="9,2" Margin="10,0,0,0" Background="#222A38" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="BadgeText" Text="{Binding StageText}" FontSize="11" FontWeight="SemiBold" Foreground="#AEB8C8"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock x:Name="DetailText" Text="{Binding Detail}" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CurrentFile}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                                <Run Text="&#xE8A5;" FontFamily="{StaticResource Icons}"/> <Run Text="{Binding CurrentFile, Mode=OneWay}"/>
+                                            </TextBlock>
+                                            <ProgressBar x:Name="Bar" Style="{StaticResource Bar}" Value="{Binding Progress, Mode=OneWay}" Maximum="100" Margin="0,12,0,8" Foreground="#3A4456"/>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding Progress, StringFormat={}{0:0.0}%}" FontSize="14" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Stats}" Foreground="{StaticResource Muted}" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE769;" ToolTip="Pausar" Click="OnPause" Visibility="{Binding CanPause, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE768;" ToolTip="Retomar" Click="OnResume" Foreground="{StaticResource Green}" Visibility="{Binding CanResume, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="Tentar de novo (pede a senha de novo se estiver errada)" Click="OnRetry" Foreground="#8DBBFF" Visibility="{Binding CanRetry, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE711;" ToolTip="Cancelar" Click="OnCancel" Visibility="{Binding CanCancel, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Remover da fila" Click="OnRemove" Foreground="{StaticResource Red}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="CardBd" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CardBd" Property="Background" Value="{StaticResource CardHover}"/>
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="NaFila">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE8FD;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="#AEB8C8"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Extraindo">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE8B7;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Purple}"/>
+                                        <Setter TargetName="IconBg" Property="Background" Value="#241F3A"/>
+                                        <Setter TargetName="Badge" Property="Background" Value="#2C2550"/><Setter TargetName="BadgeText" Property="Foreground" Value="#C6B3FF"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Enviando">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE898;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="#8DBBFF"/>
+                                        <Setter TargetName="IconBg" Property="Background" Value="#132136"/>
+                                        <Setter TargetName="Badge" Property="Background" Value="#16335E"/><Setter TargetName="BadgeText" Property="Foreground" Value="#8DBBFF"/>
+                                        <Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Accent}"/>
+                                        <Setter TargetName="CardBd" Property="BorderBrush" Value="#23406B"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Verificado">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE73E;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Green}"/>
+                                        <Setter TargetName="IconBg" Property="Background" Value="#10291F"/>
+                                        <Setter TargetName="Badge" Property="Background" Value="#113D2B"/><Setter TargetName="BadgeText" Property="Foreground" Value="#6EE7A8"/>
+                                        <Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Green}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Pausado">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE769;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Amber}"/>
+                                        <Setter TargetName="IconBg" Property="Background" Value="#2B2410"/>
+                                        <Setter TargetName="Badge" Property="Background" Value="#443515"/><Setter TargetName="BadgeText" Property="Foreground" Value="#FFD27A"/>
+                                        <Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Amber}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Cancelado">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE711;"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="Erro">
+                                        <Setter TargetName="Icon" Property="Text" Value="&#xE783;"/>
+                                        <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Red}"/>
+                                        <Setter TargetName="IconBg" Property="Background" Value="#2E1518"/>
+                                        <Setter TargetName="Badge" Property="Background" Value="#4A1B1F"/><Setter TargetName="BadgeText" Property="Foreground" Value="#FF8A8A"/>
+                                        <Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Red}"/>
+                                        <Setter TargetName="DetailText" Property="Foreground" Value="#FF9A9A"/>
+                                        <Setter TargetName="DetailText" Property="TextWrapping" Value="Wrap"/>
+                                        <Setter TargetName="CardBd" Property="BorderBrush" Value="#5A2228"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- aparece ao arrastar arquivos por cima -->
+                <Border x:Name="DropOverlay" Grid.RowSpan="2" CornerRadius="14" Background="#CC0E1A2C" BorderBrush="{StaticResource Accent}" BorderThickness="2" Visibility="Collapsed" IsHitTestVisible="False">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource Icons}" FontSize="40" Foreground="#8DBBFF" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Solte para adicionar à fila" FontSize="20" FontWeight="SemiBold" Margin="0,12,0,0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- == CONFIGURAÇÕES == -->
+            <ScrollViewer x:Name="SettingsPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel x:Name="SettingsPanel" MaxWidth="760" HorizontalAlignment="Left" Margin="0,0,8,0">
+                    <TextBlock Text="Configurações" FontSize="26" FontWeight="SemiBold"/>
+                    <TextBlock Text="Salvas ao clicar em Salvar e também ao fechar o app." Foreground="{StaticResource Muted}" Margin="0,2,0,18"/>
+
+                    <Border Style="{StaticResource Section}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                            <TextBlock Grid.ColumnSpan="2" Text="PS5" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Grid.Row="1" Text="IP do PS5" Style="{StaticResource Label}"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5" Text="{Binding Host}"/>
+                            <TextBlock Grid.Row="2" Text="Porta" Style="{StaticResource Label}"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,5">
+                                <TextBox Width="110" Text="{Binding Port}"/>
+                                <TextBlock Text="ftpsrv: 2121 · etaHEN: 1337" Style="{StaticResource Label}" Margin="12,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="3" Text="Usuário" Style="{StaticResource Label}"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Margin="0,5" Text="{Binding User}"/>
+                            <TextBlock Grid.Row="4" Text="Senha" Style="{StaticResource Label}"/>
+                            <PasswordBox x:Name="PwBox" Grid.Row="4" Grid.Column="1" Margin="0,5" PasswordChanged="OnPwChanged"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="Destino no PS5" Style="{StaticResource SectionTitle}"/>
+                            <DockPanel>
+                                <ComboBox x:Name="Preset" DockPanel.Dock="Left" Width="160" Margin="0,0,10,0" SelectionChanged="OnPreset">
+                                    <ComboBoxItem Content="M.2" Tag="/mnt/ext1/homebrew"/>
+                                    <ComboBoxItem Content="SSD interno" Tag="/data/homebrew"/>
+                                </ComboBox>
+                                <TextBox Text="{Binding RemoteDir}"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" Text="Cada jogo vai para uma pasta com o nome dele dentro deste caminho. M.2 = /mnt/ext1/homebrew · SSD interno = /data/homebrew"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="Pasta monitorada (opcional)" Style="{StaticResource SectionTitle}"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Escolher…" Margin="10,0,0,0" Click="OnPickFolder"/>
+                                <TextBox Text="{Binding InputFolder}"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" Text="Jogos que aparecerem nesta pasta entram na fila sozinhos, assim que todas as partes chegarem."/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Text="Envio" Style="{StaticResource SectionTitle}"/>
+                            <DockPanel>
+                                <TextBlock Text="Conexões paralelas" Style="{StaticResource Label}" Width="150"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Connections}" Width="30" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <Slider Minimum="1" Maximum="8" IsSnapToTickEnabled="True" TickFrequency="1" Value="{Binding Connections}" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" Text="Arquivos pequenos vão em paralelo; os grandes seguem em uma conexão enquanto são extraídos."/>
+                            <CheckBox Margin="0,14,0,0" Content="Apagar os arquivos originais (todas as partes) depois do upload verificado" IsChecked="{Binding DeleteOriginal}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Content="Salvar" Style="{DynamicResource AccentButtonStyle}" Click="OnSave" MinWidth="120" Padding="14,7"/>
+                        <Button x:Name="TestBtn" Content="Testar conexão" Click="OnTest" Margin="10,0,0,0" MinWidth="140" Padding="14,7"/>
+                        <TextBlock x:Name="TestResult" VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" MaxWidth="360"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- == LOG == -->
+            <DockPanel x:Name="LogPage" Visibility="Collapsed">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Copiar" Click="OnCopyLog" Margin="0,0,8,0"/>
+                        <Button Content="Limpar" Click="OnClearLog"/>
+                    </StackPanel>
+                    <TextBlock Text="Log" FontSize="26" FontWeight="SemiBold"/>
+                </DockPanel>
+                <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap"
+                         Background="{StaticResource Card}" BorderBrush="{StaticResource CardBorder}" Padding="10"/>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>
