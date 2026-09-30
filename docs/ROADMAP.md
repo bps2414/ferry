@@ -1,6 +1,8 @@
 # Roadmap
 
-Decidido em 2026-09-30. Ordem: lógica → UI/marca → payload.
+Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → payload.
+
+Estado: Fases 1, 1.5 e 2 concluídas. **Próxima: Fase 3 (self-hosted no Docker).**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -61,7 +63,39 @@ Decidido em 2026-09-30. Ordem: lógica → UI/marca → payload.
 - **Ferramentas**: `/frontend-design` + `/impeccable`, gerando mockups antes de implementar.
 - **Configurações sem rolagem**: o formato é decidido nesta sessão.
 
-## Fase 3 — Payload (hello world)
+## Fase 3 — Self-hosted no Docker
+
+- **Objetivo**: o Ferry roda no servidor de casa dentro de um container, e do PC é só abrir `http://<ip-do-servidor>:<porta>` no navegador.
+- **Como**:
+  - o app hoje é WPF (`net10.0-windows`) e não roda em container Linux. A lógica (`Engine`, `Ftp`, `Archives`, `Job`, `Settings`) vira uma biblioteca `net10.0` sem WPF;
+  - um servidor ASP.NET Core serve a interface web (mesma "Régua" e Configurações da Fase 2) e manda o progresso ao vivo (SignalR ou SSE);
+  - a porta sai de uma variável de ambiente, com padrão fixo.
+- **O que muda por não ser Windows**:
+  - DPAPI (senha do jogo) → chave gerada no volume `/data`;
+  - toast do Windows → notificação no navegador (e o webhook da Fase 5);
+  - `%LOCALAPPDATA%\Ferry` → volume `/data` (`settings.json`, `queue.json`, `log.txt`);
+  - `7z.exe`/`7z.dll` → `7zz` do Linux dentro da imagem;
+  - "arrastar e soltar" e o seletor de arquivo → pasta monitorada no volume `/games`, mais upload pelo navegador (a decidir).
+- **Rede**: a varredura da sub-rede para achar o PS5 precisa de `network_mode: host`, senão só enxerga a rede interna do Docker.
+- **Entrega**: `Dockerfile` + `docker-compose.yml` de exemplo, imagem publicada no GHCR pelo CI por tag.
+- **A decidir**: manter o app Windows junto ou só a versão web; senha/login na interface web.
+- **E2E**: sobe o container, abre a interface com Playwright e repete os cenários de envio contra o servidor FTP falso.
+
+## Fase 4 — Inglês
+
+- Interface em português e inglês, escolha nas Configurações (padrão: idioma do navegador/sistema).
+- Textos saem do código para arquivos de recurso (`pt-BR`, `en`), incluindo log visível, avisos e erros.
+- Vem depois da Fase 3 para traduzir uma interface só (a web).
+- **E2E**: roda o fluxo principal nos dois idiomas e confere que não sobra texto sem tradução.
+
+## Fase 5 — Webhook configurável
+
+- URL de webhook nas Configurações (Discord, ntfy, genérico em JSON), disparado em concluído, erro e "precisa de senha".
+- O texto da mensagem segue o idioma escolhido na Fase 4.
+- Botão "Testar" que manda uma mensagem de exemplo.
+- **E2E**: servidor HTTP falso recebe o webhook e confere evento, jogo e idioma.
+
+## Fase 6 — Payload (hello world)
 
 - ELF feito com o [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compilado no WSL (Ubuntu, WSL2, já instalado).
 - O app manda o ELF para a porta 9021, o PS5 mostra "Ferry conectado" e o payload termina. Nada fica residente.
