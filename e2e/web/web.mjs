@@ -439,7 +439,11 @@ try {
   await page.click('.nav[data-page="queue"]');
   check("Idioma durante transferência mantém andamento", await stage("IMGW") === "Enviando" && await pct("IMGW") >= before);
   const cut = fs.statSync(path.join(ftpRoot, "mnt", "ext1", "homebrew", "IMGW.exfat.ferry-part")).size;
-  if (localMode) { await stopServer(); startServer(); } else docker("restart", "-t", "2", name);
+  const appeBeforeRestart = ftpLog.filter(l => l.includes("APPE ") && l.includes("IMGW.exfat.ferry-part")).length;
+  check("Reinício interrompe uma transferência ainda incompleta", cut > 0 && cut < fs.statSync(imgw).size && hookEvents("completed", "IMGW").length === 0);
+  // A graceful Docker stop can finish FTP while shutdown discards best-effort notifications.
+  // Kill immediately so this test exercises recovery and a new completion after reopening.
+  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
   await until(up200, 30000, "container de volta");
   await until(async () => (await stage("IMGW")) === "Verificado", 180000, "IMGW concluído depois de reiniciar");
   const stillIn = await page.locator("#shell").isVisible() && !(await page.locator("#auth").isVisible());
@@ -454,8 +458,8 @@ try {
   const appe = ftpLog.filter(l => l.includes("APPE ") && l.includes("IMGW.exfat.ferry-part"));
   const imgOk = fs.existsSync(remoteImg) && sha(remoteImg) === sha(imgw) && !fs.existsSync(remoteImg + ".ferry-part");
   check("Pausar e retomar pela página", p1 === p2 && p1 > 0 && p1 < 100, `congelou em ${p1}% por 1,5 s e retomou`);
-  check(localMode ? "Reiniciar o servidor local no meio do envio" : "Reiniciar o container no meio do envio", imgOk && appe.length > 0 && stillIn && w1After === "Verificado" && w1Sent === filesSent,
-    `${localMode ? "reinício da DLL local" : "docker restart"} em ${before}% (${cut} bytes no PS5); voltou sozinho, continuou com APPE (${appe.length}x), hash confere, sem .ferry-part; login continuou valendo=${stillIn}; Jogo Web continuou ${w1After} ("${w1AfterDetail}") sem reenviar nada`);
+  check(localMode ? "Reiniciar o servidor local no meio do envio" : "Reiniciar o container no meio do envio", imgOk && appe.length > appeBeforeRestart && stillIn && w1After === "Verificado" && w1Sent === filesSent,
+    `${localMode ? "reinício da DLL local" : "docker kill/start"} em ${before}% (${cut} bytes no PS5); voltou sozinho, continuou com APPE (${appe.length - appeBeforeRestart}x após reabrir), hash confere, sem .ferry-part; login continuou valendo=${stillIn}; Jogo Web continuou ${w1After} ("${w1AfterDetail}") sem reenviar nada`);
   await until(() => hookEvents("completed", "IMGW").length === 1, 5000, "webhook depois do reinício");
   check("Webhook persiste ao reiniciar e não repete conclusão restaurada", hookEvents("completed", "W1").length === 1 && (await getSettings()).webhookUrl === hookUrl && hookEvents("completed", "IMGW")[0].payload.language === locale);
 
