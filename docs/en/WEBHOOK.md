@@ -21,7 +21,7 @@ Pause, cancellation, internal FTP retries and restored completed games do not no
 
 - Explicit Português or English follows the Phase 4 language setting.
 - Automatic on the web remembers the browser's effective language when configuring/testing the webhook or changing the language. Opening another browser does not change notification language. This survives restart; old configurations default to English until configured.
-- Automatic on Windows uses Portuguese. The Windows UI remains Portuguese even when notifications use explicit English.
+- Automatic on Windows follows the original Windows display language: Portuguese → pt-BR; English and all others → en. The WPF app and notifications follow the same explicit `Settings.Language` preference as the web. Changing language or configuring the webhook on Windows saves its automatic locale in `Settings.WebhookAutoLocale`; the web uses the browser.
 - Event names and JSON keys are never translated.
 
 ## Receivers

@@ -93,3 +93,11 @@ Requires Docker, Python with `pyftpdlib` and 7-Zip (to build the test archives).
 - **Watched folder + pause/resume** from the page (progress freezes) and **restarting the container** while uploading a 400 MB `.exfat` image: it comes back on its own, continues with `APPE`, the login is still valid, and the already-finished game comes back as finished without re-sending anything.
 - **Resumable upload**: 1st chunk sent through the API, repeated chunk → 409, the partial doesn't enter the queue, and the page continues from byte 16 MB; the hash matches on the server and on the PS5.
 - **Phone** (390 px): no horizontal scroll; **no JavaScript errors** on the page.
+
+## Windows WPF: language and tray
+
+```powershell
+dotnet run --project e2e/windows -c Release
+```
+
+Requires Windows with a graphical session, .NET 10 and Python with `pyftpdlib`. The STA harness instantiates the real `App`/`MainWindow` using isolated temporary `FERRY_DATA`, never personal settings. Checks Automatic variants/fallback, shared persistence, key/argument parity, numbers/sizes/duration, invalid fields and FTP/webhook passwords, switching during FTP transfer with final hash and atomic publication, and minimizing/restoring normal/maximized states. It opens the real password dialog (first attempt and wrong password), changes the selector programmatically while the modal is open and verifies the same dialog and typed password survive. This does not simulate clicking behind the modal. Physical tray clicks/visibility, Windows balloons, native file/folder pickers, real PS5 and HTTP providers are not verified.

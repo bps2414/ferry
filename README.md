@@ -18,13 +18,13 @@ Ferry takes compressed games (`.zip`, `.rar`, `.7z`, including multi-part archiv
 - Pause, resume, close and reopen without losing what was already sent
 - Webhooks for Discord, ntfy or generic JSON: completion, errors and password requests; configurable in the web and Windows apps. [Setup and delivery contract](docs/en/WEBHOOK.md).
 
-The web interface supports Portuguese (Brazil) and English. In **Settings → Language**, choose **Automatic**, **Português (Brasil)** or **English**. Automatic uses the browser's first supported language and falls back to English. An explicit choice is saved for the installation, including login, and survives a restart. The Windows WPF interface remains in Portuguese.
+Ferry runs as a portable Windows app or a self-hosted web server on Linux/Docker. Both interfaces support Portuguese (Brazil) and English. In **Settings → Language**, choose **Automatic**, **Português (Brasil)** or **English**. Automatic follows the Windows display language in the native app (Portuguese → pt-BR; other languages → English), and the browser's first supported language on the web, with English fallback. Both use `Settings.Language` in `settings.json`; explicit choices survive restart. Switching language preserves edited fields, transfers and open password dialogs. Windows minimizes to the system tray; double-click or **Open Ferry** restores the window. **Exit** or **X** closes the app.
 
 > Made for your own homebrew/backups on an unlocked console. Use at your own risk.
 
 ## Download
 
-Get `Ferry.exe` from the [Releases](../../releases) page and run it. Requires Windows 10/11 x64.
+Choose your platform on the [Releases](../../releases) page: `Ferry.exe` for Windows 10/11 x64, or `Ferry-linux-x64.tar.gz` / `Ferry-linux-arm64.tar.gz` for the Linux web server. Docker setup is below.
 
 ## Self-hosted (home server)
 

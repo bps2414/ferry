@@ -4,7 +4,7 @@
 
 Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → envio progressivo → payload.
 
-Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fase 5 implementada e validada localmente (núcleo e web em pt-BR/en); publicação da pré-release depende da CI. Próxima: Fase 6 (PKG/fPKG).**
+Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fase 5 implementada e validada localmente (núcleo e web em pt-BR/en); publicação da pré-release depende da CI. Fase 5.1: idioma e bandeja Windows; próxima: Fase 6 (PKG/fPKG).**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -88,7 +88,7 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). *
 
 ## Fase 4 — Inglês
 
-- Interface web em português e inglês: Automático, Português (Brasil) ou English nas Configurações. Automático usa o primeiro idioma compatível do navegador, com fallback para inglês; escolha explícita persiste em `settings.json` e vale também para o login. WPF permanece em português.
+- Interface web em português e inglês: Automático, Português (Brasil) ou English nas Configurações. Automático usa o primeiro idioma compatível do navegador, com fallback para inglês; escolha explícita persiste em `settings.json` e vale também para o login. WPF permanecia em português na Fase 4; a Fase 5.1 acrescenta localização nativa.
 - Textos saem do código para arquivos de recurso (`pt-BR`, `en`), incluindo log visível, avisos e erros.
 - Vem depois da Fase 3 para traduzir uma interface só (a web).
 - **E2E**: roda o fluxo principal nos dois idiomas e confere que não sobra texto sem tradução.
@@ -101,8 +101,17 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). *
 - O texto da mensagem segue o idioma escolhido na Fase 4.
 - Botão "Testar" que manda uma mensagem de exemplo.
 - **E2E**: servidor HTTP falso recebe o webhook e confere evento, jogo e idioma.
-- Implementado na web e no Windows: ativação opcional, serviço, URL mascarada e teste autenticado. Idioma automático persiste no servidor; no Windows, automático usa português. HTTP roda em segundo plano, com timeout de 10 s, fila limitada e uma tentativa por evento; falhas não mudam o jogo nem bloqueiam FTP/senha.
+- Implementado na web e no Windows: ativação opcional, serviço, URL mascarada e teste autenticado. Idioma automático persiste no servidor; no Windows, Automático segue o idioma do sistema desde a Fase 5.1. HTTP roda em segundo plano, com timeout de 10 s, fila limitada e uma tentativa por evento; falhas não mudam o jogo nem bloqueiam FTP/senha.
 - Contratos e limites em [WEBHOOK.md](WEBHOOK.md). Validação focada: `dotnet run --project e2e -- --webhook`; E2E web verifica os três serviços, eventos, idioma, senha sem resposta HTTP, reinício e navegador fechado. Provedores reais e Docker local não foram exercitados.
+
+## Fase 5.1 — Windows: idioma e bandeja
+
+Implementada e validada localmente: 124 verificações WPF passaram nos dois idiomas, incluindo transferência FTP e diálogo de senha. Próxima etapa: Fase 6.
+
+- WPF em Português (Brasil) e English. Automático usa o idioma de exibição original do Windows: português → pt-BR; demais → en. `Settings.Language` é a mesma preferência da web; Automático na web continua seguindo o navegador.
+- Bindings atualizam a mesma janela, preservando campos, fila, progresso e diálogo de senha. Textos próprios usam catálogos compartilhados e do app, com paridade de chaves/parâmetros. Números, tamanhos e duração seguem o idioma; diagnósticos FTP/7-Zip/sistema, caminhos e nomes permanecem brutos.
+- Minimizar esconde na bandeja e mantém envios, monitoramento e webhooks. Duplo clique ou Abrir Ferry restaura normal/maximizado; pedido de senha restaura antes do diálogo. X e Sair encerram. Docker/Linux continuam como servidor web.
+- Validação: `dotnet run --project e2e/windows -c Release`, com WPF real, FTP local falso, hash após troca durante transferência e senha digitada preservada no modal. O harness não cobre PS5/provedores reais nem cliques físicos na bandeja.
 
 ## Fase 6 — PKG e fPKG
 

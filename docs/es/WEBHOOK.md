@@ -21,7 +21,7 @@ Pausar, cancelar, reintentos internos del FTP y restaurar juegos terminados no g
 
 - Português o English explícitos siguen el ajuste de idioma de la Fase 4.
 - Automático en la web guarda el idioma efectivo del navegador al configurar/probar el webhook o cambiar el idioma. Abrir otro navegador no lo cambia. Persiste al reiniciar; configuraciones antiguas usan inglés hasta configurarlo.
-- Automático en Windows usa portugués. La ventana Windows sigue en portugués aunque los avisos estén en English explícito.
+- Automático en Windows sigue el idioma original de Windows: portugués → pt-BR; inglés y los demás → en. La app WPF y los avisos siguen la misma elección explícita `Settings.Language` de la web. Cambiar idioma o configurar el webhook desde Windows guarda su idioma automático en `Settings.WebhookAutoLocale`; la web usa el navegador.
 - Los nombres de eventos y claves JSON no se traducen. No hay catálogo de interfaz en español.
 
 ## Receptores

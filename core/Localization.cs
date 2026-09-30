@@ -5,7 +5,7 @@ namespace Ferry;
 
 public record Message(string Key, params object?[] Args)
 {
-    public string Render(string locale = "pt-BR") => Localization.Render(this, locale);
+    public string Render(string locale = "pt-BR", IFormatProvider? formatProvider = null) => Localization.Render(this, locale, formatProvider);
 }
 
 public sealed class LocalizedException(Message message, Exception? inner = null) : Exception(message.Render(), inner)
@@ -34,7 +34,7 @@ public static class Localization
         using var stream = typeof(Localization).Assembly.GetManifestResourceStream($"Ferry.locales.{locale}.json")!;
         return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
     }
-    public static string Render(Message message, string locale = "pt-BR")
+    public static string Render(Message message, string locale = "pt-BR", IFormatProvider? formatProvider = null)
     {
         if (message.Key == "core.size" && message.Args is [long bytes])
         {
@@ -55,7 +55,7 @@ public static class Localization
             var suffix = Convert.ToDouble(message.Args[0], CultureInfo.InvariantCulture) == 1 ? ".one" : ".other";
             if (catalog.TryGetValue(message.Key + suffix, out var plural)) template = plural;
         }
-        return string.Format(CultureInfo.InvariantCulture, template, message.Args.Select(a => a is Message nested ? nested.Render(locale) : a).ToArray());
+        return string.Format(formatProvider ?? CultureInfo.InvariantCulture, template, message.Args.Select(a => a is Message nested ? nested.Render(locale, formatProvider) : a).ToArray());
     }
     public static Message ExceptionMessage(Exception exception)
     {

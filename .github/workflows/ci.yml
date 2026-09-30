@@ -46,6 +46,9 @@ jobs:
       - name: Contratos de webhook
         run: dotnet run --project e2e -- --webhook
 
+      - name: Windows WPF (idioma e bandeja)
+        run: dotnet run --project e2e/windows -c Release
+
       - name: E2E
         run: dotnet run --project e2e
 

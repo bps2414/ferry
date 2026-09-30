@@ -2,7 +2,7 @@
 
 # Ferry
 
-A interface web oferece português (Brasil) e inglês. Em **Configurações → Idioma**, escolha **Automático**, **Português (Brasil)** ou **English**. Automático usa o primeiro idioma compatível do navegador e recorre ao inglês nos demais casos. A escolha explícita vale para a instalação, inclusive no login, e persiste ao reiniciar. A interface Windows WPF continua em português.
+O Ferry roda como app portátil Windows ou servidor web no Linux/Docker. As duas interfaces oferecem português (Brasil) e inglês. Em **Configurações → Idioma**, escolha **Automático**, **Português (Brasil)** ou **English**. Automático segue o idioma de exibição do Windows no app nativo (português → pt-BR; demais idiomas → inglês); na web, segue o primeiro idioma compatível do navegador, com fallback para inglês. Ambas usam `Settings.Language` em `settings.json`; escolhas explícitas persistem ao reiniciar. A troca preserva campos editados, transferências e diálogos de senha abertos. No Windows, minimizar esconde na bandeja; duplo clique ou **Abrir Ferry** restaura a janela. **Sair** ou **X** encerra o app.
 
 [English](README.md) · **Português (BR)** · [Español](README.es.md)
 
@@ -24,7 +24,7 @@ App que pega jogos compactados (`.zip`, `.rar`, `.7z`, inclusive divididos em pa
 
 ## Download
 
-Baixe o `Ferry.exe` na página de [Releases](../../releases) e execute. Requer Windows 10/11 x64.
+Escolha a plataforma nas [Releases](../../releases): `Ferry.exe` para Windows 10/11 x64, ou `Ferry-linux-x64.tar.gz` / `Ferry-linux-arm64.tar.gz` para o servidor web Linux. A configuração Docker está abaixo.
 
 ## Self-hosted (servidor de casa)
 

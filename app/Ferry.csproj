@@ -9,6 +9,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Ferry</AssemblyName>
+    <Version>1.5.1-beta.1</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
@@ -28,6 +29,8 @@
     <!-- Geist (OFL, ver fonts/OFL.txt) e o ícone da janela, dentro do exe -->
     <Resource Include="fonts\*.ttf" />
     <Resource Include="Ferry.ico" />
+    <EmbeddedResource Include="locales/*.json" WithCulture="false" LogicalName="Ferry.app.locales.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../web/ui/locales/*.json" WithCulture="false" LogicalName="Ferry.ui.locales.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

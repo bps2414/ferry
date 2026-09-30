@@ -21,7 +21,7 @@ Pausar, cancelar, retentativas internas do FTP e restaurar jogos concluídos nã
 
 - Português ou English explícitos seguem o campo Idioma da Fase 4.
 - Automático na web guarda o idioma efetivo do navegador quando você configura/testa o webhook ou altera o idioma. Abrir outro navegador não muda o idioma dos avisos. Esse valor persiste ao reiniciar; configurações antigas usam inglês até serem configuradas.
-- Automático no Windows usa português. A janela Windows permanece em português mesmo quando os avisos usam English explícito.
+- Automático no Windows segue o idioma de exibição original do Windows: português → pt-BR; inglês e demais → en. O app WPF e seus avisos seguem a mesma escolha explícita `Settings.Language` da web. Trocar idioma ou configurar o webhook no Windows salva esse idioma automático em `Settings.WebhookAutoLocale`; pela web, usa o navegador.
 - As chaves dos eventos e do JSON não são traduzidas.
 
 ## Receptores

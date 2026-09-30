@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="windows/**/*.cs" />
     <ProjectReference Include="..\core\Ferry.Core.csproj" />
     <PackageReference Include="System.IO.Hashing" Version="10.*" />
   </ItemGroup>

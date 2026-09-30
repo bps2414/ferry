@@ -38,6 +38,9 @@ static class LocalizationChecks
             Check(diagnostic.Render("en") == raw && diagnostic.Render("pt-BR") == raw, "raw paths and provider diagnostic bytes are preserved");
             var nested = new Message("core.jobLog", "ação <teste>", new Message("core.stage.Enviando"));
             Check(nested.Render("en") == "[ação <teste>] Sending" && nested.Render("pt-BR") == "[ação <teste>] Enviando", "nested messages translate without changing data");
+            var localizedNumbers = new System.Globalization.CultureInfo("pt-BR");
+            Check(new Message("core.raw", 1.5).Render("pt-BR", localizedNumbers) == "1,5", "native numeric arguments use the selected culture");
+            Check(new Message("core.jobLog", "arquivo.exfat", new Message("core.raw", 1.5)).Render("pt-BR", localizedNumbers) == "[arquivo.exfat] 1,5", "numeric culture propagates through structured nested messages");
             var extraction = new LocalizedException(new Message("core.archive.outputShort"));
             Check(extraction.MessageData.Key == "core.archive.outputShort" && extraction.MessageData.Render("en") == "7-Zip output ended earlier than expected", "extraction failure carries a stable code independently of its translated text");
             var job = new Job { Key = "test", Name = "test", Stage = Stage.Enviando };
@@ -51,7 +54,7 @@ static class LocalizationChecks
             foreach (var locale in new[] { "pt-BR", "en" })
             {
                 var merged = new Dictionary<string, string>(Localization.Catalog(locale));
-                foreach (var folder in new[] { "web/locales", "web/ui/locales" })
+                foreach (var folder in new[] { "web/locales", "web/ui/locales", "app/locales" })
                 {
                     var file = Path.Combine(root, folder, locale + ".json");
                     if (!File.Exists(file)) throw new FileNotFoundException("Required catalog", file);
@@ -71,11 +74,14 @@ static class LocalizationChecks
             }
             foreach (var stage in Enum.GetValues<Stage>())
                 Check(portuguese.ContainsKey("core.stage." + stage), "stage translation " + stage);
-            foreach (var folder in new[] { "core", "web" })
+            foreach (var folder in new[] { "core", "web", "app" })
             foreach (var file in Directory.EnumerateFiles(Path.Combine(root, folder), "*", SearchOption.AllDirectories)
                 .Where(file => new[] { ".cs", ".js", ".html" }.Contains(Path.GetExtension(file)) && !file.Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj")))
-            foreach (Match reference in Regex.Matches(File.ReadAllText(file), "[\"']((?:core|web|ui)\\.[A-Za-z0-9]+(?:\\.[A-Za-z0-9]+)*)[\"']"))
-                Check(portuguese.ContainsKey(reference.Groups[1].Value), "catalog covers " + reference.Groups[1].Value);
+            {
+                var namespaces = folder == "app" ? "core|ui|app" : "core|web|ui";
+                foreach (Match reference in Regex.Matches(File.ReadAllText(file), "[\"']((?:" + namespaces + ")\\.[A-Za-z0-9]+(?:\\.[A-Za-z0-9]+)*)[\"']"))
+                    Check(portuguese.ContainsKey(reference.Groups[1].Value), "catalog covers " + reference.Groups[1].Value);
+            }
             Console.WriteLine($"Localization: {checks} checks passed.");
         }
         finally

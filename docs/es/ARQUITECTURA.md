@@ -94,3 +94,11 @@ Regex por nombre de archivo (`Archives.Group`):
 - Aspecto (Fase 2, "Ferry"): tokens y estilos en `App.xaml`; fuente Geist incluida (`app/fonts`, `pack://application:,,,/Ferry;component/fonts/#Geist`), números tabulares en toda la ventana. La barra de progreso es la "travesía" del logo (muelles en los extremos, flecha en la punta del progreso); `OnProgress` anima el valor hasta el nuevo en 350 ms, y el color cambia según el estado con `ColorAnimation` en los `DataTrigger`. El icono (`Ferry.ico`) usa la misma geometría 16×16 que `LogoPosts`/`LogoArrow`.
 - **Transferir ahora** (`Engine.SendNow`): mueve el juego arriba y el que se estaba enviando justo detrás; este vuelve a `NaFila` (en cola) y se cancela su `Cts`. `RunAsync` toma el primer `NaFila` de la lista; el interrumpido después envía solo lo que falta (misma reanudación que la pausa).
 - Cola guardada en `queue.json` en la carpeta de datos (archivos añadidos, elementos quitados, contraseñas cifradas, envíos empezados y juegos terminados).
+
+### Idioma y bandeja de Windows
+
+`app/WpfText.cs` agrega catálogos de UI web y `app/locales/{pt-BR,en}.json` a `Localization` del núcleo. Bindings y conversores de jobs reaccionan al idioma sin sustituir controles ni jobs: campos inválidos editados, validaciones y contraseña escrita permanecen. Mensajes estructurados usan el idioma actual; diagnósticos originales y logs persistidos existentes no se reescriben.
+
+`Settings.Language` (`auto`, `pt-BR`, `en`) persiste en los mismos ajustes de la web. Automático captura el idioma original de Windows (portugués → pt-BR; los demás → en); la web usa el navegador. Windows también guarda `Settings.WebhookAutoLocale` al cambiar idioma o configurar el webhook; la web guarda allí el idioma del navegador. Procesos independientes que editan el mismo archivo no sincronizan en vivo.
+
+Minimizar oculta la misma ventana; la bandeja restaura su último estado normal/maximizado. Pedir contraseña restaura antes del modal. Cerrar o Exit cancela la app y elimina su icono.

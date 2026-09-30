@@ -94,3 +94,11 @@ Regex on the file name (`Archives.Group`):
 - Look (Phase 2, "Ferry"): tokens and styles in `App.xaml`; embedded Geist font (`app/fonts`, `pack://application:,,,/Ferry;component/fonts/#Geist`), tabular numbers across the window. The progress bar is the logo's "crossing" (piers at the ends, arrow at the progress tip); `OnProgress` animates the value to the new one in 350 ms, and the color changes by state with `ColorAnimation` in the `DataTrigger`s. The icon (`Ferry.ico`) uses the same 16×16 geometry as `LogoPosts`/`LogoArrow`.
 - **Transfer now** (`Engine.SendNow`): moves the game to the top and the one that was sending right behind it; that one goes back to `NaFila` (queued) and has its `Cts` cancelled. `RunAsync` takes the first `NaFila` in the list; the interrupted one later sends only what is missing (same resume as pause).
 - Queue persisted in `queue.json` in the data folder (added files, removed items, encrypted passwords, started uploads and finished games).
+
+### Windows language and tray
+
+`app/WpfText.cs` adds web UI catalogs and `app/locales/{pt-BR,en}.json` to core `Localization`. Bindings and job converters react to language changes without replacing controls or jobs: invalid edited fields, validation and typed passwords survive. Structured messages render in the current locale; raw diagnostics and existing persisted logs are not rewritten.
+
+`Settings.Language` (`auto`, `pt-BR`, `en`) persists in the same settings as the web. Automatic captures the original Windows display language (Portuguese → pt-BR; others → en); the web uses the browser. Windows also saves `Settings.WebhookAutoLocale` when changing language or configuring the webhook; the web saves its browser locale there. Independent processes editing the same file do not synchronize live.
+
+Minimize hides the existing window; the tray restores its last normal/maximized state. Password requests restore before opening the modal. Close or Exit cancels the app and disposes its icon.

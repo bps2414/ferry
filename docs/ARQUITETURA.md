@@ -94,3 +94,11 @@ Regex por nome de arquivo (`Archives.Group`):
 - Visual (Fase 2, "Ferry"): tokens e estilos em `App.xaml`; fonte Geist embutida (`app/fonts`, `pack://application:,,,/Ferry;component/fonts/#Geist`), números tabulares na janela toda. A barra de progresso é a "travessia" do logo (cais nas pontas, seta na ponta do progresso); `OnProgress` anima o valor até o novo em 350 ms, e a cor muda por estado com `ColorAnimation` nos `DataTrigger`. O ícone (`Ferry.ico`) usa a mesma geometria 16×16 de `LogoPosts`/`LogoArrow`.
 - **Transferir agora** (`Engine.SendNow`): move o jogo para o topo e o que estava enviando para logo atrás, este volta a `NaFila` e tem o `Cts` cancelado. O `RunAsync` pega o primeiro `NaFila` da lista; o interrompido depois só envia o que falta (mesma retomada da pausa).
 - Fila persistida em `queue.json` na pasta de dados (arquivos adicionados, itens removidos, senhas cifradas, envios começados e jogos concluídos).
+
+### Idioma e bandeja do Windows
+
+`app/WpfText.cs` agrega os catálogos da UI web e `app/locales/{pt-BR,en}.json` à infraestrutura `Localization` do núcleo. Bindings e conversores dos jobs reagem ao idioma sem substituir controles ou jobs: campos inválidos editados, validações e senha digitada permanecem. Mensagens estruturadas são renderizadas no idioma atual; diagnósticos brutos e logs persistidos existentes não são reescritos.
+
+`Settings.Language` (`auto`, `pt-BR`, `en`) persiste na mesma configuração da web. Automático captura o idioma de exibição original do Windows (português → pt-BR; demais → en); a web usa o navegador. O Windows também salva `Settings.WebhookAutoLocale` ao mudar o idioma ou configurar o webhook; na web esse campo recebe o idioma do navegador. Processos independentes que editam o mesmo arquivo não sincronizam ao vivo.
+
+Minimizar esconde a instância da janela; a bandeja restaura seu último estado normal/maximizado. Um pedido de senha restaura antes do modal. Fechar ou Sair cancela o app e descarta o ícone.

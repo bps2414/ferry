@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Ferry;assembly=Ferry.Core"
-        Title="Ferry" Width="1120" Height="740" MinWidth="1000" MinHeight="560" Icon="Ferry.ico"
+        xmlns:text="clr-namespace:Ferry"
+        Title="{text:Loc app.title}" Width="1120" Height="740" MinWidth="1000" MinHeight="560" Icon="Ferry.ico"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
         FontFamily="{StaticResource Sans}" FontSize="14" Typography.NumeralAlignment="Tabular"
         AllowDrop="True" DragEnter="OnDragEnter" DragOver="OnDragOver" DragLeave="OnDragLeave" Drop="OnDrop"
@@ -25,8 +26,8 @@
                         </Canvas>
                     </Viewbox>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="Ferry" FontSize="22" FontWeight="SemiBold" LineHeight="22" LineStackingStrategy="BlockLineHeight"/>
-                        <TextBlock Text="envio de jogos para PS5" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,3,0,0"/>
+                        <TextBlock Text="{text:Loc app.title}" FontSize="22" FontWeight="SemiBold" LineHeight="22" LineStackingStrategy="BlockLineHeight"/>
+                        <TextBlock Text="{text:Loc ui.tagline}" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,3,0,0"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -34,7 +35,7 @@
                 <StackPanel DockPanel.Dock="Bottom">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="{StaticResource Muted}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="StatusTitle" Text="PS5 não testado" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                        <TextBlock x:Name="StatusTitle" Text="{text:Loc ui.untested}" FontWeight="SemiBold" Margin="8,0,0,0"/>
                     </StackPanel>
                     <TextBlock x:Name="StatusHost" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
                     <TextBlock x:Name="StatusDest" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
@@ -43,12 +44,12 @@
                         <StackPanel>
                             <TextBlock x:Name="FoundText" FontSize="12.5" Foreground="{StaticResource Text}" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="Usar este" Style="{StaticResource Primary}" Height="30" Padding="12,0" Click="OnUseFound"/>
-                                <Button Content="Ignorar" Style="{StaticResource LinkBtn}" Margin="14,0,0,0" VerticalAlignment="Center" Click="OnDismissFound"/>
+                                <Button Content="{text:Loc ui.useFound}" Style="{StaticResource Primary}" Height="30" Padding="12,0" Click="OnUseFound"/>
+                                <Button Content="{text:Loc ui.ignore}" Style="{StaticResource LinkBtn}" Margin="14,0,0,0" VerticalAlignment="Center" Click="OnDismissFound"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
-                    <Button x:Name="SideTestBtn" Content="Testar conexão" Style="{StaticResource LinkBtn}" Margin="0,12,0,0" Click="OnTest"/>
+                    <Button x:Name="SideTestBtn" Content="{text:Loc ui.test}" Style="{StaticResource LinkBtn}" Margin="0,12,0,0" Click="OnTest"/>
                 </StackPanel>
 
                 <StackPanel Margin="0,40,0,0">
@@ -57,11 +58,11 @@
                             <Border x:Name="QueueBadge" DockPanel.Dock="Right" Visibility="Collapsed">
                                 <TextBlock x:Name="QueueBadgeText" Foreground="{StaticResource Text2}" FontWeight="Normal"/>
                             </Border>
-                            <TextBlock Text="Fila"/>
+                            <TextBlock Text="{text:Loc ui.queue}"/>
                         </DockPanel>
                     </RadioButton>
-                    <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav" Content="Configurações"/>
-                    <RadioButton x:Name="NavLog" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav" Content="Log"/>
+                    <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav" Content="{text:Loc ui.settings}"/>
+                    <RadioButton x:Name="NavLog" Style="{StaticResource NavItem}" GroupName="nav" Checked="OnNav" Content="{text:Loc ui.log}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -83,19 +84,19 @@
                                 <TextBlock HorizontalAlignment="Right" FontSize="30" FontWeight="SemiBold" LineHeight="30" LineStackingStrategy="BlockLineHeight">
                                     <Run x:Name="SpeedText"/><Run x:Name="SpeedUnit" FontSize="14" FontWeight="Medium" Foreground="{StaticResource Muted}"/>
                                 </TextBlock>
-                                <TextBlock Text="total agora" FontSize="12" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                <TextBlock Text="{text:Loc ui.totalNow}" FontSize="12" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,4,0,0"/>
                             </StackPanel>
-                            <Button x:Name="ClearBtn" Content="Limpar concluídos" Style="{StaticResource Btn}" Margin="0,0,8,0" Click="OnClearFinished" Visibility="Collapsed"/>
+                            <Button x:Name="ClearBtn" Content="{text:Loc ui.clearDone}" Style="{StaticResource Btn}" Margin="0,0,8,0" Click="OnClearFinished" Visibility="Collapsed"/>
                             <Button Style="{StaticResource Primary}" Click="OnPickFiles">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Adicionar arquivos" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{text:Loc ui.addFiles}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
                         <StackPanel VerticalAlignment="Bottom">
-                            <TextBlock Text="Fila" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
-                            <TextBlock x:Name="SummaryText" Foreground="{StaticResource Muted}" FontSize="13" Margin="0,8,0,0" Text="Nenhum jogo na fila"/>
+                            <TextBlock Text="{text:Loc ui.queue}" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
+                            <TextBlock x:Name="SummaryText" Foreground="{StaticResource Muted}" FontSize="13" Margin="0,8,0,0" Text="{text:Loc ui.emptyQueue}"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -103,15 +104,15 @@
                 <!-- vazio: a travessia parada no cais; clique abre o seletor do Windows -->
                 <Grid Grid.Row="1" x:Name="EmptyHint" Cursor="Hand" MouseLeftButtonUp="OnPickFiles" Background="Transparent">
                     <StackPanel VerticalAlignment="Center" MaxWidth="640" HorizontalAlignment="Left" Margin="0,0,0,40">
-                        <TextBlock Text="Nada na travessia." FontSize="58" FontWeight="SemiBold"/>
+                        <TextBlock Text="{text:Loc ui.emptyTitle}" FontSize="58" FontWeight="SemiBold"/>
                         <TextBlock Foreground="{StaticResource Text2}" FontSize="16" TextWrapping="Wrap" Margin="0,10,0,0" LineHeight="24"
-                                   Text="Arraste os arquivos do jogo para esta janela ou clique para escolher. Selecione todas as partes de uma vez."/>
+                                   Text="{text:Loc app.emptyHint}"/>
                         <ProgressBar Style="{StaticResource Bar}" Value="0" Foreground="{StaticResource Accent}" Margin="0,40,0,0"/>
                         <DockPanel Margin="0,8,0,0">
                             <TextBlock x:Name="EmptyDest" DockPanel.Dock="Right" FontSize="12.5" Foreground="{StaticResource Text2}"/>
-                            <TextBlock Text="este PC" FontSize="12.5" Foreground="{StaticResource Text2}"/>
+                            <TextBlock Text="{text:Loc app.thisPc}" FontSize="12.5" Foreground="{StaticResource Text2}"/>
                         </DockPanel>
-                        <TextBlock Text=".zip   .rar   .7z   .001   .z01   .part1.rar   .r00   .exfat" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,32,0,0"/>
+                        <TextBlock Text="{text:Loc app.extensions}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,32,0,0"/>
                     </StackPanel>
                 </Grid>
 
@@ -151,39 +152,39 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                             <WrapPanel Margin="0,5,0,0">
-                                                <TextBlock x:Name="StageLbl" Text="{Binding StageText}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource Text2}" Margin="0,0,14,0"/>
+                                                <TextBlock x:Name="StageLbl" Text="{text:JobText Stage}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource Text2}" Margin="0,0,14,0"/>
                                                 <TextBlock x:Name="IdLbl" Text="{Binding TitleId}" FontSize="12.5" Foreground="{StaticResource Muted}" Margin="0,0,14,0"/>
-                                                <TextBlock x:Name="AmountLbl" Text="{Binding Amount}" FontSize="12.5" Foreground="{StaticResource Muted}"/>
+                                                <TextBlock x:Name="AmountLbl" Text="{text:JobText Amount}" FontSize="12.5" Foreground="{StaticResource Muted}"/>
                                             </WrapPanel>
-                                            <TextBlock x:Name="DetailText" Text="{Binding Detail}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="DetailText" Text="{text:JobText Detail}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock x:Name="FileLbl" Text="{Binding CurrentFile}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
 
                                         <!-- números grandes, em colunas fixas para alinhar de linha a linha -->
                                         <StackPanel x:Name="PctCell" Grid.Column="2" VerticalAlignment="Center">
-                                            <TextBlock HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"><Run Text="{Binding Progress, Mode=OneWay, StringFormat={}{0:0.0}}"/><Run Text="%" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Muted}"/></TextBlock>
-                                            <TextBlock Text="enviado" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
+                                            <TextBlock HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"><Run Text="{text:JobText Progress}"/><Run Text="%" FontSize="13" FontWeight="Medium" Foreground="{StaticResource Muted}"/></TextBlock>
+                                            <TextBlock Text="{text:Loc ui.sent}" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
                                         </StackPanel>
                                         <StackPanel x:Name="RateCell" Grid.Column="3" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding RateValue}" HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding RateUnit}" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
+                                            <TextBlock Text="{text:JobText RateValue}" HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{text:JobText RateUnit}" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
                                         </StackPanel>
                                         <StackPanel x:Name="EtaCell" Grid.Column="4" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding EtaValue}" HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding EtaUnit}" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
+                                            <TextBlock Text="{text:JobText EtaValue}" HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{text:JobText EtaUnit}" FontSize="11.5" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"/>
                                         </StackPanel>
                                         <!-- na fila/pausado: passa na frente do envio atual (que volta para a fila e continua depois) -->
-                                        <Button x:Name="SendNowBtn" Grid.Column="3" Grid.ColumnSpan="2" Style="{StaticResource Btn}" Content="Transferir agora"
+                                        <Button x:Name="SendNowBtn" Grid.Column="3" Grid.ColumnSpan="2" Style="{StaticResource Btn}" Content="{text:Loc ui.sendNow}"
                                                 HorizontalAlignment="Right" VerticalAlignment="Center" Click="OnSendNow"
-                                                ToolTip="Começa este agora. O envio em andamento volta para a fila e continua de onde parou."
+                                                ToolTip="{text:Loc ui.sendNowHint}"
                                                 Visibility="{Binding CanSendNow, Converter={StaticResource Vis}}"/>
 
                                         <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE769;" ToolTip="Pausar" AutomationProperties.Name="Pausar" Click="OnPause" Visibility="{Binding CanPause, Converter={StaticResource Vis}}"/>
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE768;" ToolTip="Retomar" AutomationProperties.Name="Retomar" Click="OnResume" Visibility="{Binding CanResume, Converter={StaticResource Vis}}"/>
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="Tentar de novo (pede a senha de novo se estiver errada)" AutomationProperties.Name="Tentar de novo" Click="OnRetry" Foreground="{StaticResource Text}" Visibility="{Binding CanRetry, Converter={StaticResource Vis}}"/>
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE711;" ToolTip="Cancelar" AutomationProperties.Name="Cancelar" Click="OnCancel" Visibility="{Binding CanCancel, Converter={StaticResource Vis}}"/>
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Remover da fila" AutomationProperties.Name="Remover da fila" Click="OnRemove"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE769;" ToolTip="{text:Loc ui.pause}" AutomationProperties.Name="{text:Loc ui.pause}" Click="OnPause" Visibility="{Binding CanPause, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE768;" ToolTip="{text:Loc ui.resume}" AutomationProperties.Name="{text:Loc ui.resume}" Click="OnResume" Visibility="{Binding CanResume, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="{text:Loc ui.retryHint}" AutomationProperties.Name="{text:Loc ui.retry}" Click="OnRetry" Foreground="{StaticResource Text}" Visibility="{Binding CanRetry, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE711;" ToolTip="{text:Loc ui.cancel}" AutomationProperties.Name="{text:Loc ui.cancel}" Click="OnCancel" Visibility="{Binding CanCancel, Converter={StaticResource Vis}}"/>
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="{text:Loc ui.remove}" AutomationProperties.Name="{text:Loc ui.remove}" Click="OnRemove"/>
                                         </StackPanel>
 
                                         <!-- a travessia: anima suave até o valor novo (OnProgress) -->
@@ -206,7 +207,7 @@
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding TitleId}" Value=""><Setter TargetName="IdLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{Binding Amount}" Value=""><Setter TargetName="AmountLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                    <DataTrigger Binding="{Binding Detail}" Value=""><Setter TargetName="DetailText" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                    <DataTrigger Binding="{text:JobText Detail}" Value=""><Setter TargetName="DetailText" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{Binding CurrentFile}" Value=""><Setter TargetName="FileLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{Binding IsActive}" Value="False">
                                         <Setter TargetName="PctCell" Property="TextElement.Foreground" Value="{StaticResource Muted}"/>
@@ -259,7 +260,7 @@
                 <!-- aparece ao arrastar arquivos por cima -->
                 <Border x:Name="DropOverlay" Grid.RowSpan="2" Background="#F20A0D12" BorderBrush="{StaticResource Accent}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False">
                     <StackPanel VerticalAlignment="Center" Margin="48,0">
-                        <TextBlock Text="Solte para adicionar à fila." FontSize="40" FontWeight="SemiBold"/>
+                        <TextBlock Text="{text:Loc app.drop}" FontSize="40" FontWeight="SemiBold"/>
                         <ProgressBar Style="{StaticResource Bar}" Value="100" Foreground="{StaticResource Accent}" Margin="0,28,0,0"/>
                     </StackPanel>
                 </Border>
@@ -274,8 +275,8 @@
                     </Grid.RowDefinitions>
                     <Border BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="Salvas automaticamente" Foreground="{StaticResource Muted}" FontSize="13" VerticalAlignment="Bottom"/>
-                            <TextBlock Text="Configurações" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{text:Loc ui.autosaved}" Foreground="{StaticResource Muted}" FontSize="13" VerticalAlignment="Bottom"/>
+                            <TextBlock Text="{text:Loc ui.settings}" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
                         </DockPanel>
                     </Border>
 
@@ -288,70 +289,71 @@
 
                         <!-- esquerda: conexão e destino -->
                         <StackPanel>
+
                             <Border Style="{StaticResource Group}">
                                 <StackPanel>
-                                    <TextBlock Text="PS5" Style="{StaticResource GroupTitle}"/>
-                                    <TextBlock Text="IP ou nome" Style="{StaticResource Label}"/>
+                                    <TextBlock Text="{text:Loc app.ps5}" Style="{StaticResource GroupTitle}"/>
+                                    <TextBlock Text="{text:Loc ui.host}" Style="{StaticResource Label}"/>
                                     <DockPanel>
-                                        <Button x:Name="FindBtn" DockPanel.Dock="Right" Content="Procurar na rede" Style="{StaticResource Btn}" Margin="10,0,0,0" ToolTip="Procura o PS5 na rede local (portas 2121 e 1337)" Click="OnFind"/>
-                                        <TextBox x:Name="HostBox" TextChanged="OnHostChanged" AutomationProperties.Name="IP ou nome do PS5"/>
+                                        <Button x:Name="FindBtn" DockPanel.Dock="Right" Content="{text:Loc ui.discover}" Style="{StaticResource Btn}" Margin="10,0,0,0" ToolTip="{text:Loc app.discoverHint}" Click="OnFind"/>
+                                        <TextBox x:Name="HostBox" TextChanged="OnHostChanged" AutomationProperties.Name="{text:Loc app.hostAria}"/>
                                     </DockPanel>
                                     <TextBlock x:Name="HostHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
                                     <Grid Margin="0,12,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="Porta" Style="{StaticResource Label}"/>
-                                            <TextBox x:Name="PortBox" TextChanged="OnPortChanged" AutomationProperties.Name="Porta"/>
+                                            <TextBlock Text="{text:Loc ui.port}" Style="{StaticResource Label}"/>
+                                            <TextBox x:Name="PortBox" TextChanged="OnPortChanged" AutomationProperties.Name="{text:Loc ui.port}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Usuário" Style="{StaticResource Label}"/>
-                                            <TextBox Text="{Binding User, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}" AutomationProperties.Name="Usuário"/>
+                                            <TextBlock Text="{text:Loc ui.user}" Style="{StaticResource Label}"/>
+                                            <TextBox Text="{Binding User, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}" AutomationProperties.Name="{text:Loc ui.user}"/>
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock x:Name="PortHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
-                                    <TextBlock Text="ftpsrv usa 2121 · etaHEN usa 1337" Style="{StaticResource Hint}"/>
-                                    <TextBlock Text="Senha do FTP" Style="{StaticResource Label}" Margin="0,12,0,5"/>
-                                    <PasswordBox x:Name="PwBox" PasswordChanged="OnPwChanged" AutomationProperties.Name="Senha do FTP"/>
+                                    <TextBlock Text="{text:Loc ui.ftpHint}" Style="{StaticResource Hint}"/>
+                                    <TextBlock Text="{text:Loc ui.ftpPassword}" Style="{StaticResource Label}" Margin="0,12,0,5"/>
+                                    <PasswordBox x:Name="PwBox" PasswordChanged="OnPwChanged" AutomationProperties.Name="{text:Loc ui.ftpPassword}"/>
                                     <DockPanel Margin="0,14,0,0">
-                                        <Button x:Name="TestBtn" Content="Testar conexão" Style="{StaticResource Btn}" Click="OnTest"/>
+                                        <Button x:Name="TestBtn" Content="{text:Loc ui.test}" Style="{StaticResource Btn}" Click="OnTest"/>
                                         <TextBlock x:Name="TestResult" VerticalAlignment="Center" Margin="14,0,0,0" FontSize="13" TextWrapping="Wrap"/>
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource Group}" BorderThickness="0">
                                 <StackPanel>
-                                    <TextBlock Text="Destino no PS5" Style="{StaticResource GroupTitle}"/>
-                                    <TextBlock Text="Pasta dos jogos" Style="{StaticResource Label}"
-                                               ToolTip="Cada jogo vai para uma pasta com o nome dele dentro deste caminho. M.2 = /mnt/ext1/homebrew · SSD interno = /data/homebrew"/>
+                                    <TextBlock Text="{text:Loc ui.destination}" Style="{StaticResource GroupTitle}"/>
+                                    <TextBlock Text="{text:Loc ui.gamesFolder}" Style="{StaticResource Label}"
+                                               ToolTip="{text:Loc app.gamesFolderHint}"/>
                                     <DockPanel>
-                                        <ComboBox x:Name="Preset" DockPanel.Dock="Left" Width="150" Margin="0,0,10,0" SelectionChanged="OnPreset" AutomationProperties.Name="Armazenamento">
-                                            <ComboBoxItem Content="M.2" Tag="/mnt/ext1/homebrew"/>
-                                            <ComboBoxItem Content="SSD interno" Tag="/data/homebrew"/>
+                                        <ComboBox x:Name="Preset" DockPanel.Dock="Left" Width="150" Margin="0,0,10,0" SelectionChanged="OnPreset" AutomationProperties.Name="{text:Loc app.storage}">
+                                            <ComboBoxItem Content="{text:Loc app.m2}" Tag="/mnt/ext1/homebrew"/>
+                                            <ComboBoxItem Content="{text:Loc ui.internalSsd}" Tag="/data/homebrew"/>
                                         </ComboBox>
-                                        <TextBox Text="{Binding RemoteDir, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}" AutomationProperties.Name="Pasta dos jogos no PS5"/>
+                                        <TextBox Text="{Binding RemoteDir, UpdateSourceTrigger=PropertyChanged, NotifyOnSourceUpdated=True}" AutomationProperties.Name="{text:Loc ui.gamesFolderAria}"/>
                                     </DockPanel>
-                                    <TextBlock Text="Imagens .exfat (ShadowMount+)" Style="{StaticResource Label}" Margin="0,12,0,5"
-                                               ToolTip="A imagem vai com o próprio nome para esta pasta. Tem que ser uma pasta que o ShadowMount+ varre (padrão: /data/homebrew, /mnt/ext1/homebrew, /mnt/usbN…)."/>
-                                    <TextBox x:Name="ImageBox" TextChanged="OnImageDirChanged" AutomationProperties.Name="Pasta das imagens .exfat"/>
+                                    <TextBlock Text="{text:Loc ui.exfat}" Style="{StaticResource Label}" Margin="0,12,0,5"
+                                               ToolTip="{text:Loc app.exfatHint}"/>
+                                    <TextBox x:Name="ImageBox" TextChanged="OnImageDirChanged" AutomationProperties.Name="{text:Loc app.exfatFolder}"/>
                                     <TextBlock x:Name="ImageHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource Group}" BorderThickness="0">
                                 <StackPanel>
-                                    <TextBlock Text="Webhook" Style="{StaticResource GroupTitle}"/>
-                                    <CheckBox x:Name="WebhookEnabledBox" Content="Ativar avisos por webhook" Checked="OnWebhookEnabledChanged" Unchecked="OnWebhookEnabledChanged"/>
+                                    <TextBlock Text="{text:Loc ui.webhook}" Style="{StaticResource GroupTitle}"/>
+                                    <CheckBox x:Name="WebhookEnabledBox" Content="{text:Loc ui.webhookEnabled}" Checked="OnWebhookEnabledChanged" Unchecked="OnWebhookEnabledChanged"/>
                                     <DockPanel Margin="0,10,0,0">
-                                        <ComboBox x:Name="WebhookKindBox" Width="145" DockPanel.Dock="Left" Margin="0,0,10,0" SelectionChanged="OnWebhookKindChanged" AutomationProperties.Name="Serviço do webhook">
-                                            <ComboBoxItem Content="JSON genérico" Tag="generic"/>
-                                            <ComboBoxItem Content="Discord" Tag="discord"/>
-                                            <ComboBoxItem Content="ntfy" Tag="ntfy"/>
+                                        <ComboBox x:Name="WebhookKindBox" Width="145" DockPanel.Dock="Left" Margin="0,0,10,0" SelectionChanged="OnWebhookKindChanged" AutomationProperties.Name="{text:Loc app.webhookService}">
+                                            <ComboBoxItem Content="{text:Loc ui.webhookGeneric}" Tag="generic"/>
+                                            <ComboBoxItem Content="{text:Loc app.discord}" Tag="discord"/>
+                                            <ComboBoxItem Content="{text:Loc app.ntfy}" Tag="ntfy"/>
                                         </ComboBox>
-                                        <PasswordBox x:Name="WebhookUrlBox" PasswordChanged="OnWebhookUrlChanged" AutomationProperties.Name="URL do webhook ou tópico ntfy" ToolTip="URL HTTP/HTTPS do webhook ou do tópico ntfy"/>
+                                        <PasswordBox x:Name="WebhookUrlBox" PasswordChanged="OnWebhookUrlChanged" AutomationProperties.Name="{text:Loc ui.webhookUrl}" ToolTip="{text:Loc app.webhookUrlHint}"/>
                                     </DockPanel>
                                     <TextBlock x:Name="WebhookHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
-                                    <TextBlock Style="{StaticResource Hint}" Text="Avisa em concluído, erro e pedido de senha. Sem reenvio automático. Em Automático, usa português. A URL pode conter um token; proteja o settings.json."/>
+                                    <TextBlock Style="{StaticResource Hint}" Text="{text:Loc app.webhookHint}"/>
                                     <DockPanel Margin="0,10,0,0">
-                                        <Button x:Name="WebhookTestBtn" DockPanel.Dock="Left" Content="Testar webhook" Style="{StaticResource Btn}" Click="OnWebhookTest" Margin="0,0,10,0"/>
+                                        <Button x:Name="WebhookTestBtn" DockPanel.Dock="Left" Content="{text:Loc ui.webhookTest}" Style="{StaticResource Btn}" Click="OnWebhookTest" Margin="0,0,10,0"/>
                                         <TextBlock x:Name="WebhookTestResult" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
                                     </DockPanel>
                                 </StackPanel>
@@ -363,39 +365,51 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <Border Style="{StaticResource Group}">
                                 <StackPanel>
-                                    <TextBlock Text="Pasta monitorada" Style="{StaticResource GroupTitle}"/>
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Content="Escolher…" Style="{StaticResource Btn}" Margin="10,0,0,0" Click="OnPickFolder"/>
-                                        <TextBox x:Name="FolderBox" TextChanged="OnFolderChanged" AutomationProperties.Name="Pasta monitorada"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="FolderHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
-                                    <TextBlock Style="{StaticResource Hint}" Text="Opcional. Jogos que chegarem aqui entram na fila sozinhos, quando todas as partes chegarem."/>
+                                    <TextBlock Text="{text:Loc ui.language}" Style="{StaticResource GroupTitle}"/>
+                                    <ComboBox x:Name="LanguageBox" SelectionChanged="OnLanguageChanged" AutomationProperties.Name="{text:Loc ui.language}">
+                                        <ComboBoxItem Content="{text:Loc ui.languageAuto}" Tag="auto"/>
+                                        <ComboBoxItem Content="{text:Loc app.languagePt}" Tag="pt-BR"/>
+                                        <ComboBoxItem Content="{text:Loc app.languageEn}" Tag="en"/>
+                                    </ComboBox>
+                                    <TextBlock Text="{text:Loc app.languageHint}" Style="{StaticResource Hint}"/>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="1" Style="{StaticResource Group}">
                                 <StackPanel>
-                                    <TextBlock Text="Envio" Style="{StaticResource GroupTitle}"/>
-                                    <TextBlock Text="Conexões paralelas" Style="{StaticResource Label}"
-                                               ToolTip="Arquivos pequenos vão em paralelo; os grandes seguem em uma conexão enquanto são extraídos."/>
+                                    <TextBlock Text="{text:Loc ui.watchFolder}" Style="{StaticResource GroupTitle}"/>
                                     <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Connections}" Width="28" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="15"/>
-                                        <Slider Minimum="1" Maximum="8" IsSnapToTickEnabled="True" TickFrequency="1" Value="{Binding Connections, NotifyOnSourceUpdated=True}" VerticalAlignment="Center" AutomationProperties.Name="Conexões paralelas"/>
+                                        <Button DockPanel.Dock="Right" Content="{text:Loc app.choose}" Style="{StaticResource Btn}" Margin="10,0,0,0" Click="OnPickFolder"/>
+                                        <TextBox x:Name="FolderBox" TextChanged="OnFolderChanged" AutomationProperties.Name="{text:Loc ui.watchFolder}"/>
                                     </DockPanel>
-                                    <CheckBox Margin="0,12,0,0" Content="Apagar as partes originais depois do envio conferido" IsChecked="{Binding DeleteOriginal, NotifyOnSourceUpdated=True}"/>
+                                    <TextBlock x:Name="FolderHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                                    <TextBlock Style="{StaticResource Hint}" Text="{text:Loc app.watchHint}"/>
                                 </StackPanel>
                             </Border>
-                            <DockPanel Grid.Row="2" Margin="0,16,0,0">
+                            <Border Grid.Row="2" Style="{StaticResource Group}">
+                                <StackPanel>
+                                    <TextBlock Text="{text:Loc ui.transfer}" Style="{StaticResource GroupTitle}"/>
+                                    <TextBlock Text="{text:Loc ui.connections}" Style="{StaticResource Label}"
+                                               ToolTip="{text:Loc app.connectionsHint}"/>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Connections}" Width="28" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="15"/>
+                                        <Slider Minimum="1" Maximum="8" IsSnapToTickEnabled="True" TickFrequency="1" Value="{Binding Connections, NotifyOnSourceUpdated=True}" VerticalAlignment="Center" AutomationProperties.Name="{text:Loc ui.connections}"/>
+                                    </DockPanel>
+                                    <CheckBox Margin="0,12,0,0" Content="{text:Loc ui.deleteOriginal}" IsChecked="{Binding DeleteOriginal, NotifyOnSourceUpdated=True}"/>
+                                </StackPanel>
+                            </Border>
+                            <DockPanel Grid.Row="3" Margin="0,16,0,0">
                                 <TextBlock DockPanel.Dock="Top" Style="{StaticResource GroupTitle}">
-                                    <Run Text="Senhas conhecidas"/><Run Text="   uma por linha, testadas antes de perguntar" FontWeight="Normal" FontSize="12" Foreground="{StaticResource Muted}"/>
+                                    <Run Text="{text:Loc ui.knownPasswords}"/><Run Text="{text:Loc app.passwordsHint}" FontWeight="Normal" FontSize="12" Foreground="{StaticResource Muted}"/>
                                 </TextBlock>
                                 <TextBox x:Name="PwList" AcceptsReturn="True" TextWrapping="NoWrap" VerticalContentAlignment="Top"
                                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextChanged="OnPwListChanged"
-                                         AutomationProperties.Name="Senhas conhecidas"
-                                         ToolTip="A senha que funcionar no diálogo entra aqui sozinha."/>
+                                         AutomationProperties.Name="{text:Loc ui.knownPasswords}"
+                                         ToolTip="{text:Loc app.passwordsTooltip}"/>
                             </DockPanel>
                         </Grid>
                     </Grid>
@@ -407,16 +421,16 @@
                 <Border DockPanel.Dock="Top" BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18" Margin="0,0,0,18">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <Button Content="Copiar" Style="{StaticResource Btn}" Click="OnCopyLog" Margin="0,0,8,0"/>
-                            <Button Content="Limpar" Style="{StaticResource Btn}" Click="OnClearLog"/>
+                            <Button Content="{text:Loc ui.copy}" Style="{StaticResource Btn}" Click="OnCopyLog" Margin="0,0,8,0"/>
+                            <Button Content="{text:Loc ui.clear}" Style="{StaticResource Btn}" Click="OnClearLog"/>
                         </StackPanel>
-                        <TextBlock Text="Log" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
+                        <TextBlock Text="{text:Loc ui.log}" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
                     </DockPanel>
                 </Border>
                 <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap"
                          Foreground="{StaticResource Text2}" Background="{StaticResource Side}" BorderBrush="{StaticResource Line}" Padding="14"
-                         AutomationProperties.Name="Log"/>
+                         AutomationProperties.Name="{text:Loc ui.log}"/>
             </DockPanel>
         </Grid>
     </Grid>

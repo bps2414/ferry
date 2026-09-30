@@ -93,3 +93,11 @@ Requiere Docker, Python con `pyftpdlib` y 7-Zip (para crear los archivos de prue
 - **Carpeta vigilada + pausar/reanudar** desde la página (el progreso se congela) y **reiniciar el contenedor** durante el envío de una imagen `.exfat` de 400 MB: vuelve solo, continúa con `APPE`, el login sigue valiendo, y el juego ya terminado vuelve como terminado sin reenviar nada.
 - **Subida que continúa**: 1er bloque enviado por la API, bloque repetido → 409, el parcial no entra en la cola, y la página continúa desde el byte 16 MB; el hash coincide en el servidor y en la PS5.
 - **Móvil** (390 px): sin scroll horizontal; **ningún error de JavaScript** en la página.
+
+## WPF Windows: idioma y bandeja
+
+```powershell
+dotnet run --project e2e/windows -c Release
+```
+
+Requiere Windows con sesión gráfica, .NET 10 y Python con `pyftpdlib`. El harness STA instancia `App`/`MainWindow` reales con `FERRY_DATA` temporal aislado; nunca usa ajustes personales. Comprueba variantes/fallback de Automático, persistencia compartida, claves/parámetros, números/tamaños/duración, campos inválidos y contraseñas FTP/webhook, cambio durante FTP con hash final y publicación atómica, y minimizar/restaurar normal/maximizado. Abre el diálogo real de contraseña (primera y contraseña incorrecta), cambia el selector por código con el modal abierto y verifica la misma ventana y contraseña escrita. No simula clicar detrás del modal. No verifica clics físicos/visibilidad de bandeja, globos Windows, selectores nativos de archivos/carpetas, PS5 ni receptores HTTP reales.

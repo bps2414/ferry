@@ -4,7 +4,7 @@
 
 Decidido el 2026-09-30. Orden: lógica → UI/marca → self-hosted (Docker) → inglés → webhook → PKG/fPKG → envío progresivo → payload.
 
-Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Fase 5 implementada y validada localmente (núcleo y web en pt-BR/en); publicación de prerelease depende de CI. Siguiente: Fase 6 (PKG/fPKG).**
+Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Fase 5 implementada y validada localmente (núcleo y web en pt-BR/en); publicación de prerelease depende de CI. Fase 5.1: idioma y bandeja Windows; siguiente: Fase 6 (PKG/fPKG).**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -88,7 +88,7 @@ Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1
 
 ## Fase 4 — Inglés
 
-- Interfaz web en portugués e inglés: Automatic, Português (Brasil) o English en los Ajustes. Automático usa el primer idioma compatible del navegador y recurre al inglés; la elección explícita persiste en `settings.json`, incluido el acceso. WPF sigue en portugués.
+- Interfaz web en portugués e inglés: Automatic, Português (Brasil) o English en los Ajustes. Automático usa el primer idioma compatible del navegador y recurre al inglés; la elección explícita persiste en `settings.json`, incluido el acceso. WPF seguía en portugués en la Fase 4; la Fase 5.1 añade localización nativa.
 - Los textos salen del código a archivos de recursos (`pt-BR`, `en`), incluidos el log visible, los avisos y los errores.
 - Va después de la Fase 3 para traducir una sola interfaz (la web).
 - **E2E**: ejecuta el flujo principal en los dos idiomas y comprueba que no quede texto sin traducir.
@@ -101,8 +101,17 @@ Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1
 - El texto del mensaje sigue el idioma elegido en la Fase 4.
 - Botón "Probar" que envía un mensaje de ejemplo.
 - **E2E**: un servidor HTTP falso recibe el webhook y comprueba evento, juego e idioma.
-- Implementado en web y Windows: activación opcional, servicio, URL oculta y prueba autenticada. Idioma automático persistido en servidor; en Windows usa portugués. HTTP en segundo plano, timeout de 10 s, cola limitada y un intento por evento; fallos no cambian el juego ni bloquean FTP/contraseña.
+- Implementado en web y Windows: activación opcional, servicio, URL oculta y prueba autenticada. Idioma automático persistido en servidor; en Windows sigue el idioma del sistema desde la Fase 5.1. HTTP en segundo plano, timeout de 10 s, cola limitada y un intento por evento; fallos no cambian el juego ni bloquean FTP/contraseña.
 - Contrato y límites en [WEBHOOK.md](WEBHOOK.md). Validación: `dotnet run --project e2e -- --webhook`; E2E web cubre tres servicios, eventos, idioma, webhook de contraseña sin respuesta, reinicio y navegador cerrado. Proveedores reales y Docker local no ejercitados.
+
+## Fase 5.1 — Windows: idioma y bandeja
+
+Implementada y validada localmente: 124 comprobaciones WPF pasaron en ambos idiomas, con transferencia FTP y diálogo de contraseña. Siguiente: Fase 6.
+
+- WPF en Português (Brasil) y English. Automático sigue el idioma original de Windows: portugués → pt-BR; los demás → en. `Settings.Language` se comparte con la web; Automático en la web sigue el navegador.
+- Bindings actualizan la misma ventana sin sustituir campos, cola, progreso ni diálogo de contraseña. Catálogos compartidos y propios con paridad de claves/parámetros. Números, tamaños y duración siguen el idioma; diagnósticos FTP/7-Zip/sistema, rutas y nombres permanecen originales.
+- Minimizar oculta en la bandeja y mantiene envíos, carpeta vigilada y webhooks. Doble clic u Open Ferry restaura normal/maximizado; pedir contraseña restaura antes del diálogo. X y Exit cierran. Docker/Linux siguen como servidor web.
+- Validación: `dotnet run --project e2e/windows -c Release`, con WPF real, FTP local falso, hash tras cambiar idioma durante transferencia y contraseña escrita conservada en modal. No cubre PS5/proveedores reales ni clics físicos de bandeja.
 
 ## Fase 6 — PKG y fPKG
 

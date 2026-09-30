@@ -17,31 +17,51 @@ public partial class MainWindow : Window
     readonly Webhooks _webhooks;
     readonly CancellationTokenSource _stop = new();
     readonly System.Windows.Forms.NotifyIcon _tray = new();
+    readonly List<(DateTime Time, Message Message)> _logs = [];
+    WindowState _restoredState = WindowState.Normal;
     bool _loading; // preenchendo os campos por código: não conta como edição do usuário
     (string Ip, int Port)? _found; // PS5 achado na varredura, aguardando "Usar este"
 
     public MainWindow()
     {
-        Language = System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag); // "62,4" como o resto dos números
+        _loading = true;
+        WpfText.Current.Apply(_settings.Language);
         InitializeComponent();
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(WpfText.Current.Locale);
         SettingsPanel.DataContext = _settings;
         PwBox.Password = _settings.Password;
         LoadFields();
         foreach (ComboBoxItem i in Preset.Items) if ((string)i.Tag == _settings.RemoteDir) Preset.SelectedItem = i;
+        _loading = true;
+        foreach (ComboBoxItem item in LanguageBox.Items) if ((string)item.Tag == _settings.Language) LanguageBox.SelectedItem = item;
+        _loading = false;
 
         // toast do Windows via balão da bandeja
         _tray.Icon = (Environment.ProcessPath is { } exe ? System.Drawing.Icon.ExtractAssociatedIcon(exe) : null) ?? System.Drawing.SystemIcons.Application;
         _tray.Visible = true;
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add(T("app.trayOpen"), null, (_, _) => Dispatcher.Invoke(RestoreWindow));
+        menu.Items.Add(T("app.trayExit"), null, (_, _) => Dispatcher.Invoke(() => Close()));
+        _tray.ContextMenuStrip = menu;
+        _tray.Text = "Ferry";
+        _tray.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreWindow);
+        _tray.BalloonTipClicked += (_, _) => Dispatcher.Invoke(RestoreWindow);
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized) Hide();
+            else _restoredState = WindowState;
+        };
+        WpfText.Current.PropertyChanged += OnPresentationChanged;
 
-        _webhooks = new Webhooks(_settings, message => Log(message.Render()), _stop.Token, automaticLocale: "pt-BR");
-        _engine = new Engine(_settings, Log, job => { _webhooks.OnPassword(job); return AskPassword(job); });
+        _webhooks = new Webhooks(_settings, Log, _stop.Token, automaticLocale: WpfText.Current.AutomaticLocale);
+        _engine = new Engine(_settings, Log, job => { _webhooks.OnPassword(job); return AskPassword(job); }) { MessageLog = Log };
         _engine.Done = job =>
         {
             _webhooks.OnDone(job);
             Dispatcher.BeginInvoke(() =>
             {
-                if (job.Stage == Stage.Verificado) Toast("Envio concluído", $"{(job.Title != "" ? job.Title : job.Name)} concluído");
-                else Toast("Erro no envio", $"Erro em {job.Name}: {Short(job.Detail)}");
+                if (job.Stage == Stage.Verificado) Toast(new("core.webhook.completedTitle"), new("core.webhook.completedText", job.Title != "" ? job.Title : job.Name));
+                else Toast(new("core.webhook.errorTitle"), new("core.webhook.errorText", job.Name, Short(job.DetailMessage is { } detail ? WpfText.Current.Render(detail) : job.Detail)));
             });
         };
         BindingOperations.EnableCollectionSynchronization(_engine.Jobs, _engine.Lock);
@@ -56,14 +76,57 @@ public partial class MainWindow : Window
         UpdateStatusCard();
 
         Task.Run(() => _engine.RunAsync(_stop.Token));
-        Loaded += async (_, _) => { if (!await TestConnection(silent: true)) await Discover(silent: true); };
-        Closing += (_, _) => { _stop.Cancel(); _ = _webhooks.DisposeAsync(); try { _settings.Save(); } catch { } _tray.Visible = false; _tray.Dispose(); };
+        RoutedEventHandler? initialLoad = null;
+        initialLoad = async (_, _) => { Loaded -= initialLoad; if (!await TestConnection(silent: true)) await Discover(silent: true); };
+        Loaded += initialLoad;
+        Closing += (_, _) =>
+        {
+            timer.Stop();
+            WpfText.Current.PropertyChanged -= OnPresentationChanged;
+            _stop.Cancel(); _ = _webhooks.DisposeAsync();
+            try { _settings.Save(); } catch { }
+            _tray.Visible = false; _tray.Dispose(); menu.Dispose();
+        };
+    }
+
+    static string T(string key, params object?[] args) => WpfText.Current.T(key, args);
+    static void SetText(TextBlock block, string key, params object?[] args) => SetText(block, new Message(key, args));
+    static void SetText(TextBlock block, Message message) => WpfText.Bind(block, TextBlock.TextProperty, message);
+
+    void RestoreWindow()
+    {
+        WindowState = _restoredState;
+        Show();
+        Activate();
+        foreach (Window owned in OwnedWindows) if (owned.IsVisible) owned.Activate();
+    }
+
+    void OnLanguageChanged(object s, SelectionChangedEventArgs e)
+    {
+        if (_loading || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string mode }) return;
+        lock (_settings)
+        {
+            _settings.Language = mode;
+            _settings.WebhookAutoLocale = WpfText.Current.AutomaticLocale;
+        }
+        WpfText.Current.Apply(mode);
+        Persist();
+    }
+
+    void OnPresentationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WpfText.Locale)) return;
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(WpfText.Current.Locale);
+        _tray.ContextMenuStrip!.Items[0].Text = T("app.trayOpen");
+        _tray.ContextMenuStrip.Items[1].Text = T("app.trayExit");
+        RefreshSummary();
+        RenderLog();
     }
 
     // só avisa com a janela sem foco; chamar na thread da UI
-    void Toast(string title, string text)
+    void Toast(Message title, Message text)
     {
-        if (!IsActive) _tray.ShowBalloonTip(5000, title, text, System.Windows.Forms.ToolTipIcon.Info);
+        if (!IsActive) _tray.ShowBalloonTip(5000, WpfText.Current.Render(title), WpfText.Current.Render(text), System.Windows.Forms.ToolTipIcon.Info);
     }
 
     static string Short(string s)
@@ -75,7 +138,7 @@ public partial class MainWindow : Window
     void Persist()
     {
         try { _settings.Save(); }
-        catch (Exception ex) { Log("Falha ao salvar as configurações: " + ex.Message); }
+        catch (Exception ex) { Log(new Message("app.saveFailed", Localization.ExceptionMessage(ex))); }
     }
 
     void RefreshSummary()
@@ -88,21 +151,21 @@ public partial class MainWindow : Window
         var done = Count(Stage.Verificado);
         var errors = Count(Stage.Erro);
         var parts = new List<string>();
-        if (sending > 0) parts.Add($"{sending} enviando");
-        if (queued > 0) parts.Add($"{queued} na fila");
-        if (done > 0) parts.Add($"{done} concluído(s)");
-        if (errors > 0) parts.Add($"{errors} com erro");
-        SummaryText.Text = parts.Count == 0 ? "Nenhum jogo na fila" : string.Join(" · ", parts);
+        if (sending > 0) parts.Add(T("ui.sending", sending));
+        if (queued > 0) parts.Add(T("ui.queued", queued));
+        if (done > 0) parts.Add(T(done == 1 ? "ui.doneOne" : "ui.doneMany", done));
+        if (errors > 0) parts.Add(T(errors == 1 ? "ui.errorsOne" : "ui.errorsMany", errors));
+        SummaryText.Text = parts.Count == 0 ? T("ui.emptyQueue") : string.Join(" · ", parts);
 
         var rate = jobs.Where(j => j.IsActive).Sum(j => j.Rate);
         SpeedPill.Visibility = rate > 0 ? Visibility.Visible : Visibility.Collapsed;
-        var sz = Job.Size((long)rate).Split(' ');
+        var sz = WpfText.Current.Size((long)rate).Split(' ');
         (SpeedText.Text, SpeedUnit.Text) = (sz[0], " " + sz[1] + "/s");
         ClearBtn.Visibility = done > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyHint.Visibility = jobs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         var pending = jobs.Count - done;
         QueueBadge.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
-        QueueBadgeText.Text = pending.ToString();
+        QueueBadgeText.Text = pending.ToString(WpfText.Current.Culture);
     }
 
     void OnNav(object s, RoutedEventArgs e)
@@ -138,7 +201,7 @@ public partial class MainWindow : Window
 
     void Validate(TextBox box, TextBlock hint, string? error)
     {
-        hint.Text = error ?? "";
+        SetText(hint, error ?? "core.raw", error == null ? [""] : []);
         hint.Visibility = error == null ? Visibility.Collapsed : Visibility.Visible;
         if (error == null) box.ClearValue(Control.BorderBrushProperty);
         else box.BorderBrush = (Brush)FindResource("Red");
@@ -148,7 +211,7 @@ public partial class MainWindow : Window
     {
         if (_loading) return;
         var t = HostBox.Text;
-        var error = t.Length == 0 || t.Any(char.IsWhiteSpace) ? "Informe o IP ou o nome do PS5, sem espaços." : null;
+        var error = t.Length == 0 || t.Any(char.IsWhiteSpace) ? "app.hostInvalid" : null;
         Validate(HostBox, HostHint, error);
         if (error != null || t == _settings.Host) return;
         _settings.Host = t; Persist(); UpdateStatusCard();
@@ -158,7 +221,7 @@ public partial class MainWindow : Window
     {
         if (_loading) return;
         var ok = int.TryParse(PortBox.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535;
-        Validate(PortBox, PortHint, ok ? null : "A porta é um número de 1 a 65535.");
+        Validate(PortBox, PortHint, ok ? null : "app.portInvalid");
         if (!ok || port == _settings.Port) return;
         _settings.Port = port; Persist(); UpdateStatusCard();
     }
@@ -168,7 +231,7 @@ public partial class MainWindow : Window
         if (_loading) return;
         var t = FolderBox.Text;
         var ok = t.Length == 0 || Directory.Exists(t);
-        Validate(FolderBox, FolderHint, ok ? null : "Essa pasta não existe.");
+        Validate(FolderBox, FolderHint, ok ? null : "app.folderInvalid");
         if (!ok || t == _settings.InputFolder) return;
         _settings.InputFolder = t; Persist();
     }
@@ -178,7 +241,7 @@ public partial class MainWindow : Window
         if (_loading) return;
         var t = ImageBox.Text;
         var ok = t.StartsWith('/') && !t.Any(char.IsControl);
-        Validate(ImageBox, ImageHint, ok ? null : "Caminho no PS5, começando com / (ex.: /mnt/ext1/homebrew).");
+        Validate(ImageBox, ImageHint, ok ? null : "app.imageDirInvalid");
         if (!ok || t == _settings.ImageDir) return;
         _settings.ImageDir = t; Persist();
     }
@@ -198,16 +261,16 @@ public partial class MainWindow : Window
             webhookEnabled = WebhookEnabledBox.IsChecked == true,
             webhookKind = (string)item.Tag,
             webhookUrl = WebhookUrlBox.Password.Trim(),
-            webhookAutoLocale = "pt-BR"
+            webhookAutoLocale = WpfText.Current.AutomaticLocale
         }));
-        WebhookHint.Text = errors.Values.FirstOrDefault()?.Render() ?? "";
+        SetText(WebhookHint, errors.Values.FirstOrDefault() ?? new Message("core.raw", ""));
         WebhookHint.Visibility = errors.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        WebhookTestResult.Text = "";
+        SetText(WebhookTestResult, "core.raw", "");
         if (errors.Count > 0) return false;
         try { _settings.Save(); return true; }
         catch
         {
-            WebhookHint.Text = "Não foi possível salvar a configuração do webhook.";
+            SetText(WebhookHint, "app.webhookSaveFailed");
             WebhookHint.Visibility = Visibility.Visible;
             return false;
         }
@@ -219,11 +282,11 @@ public partial class MainWindow : Window
     {
         if (!SaveWebhook()) return;
         WebhookTestBtn.IsEnabled = false;
-        WebhookTestResult.Text = "Testando webhook…";
+        SetText(WebhookTestResult, "ui.webhookTesting");
         try
         {
             var result = await _webhooks.TestAsync(_stop.Token);
-            WebhookTestResult.Text = result.Message.Render();
+            SetText(WebhookTestResult, result.Message);
             WebhookTestResult.Foreground = (Brush)FindResource(result.Ok ? "Green" : "Red");
         }
         finally { WebhookTestBtn.IsEnabled = true; }
@@ -243,21 +306,21 @@ public partial class MainWindow : Window
     {
         UpdateStatusCard();
         SideTestBtn.IsEnabled = TestBtn.IsEnabled = false;
-        StatusTitle.Text = "Testando…"; StatusDot.Fill = (Brush)FindResource("Amber");
-        if (!silent) TestResult.Text = "Testando…";
+        SetText(StatusTitle, "ui.testing"); StatusDot.Fill = (Brush)FindResource("Amber");
+        if (!silent) SetText(TestResult, "ui.testing");
         try
         {
-            var msg = await Ftp.TestAsync(_settings);
-            StatusTitle.Text = "PS5 online"; StatusDot.Fill = (Brush)FindResource("Green");
-            TestResult.Text = msg; TestResult.Foreground = (Brush)FindResource("Green");
-            Log("Teste de conexão: " + msg);
+            var msg = await Ftp.TestMessageAsync(_settings);
+            SetText(StatusTitle, "ui.online"); StatusDot.Fill = (Brush)FindResource("Green");
+            SetText(TestResult, msg); TestResult.Foreground = (Brush)FindResource("Green");
+            Log(new Message("app.connectionTestLog", msg));
             return true;
         }
         catch (Exception ex)
         {
-            StatusTitle.Text = "PS5 offline"; StatusDot.Fill = (Brush)FindResource("Red");
-            TestResult.Text = "Falhou: " + ex.Message; TestResult.Foreground = (Brush)FindResource("Red");
-            Log("Teste de conexão falhou: " + ex.Message);
+            SetText(StatusTitle, "ui.offline"); StatusDot.Fill = (Brush)FindResource("Red");
+            SetText(TestResult, "app.connectionFailed", Localization.ExceptionMessage(ex)); TestResult.Foreground = (Brush)FindResource("Red");
+            Log(new Message("app.connectionFailedLog", Localization.ExceptionMessage(ex)));
             return false;
         }
         finally { SideTestBtn.IsEnabled = TestBtn.IsEnabled = true; }
@@ -267,21 +330,21 @@ public partial class MainWindow : Window
     async Task Discover(bool silent)
     {
         FindBtn.IsEnabled = false;
-        if (!silent) { TestResult.Text = "Procurando o PS5 na rede…"; TestResult.Foreground = (Brush)FindResource("Muted"); }
+        if (!silent) { SetText(TestResult, "ui.searching"); TestResult.Foreground = (Brush)FindResource("Muted"); }
         var r = await Task.Run(Discovery.FindPs5);
         FindBtn.IsEnabled = true;
         if (r is { } f && !(f.Ip == _settings.Host && f.Port == _settings.Port))
         {
             _found = f;
-            FoundText.Text = $"Achei um PS5 em {f.Ip}:{f.Port}.";
+            SetText(FoundText, "ui.found", $"{f.Ip}:{f.Port}");
             FoundBar.Visibility = Visibility.Visible;
-            Log($"PS5 encontrado na rede: {f.Ip}:{f.Port}");
-            if (!silent) TestResult.Text = $"Encontrado {f.Ip}:{f.Port}. Clique em \"Usar este\" na barra lateral.";
+            Log(new Message("app.foundLog", $"{f.Ip}:{f.Port}"));
+            if (!silent) SetText(TestResult, "app.foundHint", $"{f.Ip}:{f.Port}");
         }
         else
         {
-            Log(r is null ? "Nenhum PS5 encontrado na rede" : "PS5 encontrado, mas é o IP já configurado");
-            if (!silent) TestResult.Text = r is null ? "Nenhum PS5 encontrado na rede." : "Um servidor FTP responde no IP e na porta já configurados.";
+            Log(new Message(r is null ? "app.notFound" : "app.foundConfiguredLog"));
+            if (!silent) SetText(TestResult, r is null ? "app.notFound" : "app.foundConfigured");
         }
     }
 
@@ -298,41 +361,60 @@ public partial class MainWindow : Window
 
     void OnDismissFound(object s, RoutedEventArgs e) => FoundBar.Visibility = Visibility.Collapsed;
 
-    void Log(string msg)
+    void Log(string msg) => Log(new Message("core.raw", msg));
+
+    void Log(Message message)
     {
-        FileLog.Write(msg);
+        var time = DateTime.Now;
+        FileLog.Write(WpfText.Current.Render(message));
         Dispatcher.BeginInvoke(() =>
         {
-            LogBox.AppendText($"{DateTime.Now:HH:mm:ss}  {msg}\n");
+            _logs.Add((time, message));
+            LogBox.AppendText($"{time.ToString("HH:mm:ss", WpfText.Current.Culture)}  {WpfText.Current.Render(message)}\n");
             LogBox.ScrollToEnd();
         });
     }
 
+    void RenderLog()
+    {
+        var start = LogBox.SelectionStart;
+        var length = LogBox.SelectionLength;
+        var offset = LogBox.VerticalOffset;
+        LogBox.Text = string.Concat(_logs.Select(entry => $"{entry.Time.ToString("HH:mm:ss", WpfText.Current.Culture)}  {WpfText.Current.Render(entry.Message)}\n"));
+        LogBox.Select(Math.Min(start, LogBox.Text.Length), Math.Min(length, Math.Max(0, LogBox.Text.Length - start)));
+        LogBox.ScrollToVerticalOffset(offset);
+    }
+
     Task<string?> AskPassword(Job job) => Dispatcher.InvokeAsync(() =>
     {
-        Toast("Senha necessária", $"\"{job.Name}\" precisa de senha.");
+        Toast(new("core.webhook.passwordTitle"), new("core.webhook.passwordText", job.Name));
+        RestoreWindow();
         var wrong = job.ArchivePassword != null;
         var box = new PasswordBox { Margin = new Thickness(0, 12, 0, 18) };
-        var ok = new Button { Content = "Extrair", IsDefault = true, MinWidth = 110, Style = (Style)FindResource("Primary") };
-        var cancel = new Button { Content = "Cancelar", IsCancel = true, MinWidth = 110, Margin = new Thickness(8, 0, 0, 0), Style = (Style)FindResource("Btn") };
+        var ok = new Button { IsDefault = true, MinWidth = 110, Style = (Style)FindResource("Primary") };
+        var cancel = new Button { IsCancel = true, MinWidth = 110, Margin = new Thickness(8, 0, 0, 0), Style = (Style)FindResource("Btn") };
+        WpfText.Bind(ok, ContentControl.ContentProperty, new("ui.extract"));
+        WpfText.Bind(cancel, ContentControl.ContentProperty, new("ui.cancel"));
+        var heading = new TextBlock { FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource(wrong ? "Red" : "Text") };
+        var hint = new TextBlock { Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+        SetText(heading, wrong ? "ui.wrongPassword" : "ui.protected");
+        SetText(hint, wrong ? "ui.wrongPasswordHint" : "ui.passwordHint", job.Name);
         var w = new Window
         {
-            Title = "Senha do arquivo", Owner = this, Width = 440, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
+            Owner = this, Width = 440, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = (Brush)FindResource("Bg"),
             Content = new StackPanel
             {
                 Margin = new Thickness(22),
                 Children =
                 {
-                    new TextBlock { Text = wrong ? "Senha incorreta" : "Arquivo protegido por senha", FontSize = 16, FontWeight = FontWeights.SemiBold,
-                                    Foreground = (Brush)FindResource(wrong ? "Red" : "Text") },
-                    new TextBlock { Text = wrong ? $"A senha não abriu \"{job.Name}\". Tente de novo." : $"Digite a senha de \"{job.Name}\".",
-                                    Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) },
+                    heading, hint,
                     box,
                     new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Children = { ok, cancel } },
                 },
             },
         };
+        WpfText.Bind(w, Window.TitleProperty, new("ui.archivePassword"));
         ok.Click += (_, _) => w.DialogResult = true;
         w.Loaded += (_, _) => box.Focus();
         return w.ShowDialog() == true ? box.Password : null;
@@ -381,21 +463,21 @@ public partial class MainWindow : Window
         DropOverlay.Visibility = Visibility.Collapsed;
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
         _engine.AddFiles(files);
-        Log($"{files.Length} arquivo(s) adicionado(s) por arrastar e soltar");
+        Log(new Message("app.filesDropped", files.Length));
     }
 
     void OnPickFiles(object s, RoutedEventArgs e)
     {
         var d = new OpenFileDialog
         {
-            Title = "Escolher jogos (selecione todas as partes)",
+            Title = T("app.pickFiles"),
             Multiselect = true,
-            Filter = "Jogos compactados ou imagem|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat|Todos os arquivos|*.*",
+            Filter = T("app.fileFilter"),
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         };
         if (d.ShowDialog(this) != true) return;
         _engine.AddFiles(d.FileNames);
-        Log($"{d.FileNames.Length} arquivo(s) selecionado(s)");
+        Log(new Message("app.filesSelected", d.FileNames.Length));
     }
 
     void OnPwChanged(object s, RoutedEventArgs e)
@@ -413,12 +495,12 @@ public partial class MainWindow : Window
 
     void OnPickFolder(object s, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Pasta monitorada" };
+        var d = new OpenFolderDialog { Title = T("ui.watchFolder") };
         if (d.ShowDialog() == true) FolderBox.Text = d.FolderName;
     }
 
     async void OnTest(object s, RoutedEventArgs e) => await TestConnection(silent: false);
 
     void OnCopyLog(object s, RoutedEventArgs e) { try { Clipboard.SetText(LogBox.Text); } catch { } }
-    void OnClearLog(object s, RoutedEventArgs e) => LogBox.Clear();
+    void OnClearLog(object s, RoutedEventArgs e) { _logs.Clear(); LogBox.Clear(); }
 }

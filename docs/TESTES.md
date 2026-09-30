@@ -108,3 +108,11 @@ Requer Docker, Python com `pyftpdlib` e 7-Zip (para montar os arquivos de teste)
 - **Pasta monitorada + pausar/retomar** pela página (progresso congela) e **reiniciar o container** no meio do envio de uma imagem `.exfat` de 400 MB: volta sozinho, continua com `APPE`, o login continua valendo, e o jogo já concluído volta como "Concluído" sem reenviar nada.
 - **Upload que continua**: 1º bloco enviado pela API, bloco repetido → 409, o parcial não entra na fila, e a página continua do byte 16 MB; hash confere no servidor e no PS5.
 - **Celular** (390 px): sem rolagem lateral; **nenhum erro de JavaScript** na página.
+
+## WPF Windows: idioma e bandeja
+
+```powershell
+dotnet run --project e2e/windows -c Release
+```
+
+Requer Windows com sessão gráfica, .NET 10 e Python com `pyftpdlib`. O harness STA instancia o `App`/`MainWindow` real usando `FERRY_DATA` temporário exclusivo, nunca a configuração pessoal. Confere variantes/fallback de Automático, persistência compartilhada, paridade de chaves/parâmetros, números/tamanhos/duração, campos inválidos e senhas FTP/webhook, troca durante envio FTP com hash final e publicação atômica, e minimizar/restaurar normal/maximizado. Abre o diálogo real de senha (primeira tentativa e senha incorreta), muda o seletor por código com o modal aberto e verifica a mesma janela e senha digitada. Não simula clicar atrás do modal. Não verifica cliques físicos/visibilidade da bandeja, balões Windows, seletores nativos de arquivos/pastas, PS5 ou receptores HTTP reais.
