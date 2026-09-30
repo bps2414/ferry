@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace PS5Sender;
+namespace Ferry;
 
 public class ArchiveGroup
 {
@@ -142,7 +142,7 @@ public static class Archives
     /// <summary>Extrai itens pequenos para a memória (mesmo "7z x -so" do envio). null = não deu.</summary>
     public static async Task<byte[][]?> ReadSmallAsync(string main, string? pw, List<Entry> items)
     {
-        var list = Path.Combine(Path.GetTempPath(), $"ps5sender-{Guid.NewGuid():N}.txt");
+        var list = Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
         try
         {
             File.WriteAllLines(list, items.Select(e => e.Path.Replace('/', '\\')));

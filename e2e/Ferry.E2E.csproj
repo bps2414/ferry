@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\app\PS5Sender.csproj" />
+    <ProjectReference Include="..\app\Ferry.csproj" />
     <PackageReference Include="System.IO.Hashing" Version="10.*" />
   </ItemGroup>
 

@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using PS5Sender;
+using Ferry;
 
 var root = AppContext.BaseDirectory;
 while (!Directory.Exists(Path.Combine(root, "e2e")) || !Directory.Exists(Path.Combine(root, "app"))) root = Path.GetDirectoryName(root)!;
@@ -19,14 +19,14 @@ var rar = Path.Combine(tools, "Rar.exe");
 //      dotnet run --project e2e -- G2 G7   -> modo rápido: só esses casos, sem fases extras
 var only = args.ToHashSet(StringComparer.OrdinalIgnoreCase);
 var full = only.Count == 0;
-var work = Path.Combine(Path.GetTempPath(), "ps5sender-e2e");
+var work = Path.Combine(Path.GetTempPath(), "ferry-e2e");
 if (Directory.Exists(work)) Directory.Delete(work, true);
 string Dir(string name) => Directory.CreateDirectory(Path.Combine(work, name)).FullName;
 var input = Dir("input"); var dropped = Dir("dropped"); var ftpRoot = Dir("ftproot");
 // Jogos falsos e arquivos compactados são determinísticos: ficam em cache entre rodadas.
 // Mude GenVersion quando mexer no gerador.
 const string GenVersion = "v3";
-var cache = Path.Combine(Path.GetTempPath(), "ps5sender-e2e-cache-" + GenVersion);
+var cache = Path.Combine(Path.GetTempPath(), "ferry-e2e-cache-" + GenVersion);
 var cached = File.Exists(Path.Combine(cache, "ok"));
 if (!cached && Directory.Exists(cache)) Directory.Delete(cache, true);
 var src = Directory.CreateDirectory(Path.Combine(cache, "src")).FullName;
@@ -456,6 +456,45 @@ var ex3Line = ex3Ok
     : $"❌ FALHA: avisou={exWarned} (IMG1 {exC1?.Stage} \"{exC1?.Detail}\", IMG2 {exC2?.Stage} \"{exC2?.Detail}\"), envios antes do Retry={exSent3}, reenviou={exRetried}, STOR IMG1 {exStor31} / IMG2 {exStor32} bytes, sobras {ExLeft()}";
 ftp3.Kill(true);
 
+// ---------- Transferir agora: passa na frente do que está enviando; o preemptado volta para a fila e continua com APPE ----------
+var agRoot = Dir("ftproot-agora");
+var (ftp4, port4, ftp4Log) = StartFtp(agRoot, appe: true);
+var inAg = Dir("input-agora"); var dropAg = Dir("dropped-agora");
+var agA = Path.Combine(inAg, "ImgA.exfat"); // 80 MB (~2 s a 40 MB/s): dá tempo de B ficar pronto e de pegar A no meio
+var agABytes = new byte[80_000_000]; new Random(3001).NextBytes(agABytes); File.WriteAllBytes(agA, agABytes);
+foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(dropAg, Path.GetFileName(f)));
+var sAg = new Settings { Host = "127.0.0.1", Port = port4, User = "ps5", Password = "ps5pass", RemoteDir = RemoteDir, ImageDir = "/data/homebrew", Connections = 4, DeleteOriginal = false, InputFolder = inAg };
+var agDone = new List<string>();
+var eAg = new Engine(sAg, m => Console.WriteLine("[agora] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-agora.json"), Done = j => { lock (agDone) agDone.Add($"{j.Name}:{j.Stage}"); } };
+eAg.AddFiles(Directory.GetFiles(dropAg)); // B = IMG2 (12 MB); A (ImgA) vem da pasta monitorada e entra primeiro na fila
+using var stopAg = new CancellationTokenSource();
+var runAg = Task.Run(() => eAg.RunAsync(stopAg.Token));
+var agImg = Path.Combine(agRoot, "data", "homebrew");
+var agPartA = Path.Combine(agImg, "ImgA.exfat" + Engine.PartSuffix);
+long agCut = 0; var agStageA = Stage.Erro;
+for (var agEnd = DateTime.UtcNow.AddMinutes(2); DateTime.UtcNow < agEnd; await Task.Delay(20))
+{
+    var a = ExJob(eAg, "ImgA"); var b = ExJob(eAg, "IMG2");
+    if (a is { Stage: Stage.Enviando } && b is { CanSendNow: true } && File.Exists(agPartA) && new FileInfo(agPartA).Length is > 0 and var pl && pl < agABytes.Length / 2)
+    {
+        agCut = pl; eAg.SendNow(b); agStageA = a.Stage; break;
+    }
+}
+for (var agEnd = DateTime.UtcNow.AddMinutes(2); DateTime.UtcNow < agEnd; await Task.Delay(100)) lock (agDone) if (agDone.Count == 2) break;
+stopAg.Cancel(); await runAg;
+ftp4.Kill(true);
+var agAppeA = Bytes(Lines(ftp4Log, "APPE", "ImgA.exfat" + Engine.PartSuffix)); var agStorA = Bytes(Lines(ftp4Log, "STOR", "ImgA.exfat" + Engine.PartSuffix));
+var agStorB = Lines(ftp4Log, "STOR", "IMG2.exfat" + Engine.PartSuffix); var agAppeB = Lines(ftp4Log, "APPE", "IMG2.exfat" + Engine.PartSuffix).Count;
+string agOrder; lock (agDone) agOrder = string.Join(" → ", agDone);
+var agSame = File.Exists(Path.Combine(agImg, "ImgA.exfat")) && Sha(Path.Combine(agImg, "ImgA.exfat")) == Sha(agA) && File.Exists(Path.Combine(agImg, "IMG2.exfat")) && Sha(Path.Combine(agImg, "IMG2.exfat")) == Sha(img2);
+var agOk = agCut > 0 && agStageA == Stage.NaFila && agOrder == "IMG2:Verificado → ImgA:Verificado" && agSame
+    && agAppeA > 0 && agAppeA <= agABytes.Length - agCut && agStorA + agAppeA == agABytes.Length // A: nada reenviado, só o que faltava
+    && agStorB.Count == 1 && Bytes(agStorB) == img2Len && agAppeB == 0 // B: enviado uma vez, inteiro
+    && Directory.GetFiles(agRoot, "*" + Engine.PartSuffix, SearchOption.AllDirectories).Length == 0;
+var agLine = agOk
+    ? $"✅ com ImgA (80 MB) em {agCut * 100 / agABytes.Length}% enviando, \"Transferir agora\" no IMG2: ImgA voltou para a fila (não pausou), IMG2 ficou Verificado primeiro, depois ImgA continuou só com o que faltava (STOR {agStorA} + APPE {agAppeA} bytes = {agABytes.Length}); IMG2 enviado uma vez; hashes conferem"
+    : $"❌ FALHA: cortou={agCut} bytes, ImgA logo depois {agStageA}, ordem [{agOrder}], STOR ImgA {agStorA} + APPE {agAppeA} (total {agABytes.Length}), STOR IMG2 {agStorB.Count}x/{Bytes(agStorB)} bytes (esperado {img2Len}), APPE IMG2 {agAppeB}x, hashes={agSame}";
+
 // ---------- fechar e reabrir o app no meio do envio (G6: senha aprendida no diálogo e lembrada ao reabrir) ----------
 var inRe = Dir("reabrir");
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "G6.7z"))) File.Copy(f, Path.Combine(inRe, Path.GetFileName(f)));
@@ -512,16 +551,30 @@ extraRows.Add($"| Senha aprendida e lembrada (G6) | {(pwOkRe ? "✅ diálogo 2x 
 extraRows.Add($"| Salvar atômico | {(atomicOk ? "✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos" : "❌ FALHA")} |");
 extraRows.Add($"| Pausar/retomar no meio do stream (G5) | {(pauseResult.StartsWith("❌") ? pauseResult : "✅ " + pauseResult + "; hash confere")} |");
 extraRows.Add($"| Remover da fila (G6) | {removeResult} |");
+// Migração de dados PS5Sender → Ferry: copia, não apaga a pasta antiga, não sobrescreve na 2ª chamada
+var migOld = Dir("migracao-antiga"); var migNew = Path.Combine(work, "migracao-nova");
+var migFiles = new Dictionary<string, string> { ["settings.json"] = "{\"Host\":\"1.2.3.4\"}", ["queue.json"] = "{\"Dropped\":[]}", ["log.txt"] = "linha do log antigo\n" };
+foreach (var (n, c) in migFiles) File.WriteAllText(Path.Combine(migOld, n), c);
+Settings.Migrate(migOld, migNew);
+var migCopied = migFiles.All(f => File.Exists(Path.Combine(migNew, f.Key)) && File.ReadAllText(Path.Combine(migNew, f.Key)) == f.Value);
+var migKept = migFiles.All(f => File.ReadAllText(Path.Combine(migOld, f.Key)) == f.Value);
+File.WriteAllText(Path.Combine(migNew, "settings.json"), "{\"Host\":\"alterado\"}");
+Settings.Migrate(migOld, migNew);
+var migNoOverwrite = File.ReadAllText(Path.Combine(migNew, "settings.json")) == "{\"Host\":\"alterado\"}";
+var migOk = migCopied && migKept && migNoOverwrite;
+allOk &= migOk;
+extraRows.Add($"| Migração de dados PS5Sender → Ferry | {(migOk ? "✅ settings.json, queue.json e log.txt copiados com o mesmo conteúdo; pasta antiga intacta; 2ª chamada não sobrescreveu o settings.json alterado" : $"❌ FALHA: copiou={migCopied}, antiga intacta={migKept}, sem sobrescrever={migNoOverwrite}")} |");
 var exfatOk = ex1Ok && ex2Ok && ex3Ok;
-allOk &= exfatOk;
+allOk &= exfatOk && agOk;
 extraRows.Add($"| Imagem .exfat solta e dentro de .part1.rar (ShadowMount+) | {ex1Line} |");
 extraRows.Add($"| Imagem .exfat: reabrir com parcial nosso (APPE) e parcial de outra versão (STOR inteiro) | {ex2Line} |");
 extraRows.Add($"| Imagem .exfat já no PS5: aviso + Tentar de novo | {ex3Line} |");
+extraRows.Add($"| Transferir agora | {agLine} |");
 }
 ftp.Kill(true);
 
 var sb = new StringBuilder();
-sb.AppendLine("# Relatório E2E — PS5 Sender");
+sb.AppendLine("# Relatório E2E — Ferry");
 sb.AppendLine();
 sb.AppendLine($"- Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 sb.AppendLine($"- Resultado geral: **{(allOk ? "PASSOU" : "FALHOU")}**  ({sw.Elapsed.TotalSeconds:0}s)");
@@ -541,7 +594,7 @@ extraRows.ForEach(r => sb.AppendLine(r));
 if (!full) sb.AppendLine($"| Fases extras | — modo rápido ({string.Join(", ", only)}) |");
 sb.AppendLine($"| Disco | extração em streaming (7z -so → FTP): nenhum arquivo extraído é gravado localmente |");
 sb.AppendLine();
-sb.AppendLine("Repetir: `dotnet run --project e2e` (na pasta PS5Sender). Requer Python com `pyftpdlib`.");
+sb.AppendLine("Repetir: `dotnet run --project e2e` (na pasta do repo). Requer Python com `pyftpdlib`.");
 File.WriteAllText(Path.Combine(root, "e2e_report.md"), sb.ToString());
 File.WriteAllLines(Path.Combine(root, "e2e", "last-run.log"), logLines);
 lock (ftpLog) File.WriteAllLines(Path.Combine(root, "e2e", "last-ftp.log"), ftpLog);

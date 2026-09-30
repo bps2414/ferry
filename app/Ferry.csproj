@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>PS5Sender</AssemblyName>
+    <AssemblyName>Ferry</AssemblyName>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
@@ -16,6 +16,7 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <!-- ThemeMode (Fluent) ainda é marcado como experimental -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <ApplicationIcon>Ferry.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +25,9 @@
     <PackageReference Include="FluentFTP" Version="53.*" />
     <EmbeddedResource Include="tools\7z.exe" LogicalName="7z.exe" />
     <EmbeddedResource Include="tools\7z.dll" LogicalName="7z.dll" />
+    <!-- Geist (OFL, ver fonts/OFL.txt) e o ícone da janela, dentro do exe -->
+    <Resource Include="fonts\*.ttf" />
+    <Resource Include="Ferry.ico" />
   </ItemGroup>
 
 </Project>

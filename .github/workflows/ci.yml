@@ -44,8 +44,8 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: PS5Sender
-          path: dist/PS5Sender.exe
+          name: Ferry
+          path: dist/Ferry.exe
 
       # Tag v*: anexa o exe à release (cria se não existir; tag com "-" vira pré-release)
       - name: Release
@@ -56,9 +56,9 @@ jobs:
         run: |
           gh release view $env:TAG *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:TAG dist/PS5Sender.exe --clobber
+            gh release upload $env:TAG dist/Ferry.exe --clobber
           } elseif ($env:TAG -like '*-*') {
-            gh release create $env:TAG dist/PS5Sender.exe --title "PS5 Sender $env:TAG" --generate-notes --prerelease
+            gh release create $env:TAG dist/Ferry.exe --title "Ferry $env:TAG" --generate-notes --prerelease
           } else {
-            gh release create $env:TAG dist/PS5Sender.exe --title "PS5 Sender $env:TAG" --generate-notes
+            gh release create $env:TAG dist/Ferry.exe --title "Ferry $env:TAG" --generate-notes
           }

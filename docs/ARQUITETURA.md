@@ -9,7 +9,7 @@ WPF (.NET 10), publicado como `.exe` único. Quatro arquivos de lógica, uma jan
 | `app/Ftp.cs` | FTP: estado remoto (`SIZE`), envio em streaming com conexões paralelas, verificação |
 | `app/Job.cs` | Um item da fila (estado, progresso, velocidade, ETA) |
 | `app/MainWindow.xaml(.cs)` | Interface |
-| `app/Settings.cs` | Configurações em `%LOCALAPPDATA%\PS5Sender\settings.json` |
+| `app/Settings.cs` | Configurações em `%LOCALAPPDATA%\Ferry\settings.json` |
 
 ## Fluxo de um jogo
 
@@ -72,4 +72,6 @@ Regex por nome de arquivo (`Archives.Group`):
 
 - Progresso vem de muitas threads a cada poucos KB; `Job.Report` limita a 4 atualizações/s (senão o dispatcher do WPF afoga e a tela fica parada).
 - `BindingOperations.EnableCollectionSynchronization` deixa a fila ser alterada de threads de fundo.
-- Fila persistida em `%LOCALAPPDATA%\PS5Sender\queue.json` (arquivos adicionados e itens removidos).
+- Visual (Fase 2, "Ferry"): tokens e estilos em `App.xaml`; fonte Geist embutida (`app/fonts`, `pack://application:,,,/Ferry;component/fonts/#Geist`), números tabulares na janela toda. A barra de progresso é a "travessia" do logo (cais nas pontas, seta na ponta do progresso); `OnProgress` anima o valor até o novo em 350 ms, e a cor muda por estado com `ColorAnimation` nos `DataTrigger`. O ícone (`Ferry.ico`) usa a mesma geometria 16×16 de `LogoPosts`/`LogoArrow`.
+- **Transferir agora** (`Engine.SendNow`): move o jogo para o topo e o que estava enviando para logo atrás, este volta a `NaFila` e tem o `Cts` cancelado. O `RunAsync` pega o primeiro `NaFila` da lista; o interrompido depois só envia o que falta (mesma retomada da pausa).
+- Fila persistida em `%LOCALAPPDATA%\Ferry\queue.json` (arquivos adicionados e itens removidos).

@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 
-namespace PS5Sender;
+namespace Ferry;
 
 /// <summary>Varre a pasta de entrada + arquivos adicionados, agrupa partes e processa um jogo por vez.</summary>
 public class Engine(Settings settings, Action<string> log, Func<Job, Task<string?>> askPassword)
@@ -245,6 +245,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 var need = Enumerable.Range(0, entries.Count).Where(i => paths[i] != null && have[i] != entries[i].Size).ToList();
                 var already = paths.Count(t => t != null) - need.Count;
 
+                ct.ThrowIfCancellationRequested(); // cancelado (pausa/transferir agora) durante a conferência: não sobrescreve o Stage
                 job.Stage = Stage.Enviando; job.ResetRate();
                 job.Detail = remote;
                 log($"[{job.Name}] enviando {need.Count} arquivo(s) para {remote} ({settings.Connections} conexões)"
@@ -254,7 +255,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                     + (append ? " · parcial continua com APPE" : " · parcial é reenviado inteiro") + $" [{probe}]");
                 if (need.Count == 0) break;
 
-                listFile ??= Path.Combine(Path.GetTempPath(), $"ps5sender-{Guid.NewGuid():N}.txt");
+                listFile ??= Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
                 File.WriteAllLines(listFile, need.Select(i => entries[i].Path.Replace('/', '\\')));
                 using var p = loose ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
                 using var src = p?.StandardOutput.BaseStream ?? File.OpenRead(job.MainFile);
@@ -342,6 +343,22 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     public void Pause(Job job) { job.Stage = Stage.Pausado; job.Cts?.Cancel(); log($"[{job.Name}] pausado"); }
     public void Resume(Job job) { job.Stage = Stage.NaFila; log($"[{job.Name}] retomado"); }
+
+    // "Transferir agora": passa na frente da fila. O que estava enviando volta para a fila (NaFila, não Pausado):
+    // o Cts cancelado cai no catch vazio do ProcessAsync e ele retoma depois, só com o que falta.
+    public void SendNow(Job job)
+    {
+        if (!job.CanSendNow) return;
+        Job? active;
+        lock (Lock)
+        {
+            active = Jobs.FirstOrDefault(j => j.IsActive && j != job);
+            Jobs.Move(Jobs.IndexOf(job), 0);
+            if (active != null) { Jobs.Move(Jobs.IndexOf(active), 1); active.Stage = Stage.NaFila; active.Cts?.Cancel(); }
+            job.Stage = Stage.NaFila;
+        }
+        log($"[{job.Name}] transferir agora" + (active != null ? $", {active.Name} volta para a fila" : ""));
+    }
 
     public void Cancel(Job job)
     {

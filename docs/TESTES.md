@@ -15,11 +15,11 @@ Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª 
 
 ## O servidor de teste imita o ftpsrv
 
-`e2e/ftpserver.py` (pyftpdlib) aceita **só os comandos do ftpsrv** e responde `502 Command not recognized` ao resto — foi assim que apareceram os problemas de `NLST`, `SIZE` e UTF-8 que um servidor completo escondia. Comandos recusados ficam em `%TEMP%\ps5sender-e2e\ftproot.recusados.txt`. Upload limitado a 40 MB/s por conexão.
+`e2e/ftpserver.py` (pyftpdlib) aceita **só os comandos do ftpsrv** e responde `502 Command not recognized` ao resto — foi assim que apareceram os problemas de `NLST`, `SIZE` e UTF-8 que um servidor completo escondia. Comandos recusados ficam em `%TEMP%\ferry-e2e\ftproot.recusados.txt`. Upload limitado a 40 MB/s por conexão.
 
 ## Casos
 
-Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ps5sender-e2e-cache-v3`; cada um tem `param.sfo` real, `param.json` e `icon0.png` de verdade; mude `GenVersion` ao alterar o gerador).
+Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ferry-e2e-cache-v3`; cada um tem `param.sfo` real, `param.json` e `icon0.png` de verdade; mude `GenVersion` ao alterar o gerador).
 
 | Caso | Formato |
 |---|---|
@@ -47,6 +47,7 @@ Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`
   - envio novo: hash igual, sem capa, sem sobra de `.ferry-part`, e pela ordem do log do servidor o `RNTO` para o nome final vem depois do último `STOR`/`APPE`. Pausar e retomar no meio continua com `APPE`;
   - reabrir: o parcial registrado na fila continua com `APPE` (só a metade que faltava) e o parcial menor de outra versão vai inteiro com `STOR`;
   - já existente: avisa "Jogo já instalado…" sem enviar, e "Tentar de novo" reenvia por cima.
+- **Transferir agora**: com uma imagem de 80 MB (gerada na hora) enviando, `SendNow` no IMG2 (`.part1.rar`) → a imagem volta para `NaFila` (não pausa), IMG2 fica `Verificado` primeiro, e a imagem continua só com o que faltava (`STOR` + `APPE` = tamanho total).
 - **Log persistente**: `log.txt` tem comando e resposta de STOR/APPE/SIZE.
 - **Senha aprendida e lembrada** (G6, na fase fechar/reabrir):
   - diálogo com a 1ª senha errada;

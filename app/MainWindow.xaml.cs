@@ -9,7 +9,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-namespace PS5Sender;
+namespace Ferry;
 
 public partial class MainWindow : Window
 {
@@ -22,6 +22,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag); // "62,4" como o resto dos números
         InitializeComponent();
         SettingsPanel.DataContext = _settings;
         PwBox.Password = _settings.Password;
@@ -90,7 +91,8 @@ public partial class MainWindow : Window
 
         var rate = jobs.Where(j => j.IsActive).Sum(j => j.Rate);
         SpeedPill.Visibility = rate > 0 ? Visibility.Visible : Visibility.Collapsed;
-        SpeedText.Text = $"{Job.Size((long)rate)}/s";
+        var sz = Job.Size((long)rate).Split(' ');
+        (SpeedText.Text, SpeedUnit.Text) = (sz[0], " " + sz[1] + "/s");
         ClearBtn.Visibility = done > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyHint.Visibility = jobs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         var pending = jobs.Count - done;
@@ -187,6 +189,7 @@ public partial class MainWindow : Window
     {
         StatusHost.Text = $"{_settings.Host}:{_settings.Port}";
         StatusDest.Text = _settings.RemoteDir;
+        EmptyDest.Text = $"PS5 · {_settings.Host}";
     }
 
     async Task<bool> TestConnection(bool silent)
@@ -306,8 +309,8 @@ public partial class MainWindow : Window
         Toast("Senha necessária", $"\"{job.Name}\" precisa de senha.");
         var wrong = job.ArchivePassword != null;
         var box = new PasswordBox { Margin = new Thickness(0, 12, 0, 18) };
-        var ok = new Button { Content = "Extrair", IsDefault = true, MinWidth = 110, Style = (Style)FindResource("AccentButtonStyle") };
-        var cancel = new Button { Content = "Cancelar", IsCancel = true, MinWidth = 110, Margin = new Thickness(8, 0, 0, 0) };
+        var ok = new Button { Content = "Extrair", IsDefault = true, MinWidth = 110, Style = (Style)FindResource("Primary") };
+        var cancel = new Button { Content = "Cancelar", IsCancel = true, MinWidth = 110, Margin = new Thickness(8, 0, 0, 0), Style = (Style)FindResource("Btn") };
         var w = new Window
         {
             Title = "Senha do arquivo", Owner = this, Width = 440, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
@@ -337,6 +340,16 @@ public partial class MainWindow : Window
     void OnCancel(object s, RoutedEventArgs e) => _engine.Cancel(JobOf(s));
     void OnRetry(object s, RoutedEventArgs e) => _engine.Retry(JobOf(s));
     void OnRemove(object s, RoutedEventArgs e) => _engine.Remove(JobOf(s));
+    void OnSendNow(object s, RoutedEventArgs e) => _engine.SendNow(JobOf(s));
+
+    // barra desliza até o valor novo (o Job reporta 4x/s); voltar (tentar de novo) é imediato
+    void OnProgress(object s, DataTransferEventArgs e)
+    {
+        if (s is not ProgressBar { Tag: double v } bar) return;
+        var ms = v < bar.Value ? 0 : 350;
+        bar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(v, TimeSpan.FromMilliseconds(ms)) { EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut } });
+    }
     void OnClearFinished(object s, RoutedEventArgs e) => _engine.ClearFinished();
 
     void OnDragEnter(object s, DragEventArgs e)

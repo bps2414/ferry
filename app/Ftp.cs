@@ -2,7 +2,7 @@ using System.IO;
 using System.Threading.Channels;
 using FluentFTP;
 
-namespace PS5Sender;
+namespace Ferry;
 
 public static class Ftp
 {

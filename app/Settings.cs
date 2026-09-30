@@ -1,11 +1,14 @@
 using System.IO;
 using System.Text.Json;
 
-namespace PS5Sender;
+namespace Ferry;
 
 public class Settings
 {
-    public static readonly string AppDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PS5Sender");
+    static readonly string LocalData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    public static readonly string AppDir = Path.Combine(LocalData, "Ferry");
+    /// Pasta do nome antigo do app (PS5Sender); só é lida na migração.
+    public static readonly string OldAppDir = Path.Combine(LocalData, "PS5Sender");
     public static string FilePath { get; set; } = Path.Combine(AppDir, "settings.json"); // o E2E aponta para outro lugar
     static readonly object SaveLock = new();
 
@@ -34,6 +37,27 @@ public class Settings
         lock (SaveLock) AtomicWrite(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
 
+    /// Migração única: se a pasta nova ainda não tem settings.json nem queue.json e a antiga existe, COPIA os arquivos
+    /// (a antiga nunca é apagada). Chamar no início do app, antes de qualquer Load.
+    public static void Migrate(string oldDir, string newDir)
+    {
+        try
+        {
+            if (!Directory.Exists(oldDir) || File.Exists(Path.Combine(newDir, "settings.json")) || File.Exists(Path.Combine(newDir, "queue.json"))) return;
+            Directory.CreateDirectory(newDir);
+            var copied = new List<string>();
+            foreach (var name in new[] { "settings.json", "queue.json", "log.txt", "log.1.txt" })
+            {
+                var from = Path.Combine(oldDir, name);
+                if (!File.Exists(from)) continue;
+                File.Copy(from, Path.Combine(newDir, name));
+                copied.Add(name);
+            }
+            if (copied.Count > 0) FileLog.Write($"Dados migrados de {oldDir}: {string.Join(", ", copied)}");
+        }
+        catch { } // migrar nunca impede o app de abrir
+    }
+
     /// Grava em .tmp e troca: queda de energia no meio não deixa o arquivo pela metade.
     public static void AtomicWrite(string path, string text)
     {
@@ -45,7 +69,7 @@ public class Settings
     }
 }
 
-/// <summary>Log em %LOCALAPPDATA%\PS5Sender\log.txt; passando de ~5 MB vira log.1.txt (só uma geração).</summary>
+/// <summary>Log em %LOCALAPPDATA%\Ferry\log.txt; passando de ~5 MB vira log.1.txt (só uma geração).</summary>
 public static class FileLog
 {
     public static string FilePath { get; set; } = Path.Combine(Settings.AppDir, "log.txt");

@@ -45,7 +45,10 @@ Decidido em 2026-09-30. Ordem: lógica → UI/marca → payload.
 - **Card**: sem capa (o app não abre a imagem), mostra o nome grande.
 - **E2E**: `.exfat` solto e dentro de `.part1.rar`, pausar/retomar, reabrir com parcial nosso (APPE) e de outra versão (STOR), já existente + "Tentar de novo".
 
-## Fase 2 — Marca e interface: **Ferry**
+## Fase 2 — Marca e interface: **Ferry** (release `v1.2.0-beta.1`)
+
+- **Decidido nos mockups**: Fila "Régua" (linhas por fio, %, MB/s e restante em colunas fixas, barra = travessia), Configurações em duas colunas, logo "Travessia" (dois cais e a seta), fonte Geist, acento azul `#6F97FF`.
+- **Acrescentado em uso**: "Transferir agora" num jogo da fila/pausado; o envio atual volta para a fila e continua depois.
 
 - **Nome**: Ferry, com o subtítulo "envio de jogos para PS5".
   - Repo `ps5-sender` → `ferry` (o GitHub redireciona os links antigos) e exe `Ferry.exe`.
