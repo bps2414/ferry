@@ -2,110 +2,114 @@
 
 # Ferry
 
-envio de jogos para PS5
+**English** · [Português (BR)](README.pt-BR.md) · [Español](README.es.md)
 
-![Fila do Ferry](docs/screenshots/fila.png)
+send games to your PS5
+
+![Ferry queue](docs/screenshots/fila.png)
 
 [![CI](https://github.com/bps2414/ferry/actions/workflows/ci.yml/badge.svg)](https://github.com/bps2414/ferry/actions/workflows/ci.yml)
 
-App que pega jogos compactados (`.zip`, `.rar`, `.7z`, inclusive divididos em partes), **extrai e envia ao mesmo tempo** para um PS5 com jailbreak via FTP — sem gravar os arquivos extraídos no seu disco.
+Ferry takes compressed games (`.zip`, `.rar`, `.7z`, including multi-part archives) and **extracts and uploads them at the same time** to a jailbroken PS5 over FTP — the extracted files are never written to your disk.
 
-- **Windows**: um `.exe` portátil (sem instalar nada)
-- **Self-hosted** (Docker ou Linux): roda no servidor de casa e você usa pelo navegador, em `http://<ip-do-servidor>:8021`
-- Interface escura em português, com fila, progresso, velocidade e tempo restante
-- Pausa, retoma, fecha e reabre sem perder o que já foi enviado
+- **Windows**: a portable `.exe` (nothing to install)
+- **Self-hosted** (Docker or Linux): runs on your home server and you use it from the browser at `http://<server-ip>:8021`
+- Dark interface with queue, progress, speed and time remaining
+- Pause, resume, close and reopen without losing what was already sent
 
-> Feito para uso com homebrew/backups próprios em console desbloqueado. Use por sua conta e risco.
+> The interface is in Portuguese for now; English is the next item on the [roadmap](docs/ROADMAP.md). Button names below are given as they appear in the app, with the English meaning.
+
+> Made for your own homebrew/backups on an unlocked console. Use at your own risk.
 
 ## Download
 
-Baixe o `Ferry.exe` na página de [Releases](../../releases) e execute. Requer Windows 10/11 x64.
+Get `Ferry.exe` from the [Releases](../../releases) page and run it. Requires Windows 10/11 x64.
 
-## Self-hosted (servidor de casa)
+## Self-hosted (home server)
 
-A mesma lógica do app Windows, com interface web: fila ao vivo, configurações, log, senha do arquivo pedida no navegador e envio de arquivos arrastando para a página (em blocos, continua de onde parou se a conexão cair).
+The same engine as the Windows app, with a web interface: live queue, settings, log, archive password asked in the browser, and uploads by dragging files onto the page (in chunks — it resumes where it stopped if the connection drops).
 
-**Docker** (amd64 e arm64): copie o [`docker-compose.yml`](docker-compose.yml), troque `/caminho/dos/jogos` pela sua pasta e rode:
+**Docker** (amd64 and arm64): copy [`docker-compose.yml`](docker-compose.yml), replace `/caminho/dos/jogos` with your games folder and run:
 
 ```bash
 docker compose up -d
 ```
 
-Abra `http://<ip-do-servidor>:8021`. Na primeira abertura a página pede para criar o usuário e a senha. Imagem: `ghcr.io/bps2414/ferry`.
+Open `http://<server-ip>:8021`. On first open the page asks you to create a user and password. Image: `ghcr.io/bps2414/ferry`.
 
-- `network_mode: host` é o recomendado: a busca do PS5 varre a rede de casa e o FTP com o PS5 funciona sem NAT.
-- Volumes: `/data` (configurações, fila, log, login) e `/games` (pasta monitorada: o que cair nela entra na fila sozinho; os envios pelo navegador também vão para lá).
-- Variáveis: `FERRY_PORT` (padrão `8021`), `FERRY_DATA` (`/data`), `FERRY_GAMES` (`/games`).
-- Esqueceu a senha: apague `auth.json` na pasta de dados e abra a página de novo.
+- `network_mode: host` is recommended: PS5 discovery scans your home network and FTP to the PS5 works without NAT.
+- Volumes: `/data` (settings, queue, log, login) and `/games` (watched folder: anything dropped there is queued automatically; browser uploads go there too).
+- Variables: `FERRY_PORT` (default `8021`), `FERRY_DATA` (`/data`), `FERRY_GAMES` (`/games`).
+- Forgot the password: delete `auth.json` in the data folder and open the page again.
 
-**Linux sem Docker** (x64 ou arm64, ex.: Raspberry Pi): baixe `Ferry-linux-x64.tar.gz` (ou `-arm64`) nas [Releases](../../releases), extraia e rode `./ferry`. O 7-Zip vai junto no pacote. Os dados ficam em `~/.local/share/Ferry` (ou em `FERRY_DATA`).
+**Linux without Docker** (x64 or arm64, e.g. Raspberry Pi): download `Ferry-linux-x64.tar.gz` (or `-arm64`) from [Releases](../../releases), extract it and run `./ferry`. 7-Zip is included in the package. Data goes to `~/.local/share/Ferry` (or `FERRY_DATA`).
 
-> Sem https, o navegador não deixa a página mostrar avisos do sistema; os avisos (concluído, erro, senha) aparecem dentro da página. Para acesso de fora de casa, use um proxy reverso com https ou VPN — não exponha a porta direto na internet.
+> Without https the browser won't let the page show system notifications; notices (finished, error, password) appear inside the page. For access from outside your home, use a reverse proxy with https or a VPN — don't expose the port directly to the internet.
 
-## Como usar
+## How to use
 
-1. Rode o payload de FTP no PS5 (**ftpsrv**, porta 2121, ou o FTP do **etaHEN**, porta 1337).
-2. Abra o app → **Configurações**: IP do PS5, porta, destino (**M.2** `/mnt/ext1/homebrew` ou **SSD interno** `/data/homebrew`). Tudo salva sozinho. O pé da barra lateral mostra se o PS5 está online.
-3. Na **Fila**, clique no centro da tela (abre o seletor do Windows) ou arraste os arquivos para a janela. Selecione **todas as partes** de uma vez.
-4. Pronto: quando todas as partes estiverem presentes, o jogo é extraído e enviado para `<destino>/<pasta do jogo>`.
+1. Run an FTP payload on the PS5 (**ftpsrv**, port 2121, or **etaHEN**'s FTP, port 1337).
+2. Open the app → **Configurações** (Settings): PS5 IP, port, destination (**M.2** `/mnt/ext1/homebrew` or **internal SSD** `/data/homebrew`). Everything saves automatically. The bottom of the sidebar shows whether the PS5 is online.
+3. In **Fila** (Queue), click the middle of the screen (opens the file picker) or drag the files onto the window. Select **all parts** at once.
+4. Done: once every part is present, the game is extracted and sent to `<destination>/<game folder>`.
 
-Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho (útil para a pasta de downloads).
+Optional: a **watched folder** — anything that lands in it is queued automatically (handy for your downloads folder).
 
-**Transferir agora**: num jogo na fila ou pausado, passa ele na frente. O envio em andamento volta para a fila e depois continua de onde parou.
+**Transferir agora** (Transfer now): on a queued or paused game, moves it to the front. The current upload goes back to the queue and later continues where it stopped.
 
-## Formatos aceitos
+## Supported formats
 
-| Formato | Exemplo |
+| Format | Example |
 |---|---|
-| Arquivo único | `Jogo.zip`, `Jogo.rar`, `Jogo.7z` |
-| Divisão bruta | `Jogo.zip.001`, `.002`… / `Jogo.7z.001`… |
-| Zip dividido | `Jogo.z01`, `Jogo.z02`… + `Jogo.zip` |
-| RAR novo | `Jogo.part1.rar` … `Jogo.partN.rar` |
-| RAR antigo | `Jogo.rar` + `Jogo.r00`, `Jogo.r01`… |
-| Com senha | abre um diálogo pedindo a senha (avisa se estiver errada) |
-| Imagem do ShadowMount+ | `Jogo.exfat` solto ou dentro de qualquer formato acima. Vai inteira para a pasta de imagens (Configurações) |
+| Single archive | `Game.zip`, `Game.rar`, `Game.7z` |
+| Raw split | `Game.zip.001`, `.002`… / `Game.7z.001`… |
+| Split zip | `Game.z01`, `Game.z02`… + `Game.zip` |
+| New RAR | `Game.part1.rar` … `Game.partN.rar` |
+| Old RAR | `Game.rar` + `Game.r00`, `Game.r01`… |
+| Password-protected | a dialog asks for the password (and tells you if it's wrong) |
+| ShadowMount+ image | `Game.exfat` on its own or inside any format above. Sent whole to the images folder (Settings) |
 
-O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** antes de começar (dá para deixar o download terminando).
+The app waits for **all parts** to arrive and for their size to **stop changing** before starting (you can leave a download finishing).
 
-## O que ele faz sozinho
+## What it does on its own
 
-- **Pastas “casca”**: desce pelas pastas até achar a que tem `EBOOT.BIN` ou `sce_sys/param.sfo` e envia só ela.
-- **Pasta `dec`**: se o arquivo tiver a pasta do jogo (`PPSA…-app0`) **e** uma pasta `dec` ao lado, o conteúdo do `dec` sobrescreve o do jogo (igual a copiar o jogo e depois o `dec` por cima). Os arquivos substituídos nem são enviados.
-- **Retomada**: antes de enviar, pergunta ao PS5 o que já está lá. Arquivo completo é pulado (nem é extraído); arquivo pela metade continua de onde parou se o servidor aceitar `APPE`, senão é reenviado inteiro.
-- **Fechar e reabrir**: a fila é salva; ao reabrir, volta sozinha e continua de onde parou. Jogo já enviado volta como "Concluído" (não é mandado de novo); adicionar os arquivos de novo reenvia.
-- **Dados**: no Windows, configurações, fila e log ficam em `%LOCALAPPDATA%\Ferry` (migrados automaticamente da pasta antiga `PS5Sender`, que não é apagada); no self-hosted, em `/data`.
-- **Verificação**: no fim confere o tamanho de cada arquivo no PS5. Só depois disso (e se você ativar a opção) apaga as partes originais.
+- **"Shell" folders**: walks down the folders until it finds the one with `EBOOT.BIN` or `sce_sys/param.sfo` and sends only that one.
+- **`dec` folder**: if the archive has the game folder (`PPSA…-app0`) **and** a `dec` folder next to it, the contents of `dec` overwrite the game's (like copying the game and then `dec` on top). Replaced files are not even sent.
+- **Resume**: before sending, it asks the PS5 what is already there. Complete files are skipped (not even extracted); a half-sent file continues where it stopped if the server supports `APPE`, otherwise it is sent again in full.
+- **Close and reopen**: the queue is saved; on reopen it comes back and continues where it stopped. A game already sent comes back as finished (not sent again); adding its files again re-sends it.
+- **Data**: on Windows, settings, queue and log live in `%LOCALAPPDATA%\Ferry` (migrated automatically from the old `PS5Sender` folder, which is not deleted); self-hosted, in `/data`.
+- **Verification**: at the end it checks the size of every file on the PS5. Only after that (and if you enable the option) it deletes the original parts.
 
-## Documentação
+## Documentation (in Portuguese)
 
-- [Arquitetura e fluxo](docs/ARQUITETURA.md) — como a extração em streaming funciona
-- [Compatibilidade FTP com o PS5](docs/FTP-PS5.md) — o que o ftpsrv suporta e por que isso importa
-- [Testes E2E](docs/TESTES.md) — como rodar e o que é verificado
-- [Último relatório E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md)
+- [Architecture and flow](docs/ARQUITETURA.md) — how streaming extraction works
+- [FTP compatibility with the PS5](docs/FTP-PS5.md) — what ftpsrv supports and why it matters
+- [E2E tests](docs/TESTES.md) — how to run them and what is checked
+- [Latest E2E report](e2e_report.md) · [Web E2E (Docker)](e2e_report_web.md)
 
-## Compilar
+## Building
 
-Requer [.NET 10 SDK](https://dotnet.microsoft.com/download).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-dotnet publish app -c Release -o dist                  # Windows: dist/Ferry.exe (~63 MB, 7-Zip embutido)
-docker build -t ferry .                                # imagem Docker
-dotnet publish web -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true   # binário Linux (precisa do 7zz ao lado ou no PATH)
+dotnet publish app -c Release -o dist                  # Windows: dist/Ferry.exe (~63 MB, 7-Zip embedded)
+docker build -t ferry .                                # Docker image
+dotnet publish web -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true   # Linux binary (needs 7zz next to it or on PATH)
 ```
 
-O CI (GitHub Actions) roda o E2E no Windows e no Linux, constrói a imagem Docker e roda o E2E web contra ela (Chromium), e guarda o `.exe` e os binários Linux como artefatos. A imagem vai para o GHCR em todo push na `main` (`:main`) e nas tags. Para lançar uma versão, crie uma tag `v*` — ex.: `git tag v1.3.0-beta.1 && git push --tags` (com `-` vira pré-release) — e o CI publica a imagem (`:1.3.0-beta.1` e `:latest`) e anexa o `.exe` e os `.tar.gz` Linux à release.
+CI (GitHub Actions) runs the E2E tests on Windows and Linux, builds the Docker image and runs the web E2E against it (Chromium), and keeps the `.exe` and Linux binaries as artifacts. The image is pushed to GHCR on every push to `main` (`:main`) and on tags. To release, create a `v*` tag — e.g. `git tag v1.3.0-beta.1 && git push --tags` (a `-` makes it a pre-release) — and CI publishes the image (`:1.3.0-beta.1` and `:latest`) and attaches the `.exe` and Linux `.tar.gz` files to the release.
 
-## Limitações conhecidas
+## Known limitations
 
-- **Notificação no PS5**: não implementada. Nem o ftpsrv nem o etaHEN expõem notificação pela rede; exigiria um payload ELF próprio (SDK do PS5) enviado ao elfldr.
-- Pausar/retomar ou reabrir faz o 7-Zip reler o arquivo desde o início (não reenvia o que já está no PS5, mas gasta CPU/disco).
-- Arquivos grandes vão por uma conexão só (o 7-Zip entrega um arquivo por vez); as conexões paralelas aceleram os arquivos pequenos.
+- **Notification on the PS5**: not implemented. Neither ftpsrv nor etaHEN exposes notifications over the network; it would need a custom ELF payload (PS5 SDK) sent to elfldr.
+- Pausing/resuming or reopening makes 7-Zip read the archive from the start again (it doesn't re-send what is already on the PS5, but it costs CPU/disk).
+- Large files go over a single connection (7-Zip outputs one file at a time); parallel connections speed up small files.
 
-## Créditos
+## Credits
 
-- [7-Zip](https://www.7-zip.org/) (LGPL + restrição unRAR) — extração
-- [FluentFTP](https://github.com/robinrodricks/FluentFTP) (MIT) — cliente FTP
-- [Geist](https://github.com/vercel/geist-font) (OFL, `app/fonts/OFL.txt`) — fonte da interface, embutida no exe e no servidor web
-- [ps5-payload-ftpsrv](https://github.com/john-tornblom/ps5-payload-ftpsrv) e [etaHEN](https://github.com/etaHEN/etaHEN) — servidores FTP no PS5
+- [7-Zip](https://www.7-zip.org/) (LGPL + unRAR restriction) — extraction
+- [FluentFTP](https://github.com/robinrodricks/FluentFTP) (MIT) — FTP client
+- [Geist](https://github.com/vercel/geist-font) (OFL, `app/fonts/OFL.txt`) — interface font, embedded in the exe and the web server
+- [ps5-payload-ftpsrv](https://github.com/john-tornblom/ps5-payload-ftpsrv) and [etaHEN](https://github.com/etaHEN/etaHEN) — FTP servers on the PS5
 
-Licença: [MIT](LICENSE).
+License: [MIT](LICENSE).

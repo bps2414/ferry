@@ -90,6 +90,7 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 ainda sem tag de release). **Próxi
 - Textos saem do código para arquivos de recurso (`pt-BR`, `en`), incluindo log visível, avisos e erros.
 - Vem depois da Fase 3 para traduzir uma interface só (a web).
 - **E2E**: roda o fluxo principal nos dois idiomas e confere que não sobra texto sem tradução.
+- Já feito: README em inglês (padrão), português e espanhol. Quando a interface estiver em inglês, tirar a nota "interface em português" e os nomes de botão em português do README em inglês.
 
 ## Fase 5 — Webhook configurável
 
