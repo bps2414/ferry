@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -13,6 +14,7 @@ public partial class MainWindow : Window
 {
     readonly Settings _settings = Settings.Load();
     readonly Engine _engine;
+    readonly Webhooks _webhooks;
     readonly CancellationTokenSource _stop = new();
     readonly System.Windows.Forms.NotifyIcon _tray = new();
     bool _loading; // preenchendo os campos por código: não conta como edição do usuário
@@ -31,12 +33,17 @@ public partial class MainWindow : Window
         _tray.Icon = (Environment.ProcessPath is { } exe ? System.Drawing.Icon.ExtractAssociatedIcon(exe) : null) ?? System.Drawing.SystemIcons.Application;
         _tray.Visible = true;
 
-        _engine = new Engine(_settings, Log, AskPassword);
-        _engine.Done = job => Dispatcher.BeginInvoke(() =>
+        _webhooks = new Webhooks(_settings, message => Log(message.Render()), _stop.Token, automaticLocale: "pt-BR");
+        _engine = new Engine(_settings, Log, job => { _webhooks.OnPassword(job); return AskPassword(job); });
+        _engine.Done = job =>
         {
-            if (job.Stage == Stage.Verificado) Toast("Envio concluído", $"{(job.Title != "" ? job.Title : job.Name)} concluído");
-            else Toast("Erro no envio", $"Erro em {job.Name}: {Short(job.Detail)}");
-        });
+            _webhooks.OnDone(job);
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (job.Stage == Stage.Verificado) Toast("Envio concluído", $"{(job.Title != "" ? job.Title : job.Name)} concluído");
+                else Toast("Erro no envio", $"Erro em {job.Name}: {Short(job.Detail)}");
+            });
+        };
         BindingOperations.EnableCollectionSynchronization(_engine.Jobs, _engine.Lock);
         JobList.ItemsSource = _engine.Jobs;
         _engine.Restore();
@@ -50,7 +57,7 @@ public partial class MainWindow : Window
 
         Task.Run(() => _engine.RunAsync(_stop.Token));
         Loaded += async (_, _) => { if (!await TestConnection(silent: true)) await Discover(silent: true); };
-        Closing += (_, _) => { _stop.Cancel(); try { _settings.Save(); } catch { } _tray.Visible = false; _tray.Dispose(); };
+        Closing += (_, _) => { _stop.Cancel(); _ = _webhooks.DisposeAsync(); try { _settings.Save(); } catch { } _tray.Visible = false; _tray.Dispose(); };
     }
 
     // só avisa com a janela sem foco; chamar na thread da UI
@@ -122,6 +129,9 @@ public partial class MainWindow : Window
         PortBox.Text = _settings.Port.ToString();
         FolderBox.Text = _settings.InputFolder;
         ImageBox.Text = _settings.ImageDir;
+        WebhookUrlBox.Password = _settings.WebhookUrl;
+        WebhookEnabledBox.IsChecked = _settings.WebhookEnabled;
+        foreach (ComboBoxItem item in WebhookKindBox.Items) if ((string)item.Tag == _settings.WebhookKind) WebhookKindBox.SelectedItem = item;
         _loading = false;
         Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null); Validate(ImageBox, ImageHint, null);
     }
@@ -178,6 +188,45 @@ public partial class MainWindow : Window
         if (_loading) return;
         _settings.KnownPasswords = [.. PwList.Text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0)];
         Persist();
+    }
+
+    bool SaveWebhook()
+    {
+        if (_loading || WebhookKindBox?.SelectedItem is not ComboBoxItem item || WebhookUrlBox == null) return false;
+        var errors = Webhooks.UpdateSettings(_settings, JsonSerializer.SerializeToElement(new
+        {
+            webhookEnabled = WebhookEnabledBox.IsChecked == true,
+            webhookKind = (string)item.Tag,
+            webhookUrl = WebhookUrlBox.Password.Trim(),
+            webhookAutoLocale = "pt-BR"
+        }));
+        WebhookHint.Text = errors.Values.FirstOrDefault()?.Render() ?? "";
+        WebhookHint.Visibility = errors.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        WebhookTestResult.Text = "";
+        if (errors.Count > 0) return false;
+        try { _settings.Save(); return true; }
+        catch
+        {
+            WebhookHint.Text = "Não foi possível salvar a configuração do webhook.";
+            WebhookHint.Visibility = Visibility.Visible;
+            return false;
+        }
+    }
+    void OnWebhookUrlChanged(object s, RoutedEventArgs e) => SaveWebhook();
+    void OnWebhookEnabledChanged(object s, RoutedEventArgs e) => SaveWebhook();
+    void OnWebhookKindChanged(object s, SelectionChangedEventArgs e) => SaveWebhook();
+    async void OnWebhookTest(object s, RoutedEventArgs e)
+    {
+        if (!SaveWebhook()) return;
+        WebhookTestBtn.IsEnabled = false;
+        WebhookTestResult.Text = "Testando webhook…";
+        try
+        {
+            var result = await _webhooks.TestAsync(_stop.Token);
+            WebhookTestResult.Text = result.Message.Render();
+            WebhookTestResult.Foreground = (Brush)FindResource(result.Ok ? "Green" : "Red");
+        }
+        finally { WebhookTestBtn.IsEnabled = true; }
     }
 
     // campos com binding (usuário, destino, conexões, apagar originais)

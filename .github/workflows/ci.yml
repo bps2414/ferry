@@ -43,6 +43,9 @@ jobs:
       - name: Contratos de localização
         run: dotnet run --project e2e -- --localization
 
+      - name: Contratos de webhook
+        run: dotnet run --project e2e -- --webhook
+
       - name: E2E
         run: dotnet run --project e2e
 
@@ -81,6 +84,9 @@ jobs:
 
       - name: Contratos de localização
         run: dotnet run --project e2e -- --localization
+
+      - name: Contratos de webhook
+        run: dotnet run --project e2e -- --webhook
 
       # rar do rarlinux 6.24 (só para gerar os arquivos de teste)
       - uses: actions/cache@v6

@@ -15,6 +15,11 @@ if (args.Length == 1 && args[0] == "--localization")
     LocalizationChecks.Run();
     return 0;
 }
+if (args.Length == 1 && args[0] == "--webhook")
+{
+    await WebhookChecks.RunAsync();
+    return 0;
+}
 
 var root = AppContext.BaseDirectory;
 while (!Directory.Exists(Path.Combine(root, "e2e")) || !Directory.Exists(Path.Combine(root, "app"))) root = Path.GetDirectoryName(root)!;

@@ -14,6 +14,11 @@ public class Settings
     static readonly object SaveLock = new();
 
     public string Language { get; set; } = "auto";
+    public bool WebhookEnabled { get; set; }
+    public string WebhookKind { get; set; } = "generic";
+    public string WebhookUrl { get; set; } = "";
+    /// Idioma do navegador que configurou os avisos; não depende de uma página aberta.
+    public string WebhookAutoLocale { get; set; } = "en";
     public string Host { get; set; } = "192.168.0.10";
     public int Port { get; set; } = 2121;
     public string User { get; set; } = "anonymous";

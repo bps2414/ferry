@@ -18,6 +18,7 @@ Ferry toma juegos comprimidos (`.zip`, `.rar`, `.7z`, incluso divididos en parte
 - **Self-hosted** (Docker o Linux): corre en tu servidor de casa y lo usas desde el navegador en `http://<ip-del-servidor>:8021`
 - Interfaz oscura con cola, progreso, velocidad y tiempo restante
 - Pausa, reanuda, cierra y vuelve a abrir sin perder lo que ya se envió
+- Webhook para Discord, ntfy o JSON genérico: finalización, errores y solicitudes de contraseña; configurable en web y Windows. [Configuración](docs/es/WEBHOOK.md).
 
 > Hecho para tus propios homebrew/backups en una consola desbloqueada. Úsalo bajo tu propio riesgo.
 

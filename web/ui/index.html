@@ -119,6 +119,19 @@
           <p class="hint error" data-err="remoteDir"></p>
           <label class="field"><span><span data-i18n="ui.exfat">Imagens .exfat (ShadowMount+)</span></span><input data-set="imageDir" spellcheck="false"></label>
           <p class="hint error" data-err="imageDir"></p>
+          <hr>
+          <h3 data-i18n="ui.webhook">Webhook</h3>
+          <label class="check"><input data-set="webhookEnabled" type="checkbox"><span data-i18n="ui.webhookEnabled">Ativar avisos por webhook</span></label>
+          <p class="hint error" data-err="webhookEnabled"></p>
+          <label class="field"><span data-i18n="ui.webhookService">Serviço</span>
+            <select data-set="webhookKind"><option value="generic" data-i18n="ui.webhookGeneric">JSON genérico</option><option value="discord">Discord</option><option value="ntfy">ntfy</option></select>
+          </label>
+          <p class="hint error" data-err="webhookKind"></p>
+          <label class="field"><span data-i18n="ui.webhookUrl">URL do webhook ou tópico ntfy</span><input data-set="webhookUrl" type="password" autocomplete="off" spellcheck="false"></label>
+          <p class="hint error" data-err="webhookUrl"></p>
+          <p class="hint" data-i18n="ui.webhookHint">Avisa mesmo com o navegador fechado.</p>
+          <p class="hint" data-i18n="ui.webhookLocaleHint">Em Automático, usa o idioma deste navegador ao configurar.</p>
+          <div class="row-2"><button id="webhookTestBtn" class="btn" data-i18n="ui.webhookTest">Testar webhook</button><p id="webhookTestResult" class="hint grow" role="status" aria-live="polite"></p></div>
         </div>
 
         <div class="col">

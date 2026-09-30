@@ -267,7 +267,7 @@
 
             <!-- == CONFIGURAÇÕES: duas colunas, sem rolar no tamanho padrão (rola só se a janela ficar menor) == -->
             <ScrollViewer x:Name="SettingsPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed" Focusable="False">
-                <Grid x:Name="SettingsPanel" MinHeight="600" Height="{Binding ViewportHeight, ElementName=SettingsPage}" Binding.SourceUpdated="OnSourceUpdated">
+                <Grid x:Name="SettingsPanel" MinHeight="800" Height="{Binding ViewportHeight, ElementName=SettingsPage}" Binding.SourceUpdated="OnSourceUpdated">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -334,6 +334,26 @@
                                                ToolTip="A imagem vai com o próprio nome para esta pasta. Tem que ser uma pasta que o ShadowMount+ varre (padrão: /data/homebrew, /mnt/ext1/homebrew, /mnt/usbN…)."/>
                                     <TextBox x:Name="ImageBox" TextChanged="OnImageDirChanged" AutomationProperties.Name="Pasta das imagens .exfat"/>
                                     <TextBlock x:Name="ImageHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Group}" BorderThickness="0">
+                                <StackPanel>
+                                    <TextBlock Text="Webhook" Style="{StaticResource GroupTitle}"/>
+                                    <CheckBox x:Name="WebhookEnabledBox" Content="Ativar avisos por webhook" Checked="OnWebhookEnabledChanged" Unchecked="OnWebhookEnabledChanged"/>
+                                    <DockPanel Margin="0,10,0,0">
+                                        <ComboBox x:Name="WebhookKindBox" Width="145" DockPanel.Dock="Left" Margin="0,0,10,0" SelectionChanged="OnWebhookKindChanged" AutomationProperties.Name="Serviço do webhook">
+                                            <ComboBoxItem Content="JSON genérico" Tag="generic"/>
+                                            <ComboBoxItem Content="Discord" Tag="discord"/>
+                                            <ComboBoxItem Content="ntfy" Tag="ntfy"/>
+                                        </ComboBox>
+                                        <PasswordBox x:Name="WebhookUrlBox" PasswordChanged="OnWebhookUrlChanged" AutomationProperties.Name="URL do webhook ou tópico ntfy" ToolTip="URL HTTP/HTTPS do webhook ou do tópico ntfy"/>
+                                    </DockPanel>
+                                    <TextBlock x:Name="WebhookHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                                    <TextBlock Style="{StaticResource Hint}" Text="Avisa em concluído, erro e pedido de senha. Sem reenvio automático. Em Automático, usa português. A URL pode conter um token; proteja o settings.json."/>
+                                    <DockPanel Margin="0,10,0,0">
+                                        <Button x:Name="WebhookTestBtn" DockPanel.Dock="Left" Content="Testar webhook" Style="{StaticResource Btn}" Click="OnWebhookTest" Margin="0,0,10,0"/>
+                                        <TextBlock x:Name="WebhookTestResult" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                    </DockPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

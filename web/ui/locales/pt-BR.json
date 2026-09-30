@@ -100,5 +100,15 @@
   "ui.stage.Verificado": "Concluído",
   "ui.stage.Pausado": "Pausado",
   "ui.stage.Cancelado": "Cancelado",
-  "ui.stage.Erro": "Erro"
+  "ui.stage.Erro": "Erro",
+  "ui.webhook": "Webhook",
+  "ui.webhookEnabled": "Ativar avisos por webhook",
+  "ui.webhookService": "Serviço",
+  "ui.webhookGeneric": "JSON genérico",
+  "ui.webhookUrl": "URL do webhook ou tópico ntfy",
+  "ui.webhookHint": "Avisa quando o envio termina, ocorre um erro ou precisa de senha, mesmo com o navegador fechado. Sem reenvio automático.",
+  "ui.webhookLocaleHint": "Em Automático, os avisos usam o idioma deste navegador ao configurar o webhook. A URL pode conter um token; proteja o settings.json.",
+  "ui.webhookTest": "Testar webhook",
+  "ui.webhookTesting": "Testando webhook…",
+  "ui.webhookSaveFirst": "Corrija os campos do webhook antes de testar."
 }

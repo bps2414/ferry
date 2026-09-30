@@ -100,5 +100,15 @@
   "ui.stage.Verificado": "Completed",
   "ui.stage.Pausado": "Paused",
   "ui.stage.Cancelado": "Cancelled",
-  "ui.stage.Erro": "Error"
+  "ui.stage.Erro": "Error",
+  "ui.webhook": "Webhook",
+  "ui.webhookEnabled": "Enable webhook notifications",
+  "ui.webhookService": "Service",
+  "ui.webhookGeneric": "Generic JSON",
+  "ui.webhookUrl": "Webhook URL or ntfy topic",
+  "ui.webhookHint": "Notifies when a transfer finishes, fails or needs a password, even with the browser closed. No automatic retries.",
+  "ui.webhookLocaleHint": "In Automatic mode, notifications use this browser's language when configuring the webhook. The URL may contain a token; protect settings.json.",
+  "ui.webhookTest": "Test webhook",
+  "ui.webhookTesting": "Testing webhook…",
+  "ui.webhookSaveFirst": "Correct the webhook fields before testing."
 }

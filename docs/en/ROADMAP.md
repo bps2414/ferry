@@ -4,7 +4,7 @@
 
 Decided on 2026-09-30. Order: logic → UI/brand → self-hosted (Docker) → English → webhook → PKG/fPKG → progressive upload → payload.
 
-Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Phase 4 implemented in tag `v1.4.0-beta.1`, with local validation documented; pre-release publication depends on CI. Next: Phase 5 (webhook).**
+Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Phase 5 implemented and validated locally (core and web in pt-BR/en); pre-release publication depends on CI. Next: Phase 6 (PKG/fPKG).**
 
 ## Phase 1 — Logic (release `v1.1.0-beta.1`)
 
@@ -101,6 +101,8 @@ Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Ph
 - The message text follows the language chosen in Phase 4.
 - "Test" button that sends a sample message.
 - **E2E**: a fake HTTP server receives the webhook and checks event, game and language.
+- Implemented in web and Windows: optional activation, provider, masked URL and authenticated test. Automatic language persists on the server; Windows automatic uses Portuguese. Background HTTP has a 10 s timeout, bounded queue and one attempt per event; failures never change the game or block FTP/password entry.
+- Contract and limits in [WEBHOOK.md](WEBHOOK.md). Focused validation: `dotnet run --project e2e -- --webhook`; web E2E covers all three providers, events, language, an unanswered password webhook, restart and closed browser. Real providers and local Docker were not exercised.
 
 ## Phase 6 — PKG and fPKG
 

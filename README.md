@@ -16,6 +16,7 @@ Ferry takes compressed games (`.zip`, `.rar`, `.7z`, including multi-part archiv
 - **Self-hosted** (Docker or Linux): runs on your home server and you use it from the browser at `http://<server-ip>:8021`
 - Dark interface with queue, progress, speed and time remaining
 - Pause, resume, close and reopen without losing what was already sent
+- Webhooks for Discord, ntfy or generic JSON: completion, errors and password requests; configurable in the web and Windows apps. [Setup and delivery contract](docs/en/WEBHOOK.md).
 
 The web interface supports Portuguese (Brazil) and English. In **Settings → Language**, choose **Automatic**, **Português (Brasil)** or **English**. Automatic uses the browser's first supported language and falls back to English. An explicit choice is saved for the installation, including login, and survives a restart. The Windows WPF interface remains in Portuguese.
 

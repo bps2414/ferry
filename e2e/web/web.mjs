@@ -9,6 +9,7 @@ import { spawn, spawnSync, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -121,6 +122,23 @@ fs.writeFileSync(up, crypto.randomBytes(64_000_000));
 
 // ---------- FTP falso (com APPE, como o ftpsrv novo) e o container ----------
 const ftpPort = await freePort(), webPort = await freePort();
+const hookPort = await freePort(), hookUrl = `http://127.0.0.1:${hookPort}/topic?token=e2e-token`;
+const hookRequests = [];
+let hookStatus = 200;
+let holdPassword = false, releasePassword;
+const passwordHeld = new Promise(resolve => { releasePassword = resolve; });
+const hookServer = http.createServer(async (request, response) => {
+  const status = hookStatus;
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  const body = Buffer.concat(chunks).toString("utf8");
+  hookRequests.push({ method: request.method, url: request.url, contentType: request.headers["content-type"], body,
+    payload: request.headers["content-type"]?.includes("application/json") ? JSON.parse(body) : null });
+  if (holdPassword && hookRequests.at(-1).payload?.event === "password_required") await passwordHeld;
+  response.writeHead(status).end();
+});
+await new Promise(resolve => hookServer.listen(hookPort, "127.0.0.1", resolve));
+const hookEvents = (event, name) => hookRequests.filter(r => r.payload?.event === event && (!name || r.payload?.job?.name === name));
 const ftpLog = [];
 let server;
 const ftp = spawn(python, [path.join(root, "e2e", "ftpserver.py"), String(ftpPort), ftpRoot, "appe"]);
@@ -210,6 +228,7 @@ try {
   // ---------- 1. sem login: API fechada, página pede para criar o acesso ----------
   const anon = await (await fetch(base + "/api/settings")).status;
   const anonEvents = await (await fetch(base + "/api/events")).status;
+  check("Teste de webhook exige login", (await fetch(base + "/api/webhook/test", { method: "POST" })).status === 401 && hookRequests.length === 0);
   check("API sem login responde 401", anon === 401 && anonEvents === 401, `settings ${anon}, events ${anonEvents}`);
   await page.goto(base);
   await page.locator("#auth").waitFor();
@@ -274,7 +293,55 @@ try {
   check("Log já recebido muda de idioma sem perder sequência", originalLines.some(line => line.message?.key === "web.testLog") && originalLines.every(line => newLines.some(other => other.seq === line.seq && other.time === line.time)));
   await switchLanguage(locale);
 
+  // ---------- webhook: saving, validation, three provider formats and stable automatic locale ----------
+  await page.click('.nav[data-page="settings"]');
+  const testHook = async () => {
+    const before = hookRequests.length;
+    await page.click("#webhookTestBtn");
+    await until(() => hookRequests.length > before, 15000, "webhook HTTP recebido");
+    await until(() => page.locator("#webhookTestBtn").isEnabled(), 15000, "teste de webhook encerrado");
+    return hookRequests.at(-1);
+  };
+  await page.fill('[data-set="webhookUrl"]', hookUrl);
+  const firstHook = await testHook(); // deliberately click before the URL debounce
+  check("Testar aguarda a URL salva e funciona desligado", firstHook.payload?.event === "test" && firstHook.payload?.job === null && firstHook.payload?.language === locale && !(await getSettings()).webhookEnabled && (await getSettings()).webhookUrl === hookUrl);
+  const invalidKind = await (await page.request.put(base + "/api/settings", { data: { webhookKind: "unsupported" } })).json();
+  const invalidSwitch = await (await page.request.put(base + "/api/settings", { data: { webhookEnabled: "true" } })).json();
+  check("API valida serviço e tipo do interruptor", !!invalidKind.errorsMessages.webhookKind && !!invalidSwitch.errorsMessages.webhookEnabled && (await getSettings()).webhookKind === "generic");
+  await page.fill('[data-set="webhookUrl"]', "ftp://invalid/topic");
+  await until(() => page.locator('[data-set="webhookUrl"]').evaluate(el => el.classList.contains("bad")), 5000, "URL inválida recusada");
+  const invalidCount = hookRequests.length;
+  await page.click("#webhookTestBtn");
+  await until(() => page.locator("#webhookTestBtn").isEnabled(), 5000, "teste inválido encerrado");
+  check("URL inválida preserva a anterior e não dispara teste", (await getSettings()).webhookUrl === hookUrl && hookRequests.length === invalidCount);
+  await page.fill('[data-set="webhookUrl"]', hookUrl);
+  await testHook();
+  hookStatus = 500;
+  await testHook();
+  check("Teste mostra falha HTTP", (await page.locator("#webhookTestResult").textContent()).includes("HTTP 500"));
+  hookStatus = 200;
+  await page.selectOption('[data-set="webhookKind"]', "discord");
+  const discordHook = await testHook();
+  check("Discord usa confirmação e desativa menções", discordHook.url.includes("wait=true") && discordHook.payload?.allowed_mentions?.parse.length === 0 && discordHook.payload?.content.length <= 2000);
+  await page.selectOption('[data-set="webhookKind"]', "ntfy");
+  const ntfyHook = await testHook();
+  check("ntfy recebe texto UTF-8 no tópico", ntfyHook.contentType.startsWith("text/plain") && ntfyHook.body.includes(locale === "en" ? "The Ferry webhook is working." : "O webhook do Ferry está funcionando."));
+  await page.selectOption('[data-set="webhookKind"]', "generic");
+  await page.check('[data-set="webhookEnabled"]');
+  await until(async () => (await getSettings()).webhookEnabled && (await getSettings()).webhookKind === "generic", 5000, "webhook ativado");
+  await switchLanguage("auto", locale);
+  const autoHook = await testHook();
+  const alternative = await browser.newContext({ locale: locale === "en" ? "pt-BR" : "en", storageState: await ctx.storageState() });
+  const alternatePage = await alternative.newPage();
+  await alternatePage.goto(base);
+  await alternatePage.locator("#shell").waitFor();
+  check("Automático persiste e outro navegador não altera os avisos", autoHook.payload?.language === locale && (await getSettings()).webhookAutoLocale === locale);
+  await alternative.close();
+  await switchLanguage(locale);
+  shotsTaken.webhook = await shot("10-webhook");
+
   // ---------- 3. upload pelo navegador + senha pedida no navegador + envio conferido ----------
+  holdPassword = true;
   await page.click('.nav[data-page="queue"]');
   shotsTaken.vazia = await shot("03-fila-vazia");
   let releaseUpload;
@@ -304,6 +371,8 @@ try {
   await page.unrouteAll({ behavior: "wait" });
   await page.locator("#pwDialog[open]").waitFor({ timeout: 60000 });
   const pwTitle1 = await page.locator("#pwTitle").textContent();
+  await until(() => hookEvents("password_required", "W1").length === 1, 5000, "webhook de senha");
+  check("Webhook de senha chega antes da resposta ao diálogo", hookEvents("password_required", "W1")[0].payload.language === locale);
   shotsTaken.senha = await shot("04-senha");
   await page.fill("#pwInput", "rascunho-preservado");
   await switchLanguage(locale === "en" ? "pt-BR" : "en");
@@ -339,6 +408,12 @@ try {
   const filesSent = ftpLog.filter(l => (l.includes("STOR ") || l.includes("APPE ")) && l.includes(game)).length;
   check("Upload pelo navegador → senha no navegador → envio ao PS5", w1Stage === "Verificado" && same === files.length && pwTitle1 === expected.protected && learned && tid === "PPSA09001" && coverOk && cardDuring === "PS5 online",
     `${parts.length} volumes .7z enviados pela página; diálogo "${pwTitle1}", 1ª senha errada → "Senha incorreta", 2ª certa; estado ${w1Stage} (${w1Detail}); ${same}/${files.length} SHA-256 iguais; capa e ${tid}; senha entrou nas senhas conhecidas=${learned}; cartão durante o envio "${caught ? cardDuring : "(o envio acabou antes de pegar o meio)"}"`);
+  check("Webhook de senha sem resposta não bloqueia diálogo nem FTP", w1Stage === "Verificado" && same === files.length);
+  holdPassword = false;
+  releasePassword();
+  await until(() => hookEvents("completed", "W1").length > 0, 15000, "webhook de conclusão");
+  const completedHook = hookEvents("completed", "W1")[0].payload;
+  check("Webhook contém evento, jogo e idioma sem repetir senha incorreta", hookEvents("password_required", "W1").length === 1 && hookEvents("completed", "W1").length === 1 && completedHook.language === locale && completedHook.job.title === "Jogo Web" && completedHook.job.titleId === "PPSA09001");
 
   // ---------- 4. pasta monitorada + pausar/retomar pela página + reiniciar o container no meio ----------
   fs.copyFileSync(imgw, path.join(games, "IMGW.exfat"));
@@ -381,6 +456,8 @@ try {
   check("Pausar e retomar pela página", p1 === p2 && p1 > 0 && p1 < 100, `congelou em ${p1}% por 1,5 s e retomou`);
   check(localMode ? "Reiniciar o servidor local no meio do envio" : "Reiniciar o container no meio do envio", imgOk && appe.length > 0 && stillIn && w1After === "Verificado" && w1Sent === filesSent,
     `${localMode ? "reinício da DLL local" : "docker restart"} em ${before}% (${cut} bytes no PS5); voltou sozinho, continuou com APPE (${appe.length}x), hash confere, sem .ferry-part; login continuou valendo=${stillIn}; Jogo Web continuou ${w1After} ("${w1AfterDetail}") sem reenviar nada`);
+  await until(() => hookEvents("completed", "IMGW").length === 1, 5000, "webhook depois do reinício");
+  check("Webhook persiste ao reiniciar e não repete conclusão restaurada", hookEvents("completed", "W1").length === 1 && (await getSettings()).webhookUrl === hookUrl && hookEvents("completed", "IMGW")[0].payload.language === locale);
 
   // ---------- 5. upload que continua de onde parou ----------
   const st = fs.statSync(up), last = Math.floor(st.mtimeMs);
@@ -406,6 +483,8 @@ try {
   const again = await row("UP").locator(".detail").textContent();
   check("Adicionar de novo um jogo concluído", offsets[0] === 0 && offsets.length >= 4 && again.startsWith(expected.installed),
     `reenvio pela página começou do byte ${offsets[0]} (${offsets.length} blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "${again.slice(0, 40)}…"`);
+  await until(() => hookEvents("error", "UP").length === 1, 5000, "webhook de erro");
+  check("Webhook de erro não exporta senha nem diagnósticos brutos", hookEvents("error", "UP")[0].payload.language === locale && !hookEvents("error", "UP")[0].body.includes("ps5pass") && !hookEvents("error", "UP")[0].body.includes("webpass"));
 
   // ---------- 6. sair e entrar ----------
   await page.click('.nav[data-page="settings"]');
@@ -432,6 +511,18 @@ try {
   shotsTaken.celular = `e2e/web/report/${locale}/09-celular.png`;
   check("Celular (390 px)", scroll <= 390, `largura da página ${scroll}px, sem rolagem lateral`);
   await phone.close();
+  // No browser is open when the monitored folder finishes this transfer. HTTP failure cannot fail FTP.
+  await page.close();
+  hookStatus = 500;
+  const closedBytes = crypto.randomBytes(2_000_000);
+  fs.writeFileSync(path.join(games, "CLOSED.exfat"), closedBytes);
+  await until(() => hookEvents("completed", "CLOSED").length === 1, 30000, "webhook com navegador fechado");
+  const closedRemote = path.join(ftpRoot, "mnt", "ext1", "homebrew", "CLOSED.exfat");
+  const reopened = await ctx.newPage();
+  await reopened.goto(base);
+  await reopened.locator("#shell").waitFor();
+  check("Sem navegador e com webhook HTTP 500 o FTP conclui", fs.existsSync(closedRemote) && sha(closedRemote) === crypto.createHash("sha256").update(closedBytes).digest("hex") && hookEvents("completed", "CLOSED")[0].payload.language === locale);
+  await reopened.close();
   if (routeFailure) throw routeFailure;
   check("Sem erro de JavaScript na página", pageErrors.length === 0, pageErrors.join("; ") || "nenhum");
 } catch (e) {
@@ -449,6 +540,8 @@ fs.writeFileSync(path.join(work, serverLogFile), logs);
 fs.writeFileSync(path.join(work, "ftp.log"), ftpLog.join("\n"));
 await stopServer();
 ftp.kill();
+hookServer.closeAllConnections();
+await new Promise(resolve => hookServer.close(resolve));
 
 const ok = results.every(r => r.ok);
 const sevenVer = execFileSync(sevenZip, [], { encoding: "utf8" }).split("\n").find(l => l.trim()) ?? "";

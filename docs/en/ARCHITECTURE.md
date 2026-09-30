@@ -11,6 +11,7 @@
 | `core/Ftp.cs` | FTP: remote state (`SIZE`), streaming upload with parallel connections, verification |
 | `core/Job.cs` | One queue item (state, progress, speed, ETA) |
 | `core/Settings.cs` | Settings in `settings.json` in the data folder (`%LOCALAPPDATA%\Ferry`, or `FERRY_DATA`) |
+| `core/Webhooks.cs` | Shared HTTP notifications: bounded in-memory queue, immutable snapshots, localization and test; wired into Done/askPassword callbacks without changing FTP |
 | `core/Secret.cs` | Game password stored in the queue: DPAPI on Windows, AES-GCM with `secret.key` (600) elsewhere |
 | `core/Discovery.cs` | Finds the PS5 on the network (/24 of each interface, ports 2121 and 1337) |
 | `app/MainWindow.xaml(.cs)` | Windows interface; `App.xaml.cs` extracts the embedded `7z.exe` and passes its path to the core |

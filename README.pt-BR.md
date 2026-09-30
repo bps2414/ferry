@@ -18,6 +18,7 @@ App que pega jogos compactados (`.zip`, `.rar`, `.7z`, inclusive divididos em pa
 - **Self-hosted** (Docker ou Linux): roda no servidor de casa e você usa pelo navegador, em `http://<ip-do-servidor>:8021`
 - Interface escura, com fila, progresso, velocidade e tempo restante
 - Pausa, retoma, fecha e reabre sem perder o que já foi enviado
+- Webhook para Discord, ntfy ou JSON genérico: conclusão, erro e pedido de senha; configurável na web e no Windows. [Como configurar](docs/WEBHOOK.md).
 
 > Feito para uso com homebrew/backups próprios em console desbloqueado. Use por sua conta e risco.
 

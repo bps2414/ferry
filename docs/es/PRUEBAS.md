@@ -70,6 +70,12 @@ En todos los casos, el E2E también comprueba portada/título (`param.sfo` + `ic
 - **Cerrar y volver a abrir**: detiene la engine a mitad del envío, crea otra con la misma `queue.json`; la cola vuelve sola y no se reenvía nada completo.
 - **Pausar/reanudar** a mitad del stream; **quitar de la cola** y volver a añadir; **probar conexión** con contraseña correcta e incorrecta.
 
+## Contratos de webhook
+
+`dotnet run --project e2e -- --webhook` usa HTTP local falso, sin FTP ni credenciales reales: configuración antigua, validación/persistencia, HTTP 401/429/500/302, timeout, conexión rechazada, tres formatos, pt-BR/en/Automático, fallback Windows, límites, secretos, cola llena, snapshots y cierre. CI lo ejecuta en Windows y Linux. E2E web comprueba juegos/FTP de prueba, eventos, contraseña incorrecta sin duplicación, esperar cambios guardados, tres receptores, idioma tras reinicio, navegador cerrado y error HTTP sin afectar hashes FTP.
+
+Los tests no contactan proveedores reales. Informes distinguen DLL local y Docker; ejecución local no demuestra CI remota. Configuración y entrega en [WEBHOOK.md](WEBHOOK.md).
+
 ## E2E web (Docker)
 
 `e2e/web/web.mjs` levanta la imagen con `--network host` y `--user <tu uid>` (como en `docker-compose.yml`), el mismo `ftpserver.py` (con APPE) y abre la página en un Chromium (Playwright). Genera `e2e_report_web.md` en la raíz y las capturas en `e2e/web/report/`.

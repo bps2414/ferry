@@ -45,10 +45,14 @@ if (firstRun && Environment.GetEnvironmentVariable("FERRY_GAMES") is { Length: >
     settings.Save();
 }
 var hub = new Hub(settings);
-var engine = new Engine(settings, hub.Log, hub.AskPassword) { Done = hub.OnDone, MessageLog = hub.Log };
+var stop = app.Lifetime.ApplicationStopping;
+await using var webhooks = new Webhooks(settings, hub.Log, stop);
+var engine = new Engine(settings, hub.Log, job => { webhooks.OnPassword(job); return hub.AskPassword(job); })
+{
+    Done = job => { webhooks.OnDone(job); hub.OnDone(job); }, MessageLog = hub.Log
+};
 hub.Engine = engine;
 engine.Restore();
-var stop = app.Lifetime.ApplicationStopping;
 var run = Task.Run(() => engine.RunAsync(stop));
 app.Lifetime.ApplicationStopped.Register(() => { try { settings.Save(); } catch { } });
 hub.Log(new Message("web.startup", typeof(Hub).Assembly.GetName().Version?.ToString(3), port, Settings.AppDir));
@@ -69,7 +73,7 @@ api.MapGet("/settings", () => Results.Json(settings));
 // salva campo a campo, como a janela: o que é inválido volta com a mensagem e não é gravado
 api.MapPut("/settings", (JsonElement body) =>
 {
-    var errorsMessages = new Dictionary<string, Message>();
+    var errorsMessages = Webhooks.UpdateSettings(settings, body);
     foreach (var f in body.EnumerateObject())
     {
         var v = f.Value;
@@ -120,6 +124,11 @@ api.MapPut("/settings", (JsonElement body) =>
 });
 
 api.MapPost("/ps5/test", async () => { var ok = await hub.TestConnection(); return Results.Json(new { ok, message = hub.TestMessage, messageData = hub.TestMessageData }); });
+api.MapPost("/webhook/test", async (HttpContext context) =>
+{
+    var result = await webhooks.TestAsync(context.RequestAborted);
+    return Results.Json(new { ok = result.Ok, message = result.Message.Render(), messageData = result.Message });
+});
 api.MapPost("/ps5/discover", async () => { var msg = await hub.Discover(); return Results.Json(new { message = msg.Render(), messageData = msg }); });
 api.MapPost("/ps5/use-found", async () =>
 {

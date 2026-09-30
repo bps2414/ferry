@@ -11,6 +11,7 @@
 | `core/Ftp.cs` | FTP: estado remoto (`SIZE`), envio em streaming com conexões paralelas, verificação |
 | `core/Job.cs` | Um item da fila (estado, progresso, velocidade, ETA) |
 | `core/Settings.cs` | Configurações em `settings.json` na pasta de dados (`%LOCALAPPDATA%\Ferry`, ou `FERRY_DATA`) |
+| `core/Webhooks.cs` | Avisos HTTP compartilhados: fila limitada em memória, snapshots imutáveis, localização e teste; integrado aos callbacks Done/askPassword sem alterar o FTP |
 | `core/Secret.cs` | Senha do jogo guardada na fila: DPAPI no Windows, AES-GCM com `secret.key` (600) fora dele |
 | `core/Discovery.cs` | Busca do PS5 na rede (/24 de cada interface, portas 2121 e 1337) |
 | `app/MainWindow.xaml(.cs)` | Interface Windows; `App.xaml.cs` extrai o `7z.exe` embutido e passa o caminho ao core |

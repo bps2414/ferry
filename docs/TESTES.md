@@ -62,6 +62,12 @@ Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`
 - **Fechar e reabrir**: para o engine no meio do envio, cria outro com a mesma `queue.json`; a fila volta sozinha e nada completo é reenviado.
 - **Pausar/retomar** no meio do stream; **remover da fila** e re-adicionar; **testar conexão** com senha certa e errada.
 
+## Contratos de webhook
+
+`dotnet run --project e2e -- --webhook` usa HTTP local falso, sem FTP ou credenciais reais: configuração antiga, validação/persistência, HTTP 401/429/500/302, timeout, conexão recusada, três formatos, pt-BR/en/Automático, fallback Windows, limites, segredos, fila cheia, snapshots e encerramento. A CI roda no Windows e Linux. O E2E web adicional verifica os eventos com jogos/FTP reais de teste, senha incorreta sem duplicação, teste que aguarda salvar, três receptores, idioma após reinício, página fechada e falha HTTP sem afetar hashes do FTP.
+
+Receptores reais não são acessados pelos testes. Relatórios web distinguem DLL local de Docker; execução local não comprova CI remota. Detalhes de configuração e entrega em [WEBHOOK.md](WEBHOOK.md).
+
 ## E2E web (Docker)
 
 ### Contratos de localização

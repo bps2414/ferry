@@ -245,6 +245,11 @@ function fillSettings() {
 
 const timers = {}, edits = {}; // edits[k]: nº da última edição ainda não salva (0/undefined = nada pendente)
 let editSeq = 0;
+let settingsWrite = Promise.resolve(true);
+function queueSave(k, el) {
+  settingsWrite = settingsWrite.then(() => save(k, el));
+  return settingsWrite;
+}
 
 // Resposta que chega depois de uma edição é velha: descarta (o PUT de cada campo já devolve as configurações atuais).
 async function reloadSettings() {
@@ -263,7 +268,8 @@ for (const el of $$("[data-set]")) {
     edits[k] = ++editSeq;
     if (k === "language") setLanguage(el.value);
     clearTimeout(timers[k]);
-    timers[k] = setTimeout(() => save(k, el), el.tagName === "TEXTAREA" || el.type === "text" || el.type === "password" || !el.type ? 500 : 0);
+    timers[k] = setTimeout(() => queueSave(k, el), el.tagName === "TEXTAREA" || el.type === "text" || el.type === "password" || !el.type ? 500 : 0);
+    if (k.startsWith("webhook")) bindText($("#webhookTestResult"), "");
   });
   if (el.type === "range") el.addEventListener("input", () => $("#connVal").textContent = el.value);
 }
@@ -274,27 +280,65 @@ async function save(k, el) {
   if (k === "port" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
   if (k === "knownPasswords") v = el.value.split("\n").map(s => s.trim()).filter(Boolean);
   try {
-    const r = await api("PUT", "/api/settings", { [k]: v });
+    const body = { [k]: v };
+    if (k.startsWith("webhook")) {
+      // Save these together: clicking Enable must include a URL whose debounce is still pending.
+      body.webhookEnabled = $('[data-set="webhookEnabled"]').checked;
+      body.webhookKind = $('[data-set="webhookKind"]').value;
+      body.webhookUrl = $('[data-set="webhookUrl"]').value.trim();
+    }
+    if (k.startsWith("webhook") || k === "language") body.webhookAutoLocale = resolvedLocale(languageMode);
+    const r = await api("PUT", "/api/settings", body);
     const err = r.errorsMessages?.[k] || r.errors[k] || "";
     el.classList.toggle("bad", !!err);
     const hint = $(`[data-err="${k}"]`);
     if (hint) bindText(hint, err);
+    if (k.startsWith("webhook")) {
+      for (const key of ["webhookEnabled", "webhookKind", "webhookUrl"]) {
+        const problem = r.errorsMessages?.[key] || r.errors[key] || "";
+        $(`[data-set="${key}"]`).classList.toggle("bad", !!problem);
+        bindText($(`[data-err="${key}"]`), problem);
+      }
+    }
     settings = r.settings;
     if (k === "language" && edits[k] === mine) {
       if (lastState) lastState.language = settings.language || "auto";
       setLanguage(settings.language || "auto");
     }
     if (k === "remoteDir") $("#preset").value = [...$("#preset").options].some(o => o.value === v) ? v : "";
-  } catch (e) { toast("error", message("ui.saveFailed"), errorMessage(e)); }
+    return Object.keys(r.errors).length === 0;
+  } catch (e) { toast("error", message("ui.saveFailed"), errorMessage(e)); return false; }
   finally { if (edits[k] === mine) delete edits[k]; } // editou de novo enquanto salvava: continua pendente
 }
+
+$("#webhookTestBtn").addEventListener("click", async () => {
+  const button = $("#webhookTestBtn"), result = $("#webhookTestResult");
+  button.disabled = true;
+  result.classList.remove("error");
+  bindText(result, message("ui.webhookTesting"));
+  try {
+    // Flush edits before testing so a pasted URL is never tested as the previous destination.
+    for (const key of ["webhookUrl", "webhookKind", "webhookEnabled", "language"]) {
+      if (edits[key]) { clearTimeout(timers[key]); queueSave(key, $(`[data-set="${key}"]`)); }
+    }
+    const saved = await queueSave("webhookUrl", $('[data-set="webhookUrl"]'));
+    if (!saved || $$('[data-set^="webhook"].bad').length) {
+      bindText(result, message("ui.webhookSaveFirst"));
+      return;
+    }
+    const response = await api("POST", "/api/webhook/test");
+    result.classList.toggle("error", !response.ok);
+    bindText(result, response.messageData);
+  } catch (error) { result.classList.add("error"); bindText(result, errorMessage(error)); }
+  finally { button.disabled = false; }
+});
 
 $("#preset").addEventListener("change", () => {
   const v = $("#preset").value;
   if (!v) return;
   const el = $('[data-set="remoteDir"]');
   el.value = v;
-  save("remoteDir", el);
+  queueSave("remoteDir", el);
 });
 
 async function test() {
