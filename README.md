@@ -1,5 +1,7 @@
 # PS5 Sender
 
+[![CI](https://github.com/bps2414/ps5-sender/actions/workflows/ci.yml/badge.svg)](https://github.com/bps2414/ps5-sender/actions/workflows/ci.yml)
+
 App para Windows que pega jogos compactados (`.zip`, `.rar`, `.7z`, inclusive divididos em partes), **extrai e envia ao mesmo tempo** para um PS5 com jailbreak via FTP — sem gravar os arquivos extraídos no seu disco.
 
 - Um `.exe` portátil (sem instalar nada)
@@ -58,6 +60,8 @@ dotnet publish app -c Release -o dist
 ```
 
 Gera `dist/PS5Sender.exe` (single-file, self-contained, ~63 MB, com o 7-Zip embutido).
+
+O CI (GitHub Actions) compila, roda o E2E completo e guarda o `.exe` como artefato em todo push. Para lançar uma versão, crie uma tag `v*` — ex.: `git tag v1.1.0-beta.1 && git push --tags` (com `-` vira pré-release) — e o CI anexa o `.exe` à release.
 
 ## Limitações conhecidas
 
