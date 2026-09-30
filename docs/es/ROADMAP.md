@@ -1,0 +1,125 @@
+# Roadmap
+
+[English](../en/ROADMAP.md) · [Português (BR)](../ROADMAP.md) · **Español**
+
+Decidido el 2026-09-30. Orden: lógica → UI/marca → self-hosted (Docker) → inglés → webhook → PKG/fPKG → payload.
+
+Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 aún sin tag de release). **Siguiente: Fase 4 (inglés).**
+
+## Fase 1 — Lógica (release `v1.1.0-beta.1`)
+
+- **Guardado automático**:
+  - cada campo se guarda al cambiar, y un valor inválido no se guarda (borde rojo + pista; valida puerto y carpeta, el host acepta hostname);
+  - escritura atómica (`.tmp` + `File.Replace`) de `settings.json` y `queue.json`;
+  - sin botón Guardar. El diseño actual se queda hasta la Fase 2.
+- **Contraseñas conocidas**:
+  - lista editable en los Ajustes, una por línea, en texto (son contraseñas públicas de sitios);
+  - antes del diálogo, la app prueba cada una en silencio (`PasswordOkAsync`);
+  - la contraseña que funcione en el diálogo se añade sola al final de la lista.
+- **Contraseña del juego guardada**: guardada en `queue.json` con DPAPI y borrada cuando el juego sale de la cola. No la vuelve a pedir al volver a abrir.
+- **Portada y título**:
+  - lee `sce_sys/param.sfo` e `icon0.png` de dentro del archivo;
+  - la tarjeta muestra la portada, el título y el `PPSAxxxxx`;
+  - sin portada legible, muestra el nombre del archivo en tipografía grande, sin icono falso.
+- **Esperando partes**: muestra qué partes faltan ("faltan part4, part5").
+- **Encontrar la PS5 en la red**: al abrir, si la IP guardada no responde, recorre la subred (2121/1337) y ofrece la IP encontrada. También hay un botón "Buscar". Nunca cambia la IP sola.
+- **Toast de Windows**: para terminado, error y "necesita contraseña", solo cuando la ventana no tiene el foco.
+- **CI**: actions actualizadas a Node 24.
+- **E2E**:
+  - contraseña conocida (G6 sin diálogo) y contraseña aprendida;
+  - contraseña recordada al volver a abrir;
+  - guardado atómico;
+  - portada/título (los juegos falsos reciben `param.sfo` + `icon0.png`).
+- **Releases**: borrar la release estable antigua `v1.0.0`.
+- **Añadido en uso real (PPSA11386)**:
+  - log persistente en `log.txt`;
+  - APPE solo en parciales empezados por la app;
+  - SIZE comprobado tras cada envío, con `SELF` desactivado;
+  - publicación atómica de `param.json`/`param.sfo`;
+  - aviso de juego ya instalado (ver [FTP-PS5.md](FTP-PS5.md)).
+
+## Fase 1.5 — Imagen `.exfat` de ShadowMount+ (release `v1.1.0-beta.2`)
+
+- **Aceptada como juego**:
+  - `.exfat` suelto (arrastrar, selector, carpeta vigilada), con stream directo del disco;
+  - archivo comprimido (cualquier división aceptada) con una imagen `.exfat` dentro en lugar de carpeta de juego, con stream `7z -so` → FTP.
+- **Destino**: campo "Imagens .exfat (ShadowMount+)" en los Ajustes (`ImageDir`, por defecto `/mnt/ext1/homebrew`). Se guarda solo y valida (ruta que empieza con `/`). El nombre remoto es el del `.exfat`.
+- **Publicación atómica**: se sube como `<nombre>.exfat.ferry-part` y solo se renombra después de verificar el `SIZE`. SM+ reconoce imágenes solo por la extensión, y el sufijo la deja fuera (investigación en [FTP-PS5.md](FTP-PS5.md)).
+- **Reanudación, aviso de ya instalado, log**: mismas reglas que la Fase 1.
+- **Tarjeta**: sin portada (la app no abre la imagen), muestra el nombre grande.
+- **E2E**: `.exfat` suelto y dentro de `.part1.rar`, pausar/reanudar, volver a abrir con parcial nuestro (APPE) y de otra versión (STOR), ya existente + "Intentar de nuevo".
+
+## Fase 2 — Marca e interfaz: **Ferry** (release `v1.2.0-beta.1`)
+
+- **Decidido en los mockups**: cola "Regla" (filas separadas por hilos, %, MB/s y restante en columnas fijas, barra = travesía), Ajustes en dos columnas, logo "Travesía" (dos muelles y la flecha), fuente Geist, acento azul `#6F97FF`.
+- **Añadido en uso**: "Transferir ahora" en un juego en cola/pausado; el envío actual vuelve a la cola y continúa después.
+
+- **Nombre**: Ferry, con el subtítulo "envío de juegos a la PS5".
+  - Repo `ps5-sender` → `ferry` (GitHub redirige los enlaces antiguos) y exe `Ferry.exe`.
+  - Los datos pasan a `%LOCALAPPDATA%\Ferry`, migrando los de `PS5Sender`.
+  - Sin símbolos de Sony (△○✕□, logo PS).
+- **Dirección**:
+  - "PlayStation noir" editorial/tipográfico: negro azulado, casi monocromo, un acento;
+  - números grandes (%, MB/s, ETA), título del juego destacado, grid rígido;
+  - **prohibido**: glow, degradado morado-azul, vidrio esmerilado, cara de plantilla de IA.
+- **Herramientas**: `/frontend-design` + `/impeccable`, generando mockups antes de implementar.
+- **Ajustes sin scroll**: el formato se decide en esta sesión.
+
+## Fase 3 — Self-hosted en Docker (release `v1.3.0-beta.1`) — hecha
+
+- **Objetivo**: Ferry corre en el servidor de casa dentro de un contenedor, y desde el PC solo hay que abrir `http://<ip-del-servidor>:<puerto>` en el navegador.
+- **Cómo**:
+  - la app hoy es WPF (`net10.0-windows`) y no corre en un contenedor Linux. La lógica (`Engine`, `Ftp`, `Archives`, `Job`, `Settings`) pasa a ser una biblioteca `net10.0` sin WPF;
+  - un servidor ASP.NET Core sirve la interfaz web (misma "Regla" y Ajustes de la Fase 2) y envía el progreso en vivo (SignalR o SSE);
+  - el puerto sale de una variable de entorno, con un valor por defecto fijo.
+- **Qué cambia por no ser Windows**:
+  - DPAPI (contraseña del juego) → clave generada en el volumen `/data`;
+  - toast de Windows → aviso dentro de la página, y notificación del sistema cuando el navegador lo permite (solo en https o localhost; el webhook de la Fase 5 cubre el resto);
+  - `%LOCALAPPDATA%\Ferry` → volumen `/data` (`settings.json`, `queue.json`, `log.txt`);
+  - `7z.exe`/`7z.dll` → 7-Zip de Linux: `7zip` + `7zip-rar` de Ubuntu en la imagen, `7zzs` oficial junto al binario Linux;
+  - arrastrar y soltar y el selector de archivos → los dos caminos: carpeta vigilada en el volumen `/games` y subida por el navegador (arrastrar a la página).
+- **Red**: recorrer la subred para encontrar la PS5 necesita `network_mode: host`, si no solo ve la red interna de Docker.
+- **Entrega**: `Dockerfile` + `docker-compose.yml` de ejemplo, imagen publicada en GHCR por el CI en cada tag.
+- **Linux sin Docker**: el mismo servidor web publicado como binario autocontenido `linux-x64` y `linux-arm64` en cada release. Sin app de ventana nativa para Linux (la interfaz web lo cubre).
+- **Windows y web juntos**: la app WPF sigue existiendo y usa la misma biblioteca del núcleo; las dos versiones salen en cada release.
+- **Login**: la interfaz web pide usuario y contraseña (definidos la primera vez), con sesión por cookie.
+- **E2E**: levanta el contenedor, abre la interfaz con Playwright y repite los escenarios de envío contra el servidor FTP falso.
+- **Añadido al implementar**: progreso por SSE (sin SignalR); subida por bloques con reanudación; un juego ya enviado vuelve como terminado al volver a abrir/reiniciar en lugar de caer en el aviso de "ya instalado" (vale también para la app de Windows); la prueba de conexión más reciente es la que cuenta en la tarjeta de la PS5.
+
+## Fase 4 — Inglés
+
+- Interfaz en portugués e inglés, elegida en los Ajustes (por defecto: idioma del navegador/sistema).
+- Los textos salen del código a archivos de recursos (`pt-BR`, `en`), incluidos el log visible, los avisos y los errores.
+- Va después de la Fase 3 para traducir una sola interfaz (la web).
+- **E2E**: ejecuta el flujo principal en los dos idiomas y comprueba que no quede texto sin traducir.
+- Ya hecho: README en inglés (por defecto), portugués y español, y la documentación en los tres idiomas. Cuando la interfaz esté en inglés, quitar la nota "interfaz en portugués" y los nombres de botones en portugués del README en inglés.
+
+## Fase 5 — Webhook configurable
+
+- URL de webhook en los Ajustes (Discord, ntfy, JSON genérico), disparado en terminado, error y "necesita contraseña".
+- El texto del mensaje sigue el idioma elegido en la Fase 4.
+- Botón "Probar" que envía un mensaje de ejemplo.
+- **E2E**: un servidor HTTP falso recibe el webhook y comprueba evento, juego e idioma.
+
+## Fase 6 — PKG y fPKG
+
+Investigación completa (firmwares, kstuff, instaladores) en [PKG-PS5.md](PKG-PS5.md).
+
+- **Imágenes `.ffpkg`, `.ffpfs` y `.ffpfsc`** (ShadowMount+) aceptadas como el `.exfat`: mismo destino, `.ferry-part` y renombrar al final. Vale en cualquier firmware con jailbreak.
+- **`.pkg` suelto** (fPKG de PS4 o de PS5): Ferry sirve el archivo por HTTP (con *range* y un token en la URL) y pide la instalación a etaHEN DPI (puerto 9090, `{ "url": … }`). La PS5 lo descarga directamente.
+- **`.pkg` dentro de un comprimido**: enviarlo por FTP a la PS5 e instalar desde la ruta local, o extraerlo en el servidor y servirlo. Decidir después de confirmar si DPI acepta ruta local.
+- **Tarjeta**: PS4 o PS5 por la cabecera del `.pkg`, con aviso cuando el tipo no corre en el firmware (p. ej. fPKG de PS5 en 12.xx y 13.xx aún no funciona).
+- **Ajustes**: instalador de paquetes (etaHEN DPI, puerto), con prueba de conexión y el recordatorio de activar `DPI=1` en el `config.ini` de etaHEN.
+- **E2E**: un DPI falso recibe el pedido y descarga la URL con *range* y reanudación; comprueba hash, token y el error sin DPI.
+- **Antes de empezar**: revisar la investigación (la escena cambia rápido) y cerrar los puntos "por confirmar".
+
+## Fase 7 — Payload (hello world)
+
+- ELF hecho con el [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk), compilado en WSL (Ubuntu, WSL2, ya instalado).
+- La app envía el ELF al puerto 9021, la PS5 muestra "Ferry conectado" y el payload termina. Nada queda residente.
+- **Después**: agente residente (notificación, espacio libre, lista de juegos), protocolo de envío propio e integración con el loader (investigar antes).
+
+## Investigación, sin fecha
+
+- **Envío progresivo** (part1 mientras se descarga la part2): revisar solo si una descarga lenta se vuelve el cuello de botella.
+- **Ideas sueltas**: biblioteca de la PS5, aviso de duplicado, perfiles de consola, enviar carpeta ya extraída, límite de velocidad, auto-update, historial.

@@ -80,12 +80,14 @@ The app waits for **all parts** to arrive and for their size to **stop changing*
 - **Data**: on Windows, settings, queue and log live in `%LOCALAPPDATA%\Ferry` (migrated automatically from the old `PS5Sender` folder, which is not deleted); self-hosted, in `/data`.
 - **Verification**: at the end it checks the size of every file on the PS5. Only after that (and if you enable the option) it deletes the original parts.
 
-## Documentation (in Portuguese)
+## Documentation
 
-- [Architecture and flow](docs/ARQUITETURA.md) — how streaming extraction works
-- [FTP compatibility with the PS5](docs/FTP-PS5.md) — what ftpsrv supports and why it matters
-- [E2E tests](docs/TESTES.md) — how to run them and what is checked
-- [Latest E2E report](e2e_report.md) · [Web E2E (Docker)](e2e_report_web.md)
+- [Architecture and flow](docs/en/ARCHITECTURE.md) — how streaming extraction works
+- [FTP compatibility with the PS5](docs/en/FTP-PS5.md) — what ftpsrv supports and why it matters
+- [PKG and fPKG on the PS5](docs/en/PKG-PS5.md) — jailbreak and fPKG by firmware, package installers (research for a future phase)
+- [E2E tests](docs/en/TESTS.md) — how to run them and what is checked
+- [Roadmap](docs/en/ROADMAP.md)
+- [Latest E2E report](e2e_report.md) · [Web E2E (Docker)](e2e_report_web.md) (in Portuguese)
 
 ## Building
 
@@ -104,6 +106,7 @@ CI (GitHub Actions) runs the E2E tests on Windows and Linux, builds the Docker i
 - **Notification on the PS5**: not implemented. Neither ftpsrv nor etaHEN exposes notifications over the network; it would need a custom ELF payload (PS5 SDK) sent to elfldr.
 - Pausing/resuming or reopening makes 7-Zip read the archive from the start again (it doesn't re-send what is already on the PS5, but it costs CPU/disk).
 - Large files go over a single connection (7-Zip outputs one file at a time); parallel connections speed up small files.
+- `.pkg`/fPKG packages and `.ffpkg` images aren't supported yet; they're planned (see [PKG and fPKG on the PS5](docs/en/PKG-PS5.md)).
 
 ## Credits
 

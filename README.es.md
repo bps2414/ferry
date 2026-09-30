@@ -80,12 +80,14 @@ La app espera a que lleguen **todas las partes** y a que su tamaño **deje de ca
 - **Datos**: en Windows, ajustes, cola y log están en `%LOCALAPPDATA%\Ferry` (migrados automáticamente de la carpeta antigua `PS5Sender`, que no se borra); en self-hosted, en `/data`.
 - **Verificación**: al final comprueba el tamaño de cada archivo en la PS5. Solo después (y si activas la opción) borra las partes originales.
 
-## Documentación (en portugués)
+## Documentación
 
-- [Arquitectura y flujo](docs/ARQUITETURA.md) — cómo funciona la extracción en streaming
-- [Compatibilidad FTP con la PS5](docs/FTP-PS5.md) — qué soporta ftpsrv y por qué importa
-- [Pruebas E2E](docs/TESTES.md) — cómo ejecutarlas y qué se verifica
-- [Último informe E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md)
+- [Arquitectura y flujo](docs/es/ARQUITECTURA.md) — cómo funciona la extracción en streaming
+- [Compatibilidad FTP con la PS5](docs/es/FTP-PS5.md) — qué soporta ftpsrv y por qué importa
+- [PKG y fPKG en la PS5](docs/es/PKG-PS5.md) — jailbreak y fPKG por firmware, instaladores de paquetes (investigación para una fase futura)
+- [Pruebas E2E](docs/es/PRUEBAS.md) — cómo ejecutarlas y qué se verifica
+- [Roadmap](docs/es/ROADMAP.md)
+- [Último informe E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md) (en portugués)
 
 ## Compilar
 
@@ -104,6 +106,7 @@ El CI (GitHub Actions) ejecuta el E2E en Windows y Linux, construye la imagen Do
 - **Notificación en la PS5**: no implementada. Ni ftpsrv ni etaHEN exponen notificaciones por red; haría falta un payload ELF propio (SDK de PS5) enviado a elfldr.
 - Pausar/reanudar o volver a abrir hace que 7-Zip relea el archivo desde el principio (no reenvía lo que ya está en la PS5, pero gasta CPU/disco).
 - Los archivos grandes van por una sola conexión (7-Zip entrega un archivo a la vez); las conexiones paralelas aceleran los archivos pequeños.
+- Los paquetes `.pkg`/fPKG y las imágenes `.ffpkg` aún no se aceptan; están planeados (ver [PKG y fPKG en la PS5](docs/es/PKG-PS5.md)).
 
 ## Créditos
 

@@ -82,7 +82,9 @@ O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** a
 
 - [Arquitetura e fluxo](docs/ARQUITETURA.md) — como a extração em streaming funciona
 - [Compatibilidade FTP com o PS5](docs/FTP-PS5.md) — o que o ftpsrv suporta e por que isso importa
+- [PKG e fPKG no PS5](docs/PKG-PS5.md) — jailbreak e fPKG por firmware, instaladores de pacote (pesquisa para uma fase futura)
 - [Testes E2E](docs/TESTES.md) — como rodar e o que é verificado
+- [Roadmap](docs/ROADMAP.md)
 - [Último relatório E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md)
 
 ## Compilar
@@ -102,6 +104,7 @@ O CI (GitHub Actions) roda o E2E no Windows e no Linux, constrói a imagem Docke
 - **Notificação no PS5**: não implementada. Nem o ftpsrv nem o etaHEN expõem notificação pela rede; exigiria um payload ELF próprio (SDK do PS5) enviado ao elfldr.
 - Pausar/retomar ou reabrir faz o 7-Zip reler o arquivo desde o início (não reenvia o que já está no PS5, mas gasta CPU/disco).
 - Arquivos grandes vão por uma conexão só (o 7-Zip entrega um arquivo por vez); as conexões paralelas aceleram os arquivos pequenos.
+- Pacotes `.pkg`/fPKG e imagens `.ffpkg` ainda não são aceitos; estão planejados (ver [PKG e fPKG no PS5](docs/PKG-PS5.md)).
 
 ## Créditos
 
