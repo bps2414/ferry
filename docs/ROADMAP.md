@@ -4,7 +4,7 @@
 
 Decidido em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → envio progressivo → payload.
 
-Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Próxima: Fase 4 (inglês).**
+Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fase 4 implementada na tag `v1.4.0-beta.1`, com validação local documentada; a publicação da pré-release depende da CI. Próxima: Fase 5 (webhook).**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -88,11 +88,12 @@ Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). *
 
 ## Fase 4 — Inglês
 
-- Interface em português e inglês, escolha nas Configurações (padrão: idioma do navegador/sistema).
+- Interface web em português e inglês: Automático, Português (Brasil) ou English nas Configurações. Automático usa o primeiro idioma compatível do navegador, com fallback para inglês; escolha explícita persiste em `settings.json` e vale também para o login. WPF permanece em português.
 - Textos saem do código para arquivos de recurso (`pt-BR`, `en`), incluindo log visível, avisos e erros.
 - Vem depois da Fase 3 para traduzir uma interface só (a web).
 - **E2E**: roda o fluxo principal nos dois idiomas e confere que não sobra texto sem tradução.
-- Já feito: README em inglês (padrão), português e espanhol, e as docs nos três idiomas. Quando a interface estiver em inglês, tirar a nota "interface em português" e os nomes de botão em português do README em inglês.
+- Implementado: catálogos compartilhados de chave e parâmetros para núcleo, API e UI; troca imediata preservando fila, uploads e diálogo de senha; números formatados pelo navegador. Diagnósticos brutos de FTP/7-Zip/sistema mantêm o conteúdo original, e `log.txt` existente permanece intacto. README e docs atualizados nos três idiomas.
+- Validação: contratos focados em `dotnet run --project e2e -- --localization`; E2E web executa duas rodadas isoladas (`pt-BR`, `en`), com hashes, autenticação, retomada e reinício. O modo local não comprova Docker nem execução remota de CI.
 
 ## Fase 5 — Webhook configurável
 

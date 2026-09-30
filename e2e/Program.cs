@@ -10,6 +10,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Ferry;
 
+if (args.Length == 1 && args[0] == "--localization")
+{
+    LocalizationChecks.Run();
+    return 0;
+}
+
 var root = AppContext.BaseDirectory;
 while (!Directory.Exists(Path.Combine(root, "e2e")) || !Directory.Exists(Path.Combine(root, "app"))) root = Path.GetDirectoryName(root)!;
 var tools = Path.Combine(root, "e2e", "tools");
@@ -371,7 +377,7 @@ List<string> After(int m) { lock (ftp3Log) return ftp3Log.Skip(m).ToList(); }
 int Mark() { lock (ftp3Log) return ftp3Log.Count; }
 Job? ExJob(Engine e, string n) { lock (e.Lock) return e.Jobs.FirstOrDefault(x => x.Name == n); }
 bool ExHash(string n, string local) { var r = Path.Combine(imgDir, n); return File.Exists(r) && Sha(r) == Sha(local); }
-string[] ImgFiles() => Directory.Exists(imgDir) ? Directory.GetFiles(imgDir).Select(Path.GetFileName).Order().ToArray()! : [];
+string[] ImgFiles() => Directory.Exists(imgDir) ? Directory.GetFiles(imgDir).Select(file => Path.GetFileName(file)!).Order().ToArray() : [];
 int ExLeft() => Directory.GetFiles(exRoot, "*" + Engine.PartSuffix, SearchOption.AllDirectories).Length;
 // RNTO para o nome final só depois do último STOR/APPE da imagem
 string ImgOrder(string name)

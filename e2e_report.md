@@ -1,9 +1,9 @@
 # Relatório E2E — Ferry
 
-- Data: 2026-09-30 05:44:17
-- Resultado geral: **PASSOU**  (55s)
-- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; upload limitado a 40 MB/s por conexão) em 127.0.0.1:57470, destino `/mnt/ext1/homebrew`, 4 conexões, apagar original = sim
-- Ferramentas: 7-Zip 24.07 (embutido no app), Rar.exe 6.24.0 (só para gerar os testes)
+- Data: 2026-09-30 09:02:01 · Linux
+- Resultado geral: **PASSOU**  (68s)
+- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; upload limitado a 40 MB/s por conexão) em 127.0.0.1:43013, destino `/mnt/ext1/homebrew`, 4 conexões, apagar original = sim
+- Ferramentas: 7-Zip 23.01 (do sistema), RAR 6.24 (só para gerar os testes)
 - Jogo falso: 6 arquivos (~24 MB, incompressíveis) dentro de 2 pastas casca; volumes de 5 MB
 
 | Formato | Volumes | Esperou volume faltante | Estado final | SHA-256 iguais | Senha | Capa e título | param.json/sfo renomeados depois do último envio | Originais apagados | Resultado |
@@ -25,7 +25,7 @@
 | Jogo já instalado no PS5 | ✅ avisou "Jogo já instalado…" sem enviar; "Tentar de novo" reenviou por cima e conferiu |
 | Log persistente (log.txt) | ✅ comando e resposta de STOR/APPE/SIZE gravados |
 | Fechar e reabrir o app no meio do envio (G6) | ✅ fechou em 0% com 1 arquivo(s) completos no PS5; ao reabrir a fila voltou sozinha, nenhum deles foi extraído/reenviado; hash confere |
-| Senha aprendida e lembrada (G6) | ✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (DPAPI na fila), sem diálogo |
+| Senha aprendida e lembrada (G6) | ✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (cifrada na fila), sem diálogo |
 | Salvar atômico | ✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos |
 | Pausar/retomar no meio do stream (G5) | ✅ pausou em 0% (progresso congelado por 1,5 s), retomou; hash confere |
 | Remover da fila (G6) | ✅ sumiu da fila, não voltou sozinho, voltou ao adicionar de novo |
@@ -33,7 +33,7 @@
 | Imagem .exfat solta e dentro de .part1.rar (ShadowMount+) | ✅ IMG1 arrastado e IMG2 (dentro do .part1.rar) enviados para ImageDir com o nome do arquivo, sem capa; hash confere; pausou/retomou e continuou com APPE (1x); RNTO para o nome final só depois do último envio; sem sobra .ferry-part; nada em /mnt/ext1/homebrew |
 | Imagem .exfat: reabrir com parcial nosso (APPE) e parcial de outra versão (STOR inteiro) | ✅ parcial nosso do IMG1 (registrado na fila): só a metade que faltava (APPE, 20000000 bytes); parcial de outra versão do IMG2: STOR inteiro (12000000 bytes), sem APPE; hashes conferem, sem sobra .ferry-part |
 | Imagem .exfat já no PS5: aviso + Tentar de novo | ✅ IMG1 e IMG2 já no PS5: avisou "Jogo já instalado…" sem enviar nada; "Tentar de novo" reenviou por cima (STOR inteiro) e conferiu o hash |
-| Transferir agora | ✅ com ImgA (80 MB) em 41% enviando, "Transferir agora" no IMG2: ImgA voltou para a fila (não pausou), IMG2 ficou Verificado primeiro, depois ImgA continuou só com o que faltava (STOR 35651584 + APPE 44348416 bytes = 80000000); IMG2 enviado uma vez; hashes conferem |
+| Transferir agora | ✅ com ImgA (80 MB) em 11% enviando, "Transferir agora" no IMG2: ImgA voltou para a fila (não pausou), IMG2 ficou Verificado primeiro, depois ImgA continuou só com o que faltava (STOR 14307940 + APPE 65692060 bytes = 80000000); IMG2 enviado uma vez; hashes conferem |
 | Disco | extração em streaming (7z -so → FTP): nenhum arquivo extraído é gravado localmente |
 
 Repetir: `dotnet run --project e2e` (na pasta do repo). Requer Python com `pyftpdlib`.

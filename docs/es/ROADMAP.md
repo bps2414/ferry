@@ -4,7 +4,7 @@
 
 Decidido el 2026-09-30. Orden: lógica → UI/marca → self-hosted (Docker) → inglés → webhook → PKG/fPKG → envío progresivo → payload.
 
-Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Siguiente: Fase 4 (inglés).**
+Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Fase 4 implementada en la tag `v1.4.0-beta.1`, con validación local documentada; la publicación de la prerelease depende de CI. Siguiente: Fase 5 (webhook).**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -88,11 +88,12 @@ Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1
 
 ## Fase 4 — Inglés
 
-- Interfaz en portugués e inglés, elegida en los Ajustes (por defecto: idioma del navegador/sistema).
+- Interfaz web en portugués e inglés: Automatic, Português (Brasil) o English en los Ajustes. Automático usa el primer idioma compatible del navegador y recurre al inglés; la elección explícita persiste en `settings.json`, incluido el acceso. WPF sigue en portugués.
 - Los textos salen del código a archivos de recursos (`pt-BR`, `en`), incluidos el log visible, los avisos y los errores.
 - Va después de la Fase 3 para traducir una sola interfaz (la web).
 - **E2E**: ejecuta el flujo principal en los dos idiomas y comprueba que no quede texto sin traducir.
-- Ya hecho: README en inglés (por defecto), portugués y español, y la documentación en los tres idiomas. Cuando la interfaz esté en inglés, quitar la nota "interfaz en portugués" y los nombres de botones en portugués del README en inglés.
+- Implementado: catálogos compartidos con claves y parámetros para núcleo, API y UI; el cambio inmediato preserva cola, subidas y diálogo de contraseña; el navegador formatea los números. Los diagnósticos originales de FTP/7-Zip/sistema conservan su contenido, y el `log.txt` existente permanece intacto. README y documentación actualizados en los tres idiomas.
+- Validación: contratos enfocados con `dotnet run --project e2e -- --localization`; E2E web ejecuta rondas aisladas en `pt-BR` y `en`, con hashes, autenticación, continuación y reinicio. El modo local no demuestra Docker ni ejecución remota de CI.
 
 ## Fase 5 — Webhook configurable
 

@@ -33,13 +33,15 @@ public static class Ftp
         return c;
     }
 
-    public static async Task<string> TestAsync(Settings s)
+    public static async Task<string> TestAsync(Settings s) => (await TestMessageAsync(s)).Render();
+
+    public static async Task<Message> TestMessageAsync(Settings s)
     {
         await using var c = Client(s);
         await c.Connect();
         return await c.DirectoryExists(s.RemoteDir)
-            ? $"Conectado. Destino {s.RemoteDir} existe."
-            : $"Conectado, mas {s.RemoteDir} não existe (será criado no envio).";
+            ? new("core.ftp.connected", s.RemoteDir)
+            : new("core.ftp.connectedMissing", s.RemoteDir);
     }
 
     /// <summary>
@@ -74,8 +76,9 @@ public static class Ftp
     /// started(i) é chamado antes de mandar um arquivo grande (é o que pode ficar parcial e ser continuado).
     /// </summary>
     public static async Task StreamAsync(Settings s, Stream src, List<Entry> entries, string?[] paths, long[] have, bool append,
-        List<int> need, Action<long, long> progress, Action<string> currentFile, Action<int> started, Func<int, bool> lenient, Action<string> log, CancellationToken ct)
+        List<int> need, Action<long, long> progress, Action<string> currentFile, Action<int> started, Func<int, bool> lenient, Action<string> log, CancellationToken ct, Action<Message>? messageLog = null)
     {
+        void Emit(Message message) { if (messageLog != null) messageLog(message); else log(message.Render()); }
         var total = entries.Where((e, i) => paths[i] != null).Sum(e => e.Size);
         long done = entries.Where((e, i) => paths[i] != null && have[i] == e.Size).Sum(e => e.Size);
         void Add(long n) => progress(Interlocked.Add(ref done, n), total);
@@ -95,7 +98,7 @@ public static class Ftp
             {
                 await using var c = await Open(s, tk);
                 await foreach (var (i, data, app) in ch.Reader.ReadAllAsync(tk))
-                    await Put(c, new Slice(new MemoryStream(data), data.Length, Add), paths[i]!, app, entries[i].Size, lenient(i), log, tk);
+                    await Put(c, new Slice(new MemoryStream(data), data.Length, Add), paths[i]!, app, entries[i].Size, lenient(i), Emit, tk);
             }
             catch { cts.Cancel(); throw; }
         }).ToList();
@@ -122,9 +125,9 @@ public static class Ftp
                     await src.ReadExactlyAsync(data, tk);
                     await ch.Writer.WriteAsync((i, data, off > 0), tk);
                 }
-                else { started(i); await Put(main, new Slice(src, len, Add), path, off > 0, e.Size, lenient(i), log, tk); }
+                else { started(i); await Put(main, new Slice(src, len, Add), path, off > 0, e.Size, lenient(i), Emit, tk); }
             }
-            if (await src.ReadAsync(buf, tk) > 0) throw new Exception("Saída do 7-Zip maior que a listagem");
+            if (await src.ReadAsync(buf, tk) > 0) throw new LocalizedException(new("core.archive.outputLong"));
             ch.Writer.Complete();
             await Task.WhenAll(pool);
         }
@@ -133,10 +136,10 @@ public static class Ftp
             await Task.WhenAll(pool); // mostra o erro real do worker que falhou
             throw;
         }
-        catch (EndOfStreamException) { throw new Exception("Saída do 7-Zip terminou antes do esperado"); }
+        catch (EndOfStreamException) { throw new LocalizedException(new("core.archive.outputShort")); }
     }
 
-    static async Task Put(AsyncFtpClient c, Stream data, string path, bool append, long expected, bool lenient, Action<string> log, CancellationToken ct)
+    static async Task Put(AsyncFtpClient c, Stream data, string path, bool append, long expected, bool lenient, Action<Message> log, CancellationToken ct)
     {
         var cmd = append ? "APPE" : "STOR";
         // Stream de baixo nível: só TYPE + PASV + STOR/APPE. O UploadStream checa existência com NLST,
@@ -153,15 +156,15 @@ public static class Ftp
         {
             FileLog.Write($"{cmd} {path} → falhou: {Flatten(e)}");
             // stream do 7z acabou antes: o erro real é do 7z (a Engine mostra o stderr dele)
-            if (e.GetBaseException() is EndOfStreamException) throw new Exception("Saída do 7-Zip terminou antes do esperado", e);
-            throw new Exception($"Falha ao enviar {path} ({cmd}): {Flatten(e)}", e);
+            if (e.GetBaseException() is EndOfStreamException) throw new LocalizedException(new("core.archive.outputShort"), e);
+            throw new LocalizedException(new("core.ftp.sendFailed", path, cmd, Localization.ExceptionMessage(e)), e);
         }
         // O servidor pode responder 226 e o arquivo não mudar (arquivo aberto pelo jogo/loader, overlay de backport).
         var got = await Size(c, path, ct);
         if (got == expected) return;
-        var msg = $"{path}: esperado {expected} bytes, no PS5 {got}";
-        if (lenient) { log("Aviso (backport do loader?) " + msg); return; }
-        throw new Exception($"o PS5 não deixou sobrescrever {path} — o jogo/loader está usando? (esperado {expected} bytes, no PS5 {got})");
+        var msg = new Message("core.ftp.size", path, expected, got);
+        if (lenient) { log(new("core.ftp.backportWarning", msg)); return; }
+        throw new LocalizedException(new("core.ftp.overwriteFailed", path, expected, got));
     }
 
     /// <summary>RNFR/RNTO. Apaga o destino antes (nem todo servidor renomeia por cima).</summary>
@@ -172,7 +175,7 @@ public static class Ftp
         var r1 = await c.Execute("RNFR " + from, ct);
         var r2 = r1.Success ? await c.Execute("RNTO " + to, ct) : r1;
         FileLog.Write($"RNFR {from} → {r1.Code}; RNTO {to} → {r2.Code} {r2.Message}");
-        if (!r2.Success) throw new Exception($"Não renomeou {from} para {to}: {r2.Code} {r2.Message}");
+        if (!r2.Success) throw new LocalizedException(new("core.ftp.renameFailed", from, to, r2.Code, r2.Message));
     }
 
     /// <summary>Mensagens da exceção e de todas as internas ("See InnerException" não ajuda ninguém).</summary>

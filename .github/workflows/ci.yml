@@ -40,6 +40,9 @@ jobs:
           path: e2e/tools
           key: rar-6.24
 
+      - name: Contratos de localização
+        run: dotnet run --project e2e -- --localization
+
       - name: E2E
         run: dotnet run --project e2e
 
@@ -75,6 +78,9 @@ jobs:
           sudo add-apt-repository -y multiverse
           sudo apt-get update
           sudo apt-get install -y 7zip 7zip-rar
+
+      - name: Contratos de localização
+        run: dotnet run --project e2e -- --localization
 
       # rar do rarlinux 6.24 (só para gerar os arquivos de teste)
       - uses: actions/cache@v6
@@ -154,7 +160,7 @@ jobs:
 
       - name: Relatório E2E web
         if: always()
-        run: cat e2e_report_web.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat e2e_report_web_*.md >> "$GITHUB_STEP_SUMMARY" || true
 
       - uses: actions/upload-artifact@v7
         if: always()
@@ -162,6 +168,7 @@ jobs:
           name: e2e-web
           path: |
             e2e_report_web.md
+            e2e_report_web_*.md
             e2e/web/report/
 
       - name: Publicar no GHCR (amd64 + arm64)

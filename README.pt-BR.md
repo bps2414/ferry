@@ -2,6 +2,8 @@
 
 # Ferry
 
+A interface web oferece português (Brasil) e inglês. Em **Configurações → Idioma**, escolha **Automático**, **Português (Brasil)** ou **English**. Automático usa o primeiro idioma compatível do navegador e recorre ao inglês nos demais casos. A escolha explícita vale para a instalação, inclusive no login, e persiste ao reiniciar. A interface Windows WPF continua em português.
+
 [English](README.md) · **Português (BR)** · [Español](README.es.md)
 
 envio de jogos para PS5
@@ -14,7 +16,7 @@ App que pega jogos compactados (`.zip`, `.rar`, `.7z`, inclusive divididos em pa
 
 - **Windows**: um `.exe` portátil (sem instalar nada)
 - **Self-hosted** (Docker ou Linux): roda no servidor de casa e você usa pelo navegador, em `http://<ip-do-servidor>:8021`
-- Interface escura em português, com fila, progresso, velocidade e tempo restante
+- Interface escura, com fila, progresso, velocidade e tempo restante
 - Pausa, retoma, fecha e reabre sem perder o que já foi enviado
 
 > Feito para uso com homebrew/backups próprios em console desbloqueado. Use por sua conta e risco.

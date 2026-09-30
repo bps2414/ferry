@@ -14,6 +14,9 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     public string QueueFile { get; set; } = Path.Combine(Settings.AppDir, "queue.json");
     /// Chamado (de thread de fundo) quando um jogo termina: Verificado ou Erro.
     public Action<Job>? Done { get; set; }
+    public Action<Message>? MessageLog { get; set; }
+    void Emit(Message message) { if (MessageLog != null) MessageLog(message); else log(message.Render()); }
+    void JobLog(Job job, Message message) => Emit(new("core.jobLog", job.Name, message));
 
     readonly HashSet<string> _dropped = new(StringComparer.OrdinalIgnoreCase);
     readonly HashSet<string> _removed = new(StringComparer.OrdinalIgnoreCase); // grupos tirados da fila pelo usuário
@@ -46,7 +49,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 _started = new(s.Started ?? [], StringComparer.OrdinalIgnoreCase);
                 _done = new(s.Done ?? [], StringComparer.OrdinalIgnoreCase);
             }
-            if (_dropped.Count > 0) log($"Fila restaurada: {_dropped.Count} arquivo(s) adicionados antes");
+            if (_dropped.Count > 0) Emit(new("core.queueRestored", _dropped.Count));
         }
         catch { }
     }
@@ -57,7 +60,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         {
             lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started, [.. _done])));
         }
-        catch (Exception e) { log("Não salvou a fila: " + e.Message); }
+        catch (Exception e) { Emit(new("core.queueSaveFailed", Localization.ExceptionMessage(e))); }
     }
 
     // jogo saiu da fila: esquece senha e envios começados
@@ -84,7 +87,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         Forget(job.Key);
         lock (Lock) Jobs.Remove(job);
         SaveQueue();
-        log($"[{job.Name}] removido da fila");
+        JobLog(job, new("core.removed"));
     }
 
     public async Task RunAsync(CancellationToken stop)
@@ -93,7 +96,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         {
             while (!stop.IsCancellationRequested)
             {
-                try { await ScanAsync(); } catch (Exception e) { log("Erro na varredura: " + e.Message); }
+                try { await ScanAsync(); } catch (Exception e) { Emit(new("core.scanError", Localization.ExceptionMessage(e))); }
                 await Task.Delay(1000, stop).ContinueWith(_ => { });
             }
         });
@@ -131,11 +134,11 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 string? pw; bool done;
                 lock (_dropped) { pw = Secret.Unprotect(_passwords.GetValueOrDefault(g.Key)); done = _done.Contains(g.Key); } // lembrados de antes de fechar o app
                 var job = new Job { Key = g.Key, Name = g.Name, Stage = done ? Stage.Verificado : Stage.AguardandoPartes, ArchivePassword = pw, Parts = [.. g.Parts] };
-                if (done) job.Finish("Enviado e conferido antes de reabrir");
+                if (done) job.Finish(new Message("core.restoredComplete"));
                 Jobs.Add(job);
             }
         }
-        string Missing(ArchiveGroup g, IEnumerable<string> names) => "faltando " + string.Join(", ", names.Select(n => n.StartsWith(g.Name + ".") ? n[(g.Name.Length + 1)..] : n));
+        Message Missing(ArchiveGroup g, IEnumerable<string> names) => new("core.missing", string.Join(", ", names.Select(n => n.StartsWith(g.Name + ".") ? n[(g.Name.Length + 1)..] : n)));
 
         foreach (var g in groups.Values)
         {
@@ -146,25 +149,25 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             job.MainFile = g.Main ?? "";
             if (!g.CompleteByName)
             {
-                job.Detail = g.Missing() is { Count: > 0 } miss ? Missing(g, miss) : $"{job.Parts.Count} parte(s) encontrada(s), faltam outras";
+                job.SetDetail(g.Missing() is { Count: > 0 } miss ? Missing(g, miss) : new("core.partsFound", job.Parts.Count));
                 _stable.Remove(g.Key); continue;
             }
 
             var sig = Sig(job.Parts);
-            if (!_stable.TryGetValue(g.Key, out var st) || st.sig != sig) { _stable[g.Key] = (sig, DateTime.UtcNow); job.Detail = "Aguardando o tamanho dos arquivos estabilizar"; continue; }
+            if (!_stable.TryGetValue(g.Key, out var st) || st.sig != sig) { _stable[g.Key] = (sig, DateTime.UtcNow); job.SetDetail(new("core.stabilizing")); continue; }
             if ((DateTime.UtcNow - st.since).TotalSeconds < StableSeconds) continue;
 
             if (!Archives.IsImage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
             {
-                job.Detail = lost.Length > 0 ? Missing(g, lost) : "Faltam volumes ou arquivo incompleto"; // .001: o 7z não diz qual
+                job.SetDetail(lost.Length > 0 ? Missing(g, lost) : new("core.incompleteParts")); // .001: o 7z não diz qual
                 _stable[g.Key] = (sig, DateTime.UtcNow); // reavalia depois de outra janela
                 continue;
             }
             // Um volume pode ter chegado durante o 7z l: o 7z viu, mas a lista de partes não. Recomeça a janela.
             if (CurrentGroups().GetValueOrDefault(g.Key) is not { } fresh || Sig([.. fresh.Parts]) != sig) { _stable.Remove(g.Key); continue; }
-            job.Detail = $"{job.Parts.Count} parte(s) · {Job.Size(job.Parts.Sum(p => new FileInfo(p).Length))}";
+            job.SetDetail(new("core.partsSize", job.Parts.Count, new Message("core.size", job.Parts.Sum(p => new FileInfo(p).Length))));
             job.Stage = Stage.NaFila;
-            log($"[{job.Name}] todas as partes presentes ({job.Parts.Count}), na fila");
+            JobLog(job, new("core.queued", job.Parts.Count));
         }
     }
 
@@ -181,7 +184,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         try
         {
             job.Stage = Stage.Extraindo; job.ResetRate();
-            job.Detail = "Lendo o conteúdo do arquivo…";
+            job.SetDetail(new("core.reading"));
             // .exfat solto: um item só, lido direto do disco
             var loose = Archives.IsImage(job.MainFile);
             var (res, entries, _) = loose ? (ListResult.Ok, [new(Path.GetFileName(job.MainFile), new FileInfo(job.MainFile).Length, false, false)], [])
@@ -194,21 +197,21 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 if (known.TryDequeue(out var k)) job.ArchivePassword = k;
                 else
                 {
-                    log($"[{job.Name}] senha necessária");
+                    JobLog(job, new("core.passwordNeeded"));
                     if (!asked) job.ArchivePassword = null; // o diálogo diz "senha incorreta" só depois de uma tentativa dele
-                    job.ArchivePassword = await askPassword(job) ?? throw new Exception("Senha não informada");
+                    job.ArchivePassword = await askPassword(job) ?? throw new LocalizedException(new("core.passwordMissing"));
                     asked = true;
                 }
                 (res, entries, _) = await Archives.ListAsync(job.MainFile, job.ArchivePassword);
             }
-            if (res != ListResult.Ok) throw new Exception("Arquivo incompleto ou corrompido");
+            if (res != ListResult.Ok) throw new LocalizedException(new("core.corruptArchive"));
             if (job.ArchivePassword is { } okPw)
             {
                 if (asked && !settings.KnownPasswords.Contains(okPw))
                 {
                     settings.KnownPasswords.Add(okPw);
                     try { settings.Save(); } catch { }
-                    log($"[{job.Name}] senha nova adicionada às senhas conhecidas");
+                    JobLog(job, new("core.passwordLearned"));
                 }
                 lock (_dropped) _passwords[job.Key] = Secret.Protect(okPw);
                 SaveQueue();
@@ -218,7 +221,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             // pasta de jogo → RemoteDir/<jogo>; senão imagem(ns) .exfat → ImageDir/<nome>.exfat
             string remote; string?[] targets;
             if (Archives.Plan(entries, job.Name) is (var gameName, var t)) (remote, targets) = (settings.RemoteDir.TrimEnd('/') + "/" + gameName, t);
-            else (remote, targets) = (settings.ImageDir.TrimEnd('/'), Archives.ImagePlan(entries) ?? throw new Exception("Nenhuma pasta com EBOOT.BIN ou sce_sys/param.sfo, nem imagem .exfat"));
+            else (remote, targets) = (settings.ImageDir.TrimEnd('/'), Archives.ImagePlan(entries) ?? throw new LocalizedException(new("core.noGame")));
             await LoadCover(job, entries, targets);
 
             // Publicação atômica: param.json/param.sfo sobem com sufixo e só ganham o nome final depois que todo o
@@ -228,11 +231,11 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             var heldFinal = final.Select((p, i) => p != paths[i] ? p : null).ToArray();
             bool Lenient(int i) => job.Force && Backport(targets[i]!);
 
-            job.Detail = "Conferindo o que já está no PS5…";
+            job.SetDetail(new("core.checking"));
             if (!job.Force && (await Ftp.RemoteStateAsync(settings, heldFinal, ct)).have.Any(n => n >= 0))
             {
                 job.Installed = true;
-                throw new Exception("Jogo já instalado no PS5 — o loader pode estar sobrepondo arquivos (backport); reenviar mesmo assim? Use \"Tentar de novo\": no reenvio, divergência em eboot.bin, fakelib, sce_module/*.prx e right.sprx vira só aviso.");
+                throw new LocalizedException(new("core.installed"));
             }
 
             var decCount = entries.Count(e => !e.IsDir && e.Path.Split('/').Contains("dec", StringComparer.OrdinalIgnoreCase));
@@ -241,7 +244,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             var noAppend = false;
             for (var tries = 0; ; tries++)
             {
-                job.Detail = "Conferindo o que já está no PS5…";
+                job.SetDetail(new("core.checking"));
                 var (have, append, probe) = await Ftp.RemoteStateAsync(settings, paths, ct, noAppend);
                 // Parcial só continua (APPE) se foi este app que começou esse envio, com esse tamanho final.
                 // Arquivo menor que não é nosso pode ser outra versão: continuar daria um arquivo corrompido do tamanho certo.
@@ -256,11 +259,13 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 ct.ThrowIfCancellationRequested(); // cancelado (pausa/transferir agora) durante a conferência: não sobrescreve o Stage
                 job.Stage = Stage.Enviando; job.ResetRate();
                 job.Detail = remote;
-                log($"[{job.Name}] enviando {need.Count} arquivo(s) para {remote} ({settings.Connections} conexões)"
-                    + (already > 0 ? $", {already} já estavam completos no PS5" : "")
-                    + (foreign > 0 ? $", {foreign} menor(es) no PS5 que não foram começados por este app (reenviados inteiros)" : "")
-                    + (decCount > 0 ? $", {decCount} do dec por cima" : "")
-                    + (append ? " · parcial continua com APPE" : " · parcial é reenviado inteiro") + $" [{probe}]");
+                Message Combine(Message left, Message right) => new("core.concat", left, right);
+                var sending = new Message("core.sending", need.Count, remote, settings.Connections);
+                if (already > 0) sending = Combine(sending, new("core.alreadyComplete", already));
+                if (foreign > 0) sending = Combine(sending, new("core.foreignPartial", foreign));
+                if (decCount > 0) sending = Combine(sending, new("core.decOverlay", decCount));
+                sending = Combine(sending, new(append ? "core.appendPartial" : "core.resendPartial"));
+                JobLog(job, Combine(sending, new("core.probe", probe[(probe.IndexOf('→') + 1)..].Trim())));
                 if (need.Count == 0) break;
 
                 listFile ??= Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
@@ -278,23 +283,23 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 try
                 {
                     await Ftp.StreamAsync(settings, src, entries, paths, have, append, need, job.Report,
-                        f => job.CurrentFile = f[(remote.Length + 1)..], Started, Lenient, m => log($"[{job.Name}] {m}"), ct);
+                        f => job.CurrentFile = f[(remote.Length + 1)..], Started, Lenient, m => log($"[{job.Name}] {m}"), ct, m => JobLog(job, m));
                 }
                 catch (Exception e) { fail = e; try { p?.Kill(true); } catch { } }
                 if (p != null) await p.WaitForExitAsync();
                 ct.ThrowIfCancellationRequested();
                 var sevenErr = p is { ExitCode: not 0 } ? (await err!).Trim() : "";
                 // Erro do lado do 7z (senha, CRC, volume ruim) aparece como stream curto + exit != 0.
-                if ((fail is null || fail.Message.StartsWith("Saída do 7-Zip")) && sevenErr != "") throw new Exception("7-Zip falhou: " + sevenErr);
-                if (fail != null && append && !noAppend && fail.Message.Contains("(APPE)"))
+                if ((fail is null || fail is LocalizedException { MessageData.Key: "core.archive.outputShort" or "core.archive.outputLong" }) && sevenErr != "") throw new LocalizedException(new("core.archive.failed", sevenErr));
+                if (fail != null && append && !noAppend && fail is LocalizedException { MessageData.Key: "core.ftp.sendFailed" } ftpFailure && Equals(ftpFailure.MessageData.Args[1], "APPE"))
                 {
-                    log($"[{job.Name}] servidor recusou APPE ({Ftp.Flatten(fail)}); reenviando parciais inteiros");
+                    JobLog(job, new("core.appeRejected", Localization.ExceptionMessage(fail)));
                     noAppend = true;
                     continue;
                 }
                 if (fail != null && tries < 3 && Transient(fail))
                 {
-                    log($"[{job.Name}] erro de rede ({Ftp.Flatten(fail)}); reconectando e continuando ({tries + 1}/3)");
+                    JobLog(job, new("core.networkRetry", Localization.ExceptionMessage(fail), tries + 1));
                     await Task.Delay(3000, ct);
                     continue;
                 }
@@ -302,7 +307,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 break;
             }
 
-            job.Detail = "Verificando no PS5…";
+            job.SetDetail(new("core.verifying"));
             var warned = await Verify(job, entries, paths, Lenient, ct);
             // tudo conferido: agora o jogo "aparece" para o loader
             for (var i = 0; i < paths.Length; i++)
@@ -311,21 +316,21 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             lock (_dropped) { _started.Remove(job.Key); _done.Add(job.Key); }
             job.Force = job.Installed = false;
             job.Stage = Stage.Verificado;
-            job.Finish(remote + (warned > 0 ? $" · {warned} arquivo(s) com tamanho do backport do loader (ver log)" : ""));
+            job.Finish(new Message("core.concat", remote, warned > 0 ? new Message("core.completeBackport", warned) : new Message("core.raw", "")));
             SaveQueue();
-            log($"[{job.Name}] upload verificado");
+            JobLog(job, new("core.uploadVerified"));
             Done?.Invoke(job);
             if (settings.DeleteOriginal)
             {
                 foreach (var f in job.Parts) File.Delete(f);
                 SaveQueue();
-                log($"[{job.Name}] originais apagados ({job.Parts.Count})");
+                JobLog(job, new("core.originalsDeleted", job.Parts.Count));
             }
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            var msg = Ftp.Flatten(e);
-            job.Stage = Stage.Erro; job.Detail = msg; job.CurrentFile = ""; log($"[{job.Name}] ERRO: {msg}");
+            var message = Localization.ExceptionMessage(e);
+            job.Stage = Stage.Erro; job.SetDetail(message); job.CurrentFile = ""; JobLog(job, new("core.error", message));
             Done?.Invoke(job);
         }
         catch { } // pausado/cancelado: Stage já foi definido por Pause/Cancel
@@ -344,10 +349,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     {
         var (have, _, _) = await Ftp.RemoteStateAsync(settings, paths, ct);
         var bad = Enumerable.Range(0, paths.Length).Where(i => paths[i] != null && have[i] != entries[i].Size).ToList();
-        string Line(int i) => $"{paths[i]} (esperado {entries[i].Size} bytes, no PS5 {(have[i] < 0 ? "não existe" : have[i].ToString())})";
-        foreach (var i in bad.Where(lenient)) log($"[{job.Name}] Aviso: tamanho do backport do loader em {Line(i)}");
+        Message Line(int i) => new("core.verifyLine", paths[i], entries[i].Size, have[i] < 0 ? new Message("core.notExists") : have[i]);
+        foreach (var i in bad.Where(lenient)) JobLog(job, new("core.verifyBackport", Line(i)));
         var real = bad.Where(i => !lenient(i)).ToList();
-        if (real.Count > 0) throw new Exception($"Tamanho no PS5 diferente em {real.Count} arquivo(s): " + string.Join("; ", real.Take(5).Select(Line)));
+        if (real.Count > 0)
+        {
+            var lines = real.Take(5).Select(Line).Aggregate((a, b) => new Message("core.semicolon", a, b));
+            throw new LocalizedException(new("core.verifyFailed", real.Count, lines));
+        }
         return bad.Count;
     }
 
@@ -363,8 +372,8 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             else job.Icon = data[k];
     }
 
-    public void Pause(Job job) { job.Stage = Stage.Pausado; job.Cts?.Cancel(); log($"[{job.Name}] pausado"); }
-    public void Resume(Job job) { job.Stage = Stage.NaFila; log($"[{job.Name}] retomado"); }
+    public void Pause(Job job) { job.Stage = Stage.Pausado; job.Cts?.Cancel(); JobLog(job, new("core.paused")); }
+    public void Resume(Job job) { job.Stage = Stage.NaFila; JobLog(job, new("core.resumed")); }
 
     // "Transferir agora": passa na frente da fila. O que estava enviando volta para a fila (NaFila, não Pausado):
     // o Cts cancelado cai no catch vazio do ProcessAsync e ele retoma depois, só com o que falta.
@@ -379,7 +388,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             if (active != null) { Jobs.Move(Jobs.IndexOf(active), 1); active.Stage = Stage.NaFila; active.Cts?.Cancel(); }
             job.Stage = Stage.NaFila;
         }
-        log($"[{job.Name}] transferir agora" + (active != null ? $", {active.Name} volta para a fila" : ""));
+        JobLog(job, new("core.concat", new Message("core.sendNow"), active != null ? new Message("core.backToQueue", active.Name) : new Message("core.raw", "")));
     }
 
     public void Cancel(Job job)
@@ -387,7 +396,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         job.Stage = Stage.Cancelado;
         job.Cts?.Cancel();
         job.ResetRate();
-        log($"[{job.Name}] cancelado");
+        JobLog(job, new("core.cancelled"));
     }
 
     public void ClearFinished()
@@ -401,6 +410,6 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     {
         job.Force |= job.Installed;
         job.Detail = ""; job.Progress = 0; job.Stage = Stage.AguardandoPartes;
-        log($"[{job.Name}] tentando de novo" + (job.Force ? " (reenviando por cima do jogo instalado)" : ""));
+        JobLog(job, new("core.concat", new Message("core.retry"), job.Force ? new Message("core.overwriteInstalled") : new Message("core.raw", "")));
     }
 }

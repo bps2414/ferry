@@ -17,7 +17,7 @@ Ferry takes compressed games (`.zip`, `.rar`, `.7z`, including multi-part archiv
 - Dark interface with queue, progress, speed and time remaining
 - Pause, resume, close and reopen without losing what was already sent
 
-> The interface is in Portuguese for now; English is the next item on the [roadmap](docs/ROADMAP.md). Button names below are given as they appear in the app, with the English meaning.
+The web interface supports Portuguese (Brazil) and English. In **Settings → Language**, choose **Automatic**, **Português (Brasil)** or **English**. Automatic uses the browser's first supported language and falls back to English. An explicit choice is saved for the installation, including login, and survives a restart. The Windows WPF interface remains in Portuguese.
 
 > Made for your own homebrew/backups on an unlocked console. Use at your own risk.
 
@@ -49,13 +49,13 @@ Open `http://<server-ip>:8021`. On first open the page asks you to create a user
 ## How to use
 
 1. Run an FTP payload on the PS5 (**ftpsrv**, port 2121, or **etaHEN**'s FTP, port 1337).
-2. Open the app → **Configurações** (Settings): PS5 IP, port, destination (**M.2** `/mnt/ext1/homebrew` or **internal SSD** `/data/homebrew`). Everything saves automatically. The bottom of the sidebar shows whether the PS5 is online.
-3. In **Fila** (Queue), click the middle of the screen (opens the file picker) or drag the files onto the window. Select **all parts** at once.
+2. Open **Settings**: PS5 IP, port, destination (**M.2** `/mnt/ext1/homebrew` or **internal SSD** `/data/homebrew`). Everything saves automatically. The bottom of the sidebar shows whether the PS5 is online.
+3. In **Queue**, click the middle of the screen (opens the file picker) or drag the files onto the window. Select **all parts** at once.
 4. Done: once every part is present, the game is extracted and sent to `<destination>/<game folder>`.
 
 Optional: a **watched folder** — anything that lands in it is queued automatically (handy for your downloads folder).
 
-**Transferir agora** (Transfer now): on a queued or paused game, moves it to the front. The current upload goes back to the queue and later continues where it stopped.
+**Transfer now**: on a queued or paused game, moves it to the front. The current upload goes back to the queue and later continues where it stopped.
 
 ## Supported formats
 

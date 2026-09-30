@@ -4,7 +4,7 @@
 
 Decided on 2026-09-30. Order: logic → UI/brand → self-hosted (Docker) → English → webhook → PKG/fPKG → progressive upload → payload.
 
-Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Next: Phase 4 (English).**
+Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Phase 4 implemented in tag `v1.4.0-beta.1`, with local validation documented; pre-release publication depends on CI. Next: Phase 5 (webhook).**
 
 ## Phase 1 — Logic (release `v1.1.0-beta.1`)
 
@@ -88,11 +88,12 @@ Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Ne
 
 ## Phase 4 — English
 
-- Interface in Portuguese and English, chosen in Settings (default: browser/system language).
+- Web interface in Portuguese and English: Automatic, Português (Brasil) or English in Settings. Automatic uses the browser's first supported language, falling back to English; an explicit choice persists in `settings.json`, including login. WPF remains in Portuguese.
 - Texts move out of the code into resource files (`pt-BR`, `en`), including the visible log, notices and errors.
 - Comes after Phase 3 so only one interface (the web one) is translated.
 - **E2E**: runs the main flow in both languages and checks no untranslated text is left.
-- Already done: README in English (default), Portuguese and Spanish, and the docs in the three languages. When the interface is in English, remove the "interface in Portuguese" note and the Portuguese button names from the English README.
+- Implemented: shared key/argument catalogs for core, API and UI; immediate switching preserves queue, uploads and password dialog; browser number formatting. Raw FTP/7-Zip/system diagnostics keep their original content, and the existing `log.txt` remains intact. README and docs updated in all three languages.
+- Validation: focused contracts via `dotnet run --project e2e -- --localization`; web E2E runs independently in `pt-BR` and `en`, preserving hashes, authentication, resume and restart checks. Local mode does not prove Docker or remote CI execution.
 
 ## Phase 5 — Configurable webhook
 

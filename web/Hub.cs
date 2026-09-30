@@ -15,18 +15,27 @@ public class Hub(Settings settings)
     public Settings Settings => settings;
 
     // ---------- log e avisos: listas com número de sequência; cada conexão SSE manda o que ainda não mandou ----------
-    public record Line(long Seq, string Text);
-    public record Notice(long Seq, string Kind, string Title, string Text);
+    public record Line(long Seq, string Time, Message Message)
+    {
+        public string Text => $"{Time}  {Message.Render()}";
+    }
+    public record Notice(long Seq, string Kind, Message TitleMessage, Message TextMessage)
+    {
+        public string Title => TitleMessage.Render();
+        public string Text => TextMessage.Render();
+    }
     readonly List<Line> _log = [];
     readonly List<Notice> _notices = [];
     long _seq;
 
-    public void Log(string msg)
+    public void Log(string msg) => Log(new Message("core.raw", msg));
+
+    public void Log(Message msg)
     {
-        FileLog.Write(msg);
+        FileLog.Write(msg.Render());
         lock (_log)
         {
-            _log.Add(new(Interlocked.Increment(ref _seq), $"{DateTime.Now:HH:mm:ss}  {msg}"));
+            _log.Add(new(Interlocked.Increment(ref _seq), DateTime.Now.ToString("HH:mm:ss"), msg));
             if (_log.Count > 2000) _log.RemoveRange(0, _log.Count - 2000);
         }
     }
@@ -34,7 +43,7 @@ public class Hub(Settings settings)
     public List<Line> LogSince(long seq) { lock (_log) return _log.Where(l => l.Seq > seq).ToList(); }
     public void ClearLog() { lock (_log) _log.Clear(); }
 
-    void Notify(string kind, string title, string text)
+    void Notify(string kind, Message title, Message text)
     {
         lock (_notices)
         {
@@ -48,8 +57,8 @@ public class Hub(Settings settings)
 
     public void OnDone(Job job)
     {
-        if (job.Stage == Stage.Verificado) Notify("done", "Envio concluído", $"{(job.Title != "" ? job.Title : job.Name)} concluído");
-        else Notify("error", "Erro no envio", $"Erro em {job.Name}: {Short(job.Detail)}");
+        if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name));
+        else Notify("error", new("web.errorTitle"), new("web.errorText", job.Name, job.DetailMessage ?? new Message("core.raw", Short(job.Detail))));
     }
 
     static string Short(string s)
@@ -66,7 +75,7 @@ public class Hub(Settings settings)
     {
         var ask = new Ask(Interlocked.Increment(ref _seq), job, job.ArchivePassword != null, new(TaskCreationOptions.RunContinuationsAsynchronously));
         _asks[Id(job)] = ask;
-        Notify("password", "Senha necessária", $"\"{job.Name}\" precisa de senha.");
+        Notify("password", new("web.passwordTitle"), new("web.passwordText", job.Name));
         return ask.Answer.Task;
     }
 
@@ -80,7 +89,8 @@ public class Hub(Settings settings)
 
     // ---------- estado do PS5 (cartão da barra lateral) e PS5 achado na rede ----------
     public string Ps5Status { get; private set; } = "unknown"; // unknown | testing | online | offline
-    public string TestMessage { get; private set; } = "";
+    public Message? TestMessageData { get; private set; }
+    public string TestMessage => TestMessageData?.Render() ?? "";
     public (string Ip, int Port)? Found { get; set; }
 
     long _test; // só o teste mais recente mexe no cartão (um teste antigo, de outro IP, pode terminar depois)
@@ -89,26 +99,26 @@ public class Hub(Settings settings)
     {
         var mine = Interlocked.Increment(ref _test);
         Ps5Status = "testing";
-        string msg; bool ok;
-        try { msg = await Ftp.TestAsync(settings); ok = true; }
-        catch (Exception e) { msg = "Falhou: " + e.Message; ok = false; }
-        Log(ok ? "Teste de conexão: " + msg : "Teste de conexão falhou: " + msg[8..]);
-        if (mine == Interlocked.Read(ref _test)) (TestMessage, Ps5Status) = (msg, ok ? "online" : "offline");
+        Message msg; bool ok;
+        try { msg = await Ftp.TestMessageAsync(settings); ok = true; }
+        catch (Exception e) { msg = new("web.testFailed", Localization.ExceptionMessage(e)); ok = false; }
+        Log(ok ? new Message("web.testLog", msg) : new Message("web.testFailedLog", msg.Args[0]));
+        if (mine == Interlocked.Read(ref _test)) (TestMessageData, Ps5Status) = (msg, ok ? "online" : "offline");
         return ok;
     }
 
     // Só oferece o que achou; nunca troca o IP sozinho.
-    public async Task<string> Discover()
+    public async Task<Message> Discover()
     {
         var r = await Task.Run(Discovery.FindPs5);
         if (r is { } f && !(f.Ip == settings.Host && f.Port == settings.Port))
         {
             Found = f;
-            Log($"PS5 encontrado na rede: {f.Ip}:{f.Port}");
-            return $"Encontrado {f.Ip}:{f.Port}. Clique em \"Usar este\".";
+            Log(new Message("web.foundLog", f.Ip, f.Port));
+            return new("web.found", f.Ip, f.Port);
         }
-        Log(r is null ? "Nenhum PS5 encontrado na rede" : "PS5 encontrado, mas é o IP já configurado");
-        return r is null ? "Nenhum PS5 encontrado na rede." : "Um servidor FTP responde no IP e na porta já configurados.";
+        Log(new Message(r is null ? "web.notFoundLog" : "web.sameFoundLog"));
+        return new(r is null ? "web.notFound" : "web.sameFound");
     }
 
     // ---------- fila ----------
@@ -145,10 +155,12 @@ public class Hub(Settings settings)
         var ask = _asks.Values.FirstOrDefault();
         return JsonSerializer.Serialize(new
         {
+            language = settings.Language,
             jobs = jobs.Select(j => new
             {
-                id = Id(j), j.Name, j.Title, j.TitleId, stage = j.Stage.ToString(), j.StageText, j.Detail, j.CurrentFile,
+                id = Id(j), j.Name, j.Title, j.TitleId, stage = j.Stage.ToString(), j.StageText, j.StageMessage, j.Detail, j.DetailMessage, j.CurrentFile,
                 progress = Math.Round(j.Progress, 1), j.Amount, j.RateValue, j.RateUnit, j.EtaValue, j.EtaUnit,
+                j.DoneBytes, j.TotalBytes, j.Rate, j.SecondsRemaining,
                 icon = j.Icon is { } ic ? ic.Length : 0, j.IsActive, j.CanPause, j.CanResume, j.CanCancel, j.CanRetry, j.CanSendNow,
             }),
             summary = new
@@ -156,7 +168,7 @@ public class Hub(Settings settings)
                 sending = Count(Stage.Extraindo, Stage.Enviando), queued = Count(Stage.NaFila, Stage.AguardandoPartes, Stage.Pausado),
                 done = Count(Stage.Verificado), errors = Count(Stage.Erro), rate = (long)jobs.Where(j => j.IsActive).Sum(j => j.Rate),
             },
-            ps5 = new { settings.Host, settings.Port, settings.RemoteDir, status = Ps5Status, message = TestMessage, found = Found is { } f ? $"{f.Ip}:{f.Port}" : null },
+            ps5 = new { settings.Host, settings.Port, settings.RemoteDir, status = Ps5Status, message = TestMessage, messageData = TestMessageData, found = Found is { } f ? $"{f.Ip}:{f.Port}" : null },
             password = ask == null ? null : new { id = Id(ask.Job), ask.Job.Name, ask.Wrong, ask.Seq },
         }, Json);
     }

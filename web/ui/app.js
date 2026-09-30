@@ -2,11 +2,23 @@
 "use strict";
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-const fmt1 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const localizedText = new Map();
+function bindText(el, value) { localizedText.set(el, value); text(el, renderMessage(value)); }
+function errorMessage(error) { return error.data?.errorMessage || error.messageData || error.message; }
+function rerenderTranslations() {
+  $("#authTitle").textContent = t(setupMode ? "ui.createAccess" : "ui.login");
+  $("#authHint").textContent = setupMode ? t("ui.setupHint") : "";
+  $("#authBtn").textContent = t(setupMode ? "ui.createSignIn" : "ui.login");
+  for (const [el, value] of localizedText) text(el, renderMessage(value));
+  if (lastState) render(lastState, false);
+  for (const u of uploads.values()) renderUpload(u);
+  renderLog();
+  refreshNotify();
+}
 
 async function api(method, url, body) {
   const r = await fetch(url, { method, headers: body === undefined ? {} : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
-  if (r.status === 401 && !url.startsWith("/api/auth/")) { showAuth(); throw new Error("sessão expirada"); }
+  if (r.status === 401 && !url.startsWith("/api/auth/")) { showAuth(); throw Object.assign(new Error(t("ui.sessionExpired")), { status: 401, code: "SESSION_EXPIRED", messageData: message("ui.sessionExpired") }); }
   const text = await r.text();
   const data = text && (r.headers.get("content-type") || "").includes("json") ? JSON.parse(text) : text;
   if (!r.ok) throw Object.assign(new Error((data && data.error) || r.statusText), { status: r.status, data });
@@ -16,7 +28,9 @@ async function api(method, url, body) {
 // ---------- entrar ----------
 let setupMode = false;
 async function boot() {
+  await loadTranslations();
   const st = await api("GET", "/api/auth/state");
+  setLanguage(st.language || "auto");
   if (st.user) return start(st.user);
   showAuth(st.setup);
 }
@@ -26,24 +40,24 @@ function showAuth(setup = setupMode) {
   events?.close(); events = null;
   $("#shell").hidden = true;
   $("#auth").hidden = false;
-  $("#authTitle").textContent = setup ? "Criar acesso" : "Entrar";
-  $("#authHint").textContent = setup ? "Primeira abertura: escolha o usuário e a senha (8 ou mais caracteres) para abrir o Ferry deste servidor." : "";
-  $("#authBtn").textContent = setup ? "Criar e entrar" : "Entrar";
+  $("#authTitle").textContent = t(setup ? "ui.createAccess" : "ui.login");
+  $("#authHint").textContent = setup ? t("ui.setupHint") : "";
+  $("#authBtn").textContent = t(setup ? "ui.createSignIn" : "ui.login");
   $("#authPass").autocomplete = setup ? "new-password" : "current-password";
-  $("#authError").textContent = "";
+  bindText($("#authError"), "");
   $("#authUser").focus();
 }
 
 $("#authForm").addEventListener("submit", async e => {
   e.preventDefault();
-  $("#authError").textContent = "";
+  bindText($("#authError"), "");
   $("#authBtn").disabled = true;
   try {
     const user = $("#authUser").value.trim();
     await api("POST", setupMode ? "/api/auth/setup" : "/api/auth/login", { user, password: $("#authPass").value });
     $("#authPass").value = "";
     start(user);
-  } catch (err) { $("#authError").textContent = err.message; }
+  } catch (err) { bindText($("#authError"), errorMessage(err)); }
   finally { $("#authBtn").disabled = false; }
 });
 
@@ -55,9 +69,11 @@ async function start(user) {
   $("#shell").hidden = false;
   $("#whoami").textContent = user;
   settings = await api("GET", "/api/settings");
+  setLanguage(settings.language || "auto");
   fillSettings();
-  $("#logBox").textContent = await api("GET", "/api/log");
-  $("#logBox").textContent += $("#logBox").textContent ? "\n" : "";
+  const logs = await api("GET", "/api/log");
+  logRows = Array.isArray(logs) ? logs : String(logs).split("\n").filter(Boolean);
+  renderLog();
   connect();
   refreshNotify();
 }
@@ -84,8 +100,14 @@ function showPage(page) {
 const rows = new Map();
 let lastState = null;
 
-function render(s) {
+function render(s, acceptLanguage = true) {
   lastState = s;
+  if (acceptLanguage && s.language && !edits.language && s.language !== languageMode) {
+    setLanguage(s.language);
+    const select = $('[data-set="language"]');
+    if (document.activeElement !== select) select.value = s.language;
+    return;
+  }
   const box = $("#jobs");
   const seen = new Set();
   s.jobs.forEach((j, i) => {
@@ -98,11 +120,11 @@ function render(s) {
   for (const [id, el] of rows) if (!seen.has(id)) { el.remove(); rows.delete(id); }
 
   const m = s.summary, parts = [];
-  if (m.sending) parts.push(`${m.sending} enviando`);
-  if (m.queued) parts.push(`${m.queued} na fila`);
-  if (m.done) parts.push(`${m.done} concluído(s)`);
-  if (m.errors) parts.push(`${m.errors} com erro`);
-  $("#summary").textContent = parts.length ? parts.join(" · ") : "Nenhum jogo na fila";
+  if (m.sending) parts.push(t("ui.sending", fmt(m.sending, 0)));
+  if (m.queued) parts.push(t("ui.queued", fmt(m.queued, 0)));
+  if (m.done) parts.push(t(m.done === 1 ? "ui.doneOne" : "ui.doneMany", fmt(m.done, 0)));
+  if (m.errors) parts.push(t(m.errors === 1 ? "ui.errorsOne" : "ui.errorsMany", fmt(m.errors, 0)));
+  $("#summary").textContent = parts.length ? parts.join(" · ") : t("ui.emptyQueue");
   $("#speed").hidden = !(m.rate > 0);
   if (m.rate > 0) { const [v, u] = size(m.rate); $("#speedVal").textContent = v; $("#speedUnit").textContent = u + "/s"; }
   $("#clearDone").hidden = !m.done;
@@ -110,24 +132,25 @@ function render(s) {
   $("#badge").hidden = pending <= 0;
   $("#badge").textContent = pending;
   $("#empty").hidden = s.jobs.length > 0 || uploads.size > 0;
-  $("#emptyFolder").textContent = settings.inputFolder ? `Ou coloque os arquivos na pasta monitorada do servidor: ${settings.inputFolder}` : "";
+  $("#emptyFolder").textContent = settings.inputFolder ? t("ui.watchFolderPath", settings.inputFolder) : "";
   document.title = m.sending ? `Ferry · ${fmt1.format(s.jobs.find(j => j.isActive)?.progress ?? 0)}%` : "Ferry";
 
   // cartão do PS5 na barra lateral
   const p = s.ps5;
   $("#dot").className = "dot " + p.status;
-  $("#statusTitle").textContent = { online: "PS5 online", offline: "PS5 offline", testing: "Testando…" }[p.status] || "PS5 não testado";
+  $("#statusTitle").textContent = t({ online: "ui.online", offline: "ui.offline", testing: "ui.testing" }[p.status] || "ui.untested");
   $("#statusHost").textContent = `${p.host}:${p.port}`;
   $("#statusDest").textContent = p.remoteDir;
   $("#found").hidden = !p.found;
-  if (p.found) $("#foundText").textContent = `Achei um PS5 em ${p.found}.`;
+  if (p.found) $("#foundText").textContent = t("ui.found", p.found);
   password(s.password);
 }
 
 function newRow(id) {
   const el = $("#jobTpl").content.firstElementChild.cloneNode(true);
   el.dataset.id = id;
-  $$("[data-act]", el).forEach(b => b.addEventListener("click", () => api("POST", `/api/jobs/${id}/${b.dataset.act}`).catch(e => toast("error", "Não deu", e.message))));
+  translateElements(el);
+  $$("[data-act]", el).forEach(b => b.addEventListener("click", () => api("POST", `/api/jobs/${id}/${b.dataset.act}`).catch(e => toast("error", message("ui.actionFailed"), errorMessage(e)))));
   return el;
 }
 
@@ -139,14 +162,16 @@ function fillRow(el, j) {
   if (j.icon && img.dataset.v !== String(j.icon)) { img.dataset.v = j.icon; img.src = `/api/jobs/${j.id}/icon?v=${j.icon}`; }
   text($(".title", el), j.title || j.name);
   $(".title", el).title = j.title || j.name;
-  text($(".stage", el), j.stageText);
+  text($(".stage", el), j.stageMessage ? renderMessage(j.stageMessage) : t("ui.stage." + j.stage));
   text($(".tid", el), j.titleId);
-  text($(".amount", el), j.amount);
-  text($(".detail", el), j.detail);
+  text($(".amount", el), j.totalBytes > 0 ? t("ui.amount", size(j.doneBytes).join(" "), size(j.totalBytes).join(" ")) : "");
+  text($(".detail", el), renderMessage(j.detailMessage || j.detail));
   text($(".file", el), j.currentFile);
   text($(".pct .v", el), fmt1.format(j.progress));
-  text($(".rate .v", el), j.rateValue); text($(".rate .u", el), j.rateUnit);
-  text($(".eta .v", el), j.etaValue); text($(".eta .u", el), j.etaUnit);
+  const [rv, ru] = j.rate > 0 ? size(j.rate) : ["—", "MB"];
+  text($(".rate .v", el), rv); text($(".rate .u", el), ru + "/s");
+  const [ev, eu] = remaining(j.secondsRemaining);
+  text($(".eta .v", el), ev); text($(".eta .u", el), eu);
   $(".rate", el).hidden = $(".eta", el).hidden = j.canSendNow;
   $(".sendnow", el).hidden = !j.canSendNow;
   const show = { pause: j.canPause, resume: j.canResume, retry: j.canRetry, cancel: j.canCancel, remove: true };
@@ -160,9 +185,17 @@ function size(b) {
   if (b >= 2 ** 30) return [fmt(b / 2 ** 30, 2), "GB"];
   if (b >= 2 ** 20) return [fmt(b / 2 ** 20, 1), "MB"];
   if (b >= 1024) return [fmt(b / 1024, 0), "KB"];
-  return [String(b), "B"];
+  return [fmt(b, 0), "B"];
 }
-const fmt = (v, d) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d) => v.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function remaining(seconds) {
+  if (seconds == null || !Number.isFinite(seconds)) return ["—", t("ui.remaining")];
+  const value = Math.floor(Math.max(0, Math.min(seconds, 359999)));
+  if (value >= 3600) return [`${Math.floor(value / 3600)}:${String(Math.floor(value / 60) % 60).padStart(2, "0")}`, t("ui.hoursRemaining")];
+  if (value >= 60) return [`${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`, t("ui.minutesRemaining")];
+  return [fmt(value, 0), t("ui.secondsRemaining")];
+}
 
 $("#clearDone").addEventListener("click", () => api("POST", "/api/jobs/clear-finished"));
 
@@ -171,11 +204,12 @@ let asking = null, answered = 0; // seq do pedido aberto / do último respondido
 function password(p) {
   const dlg = $("#pwDialog");
   if (!p) { if (dlg.open) { asking = null; dlg.close(); } return; }
-  if (p.seq === asking || p.seq <= answered) return;
-  asking = p.seq;
-  $("#pwTitle").textContent = p.wrong ? "Senha incorreta" : "Arquivo protegido por senha";
+  if (p.seq <= answered) return;
+  $("#pwTitle").textContent = t(p.wrong ? "ui.wrongPassword" : "ui.protected");
   $("#pwTitle").classList.toggle("wrong", p.wrong);
-  $("#pwText").textContent = p.wrong ? `A senha não abriu "${p.name}". Tente de novo.` : `Digite a senha de "${p.name}".`;
+  $("#pwText").textContent = t(p.wrong ? "ui.wrongPasswordHint" : "ui.passwordHint", p.name);
+  if (p.seq === asking) return;
+  asking = p.seq;
   $("#pwInput").value = "";
   dlg.dataset.id = p.id;
   if (!dlg.open) dlg.showModal();
@@ -200,7 +234,7 @@ function fillSettings() {
     else el.value = v ?? "";
     el.classList.remove("bad");
     const hint = $(`[data-err="${k}"]`);
-    if (hint) hint.textContent = "";
+    if (hint) bindText(hint, "");
   }
   if (!edits.connections) $("#connVal").textContent = settings.connections;
   if (!edits.remoteDir) {
@@ -218,14 +252,16 @@ async function reloadSettings() {
   const s = await api("GET", "/api/settings");
   if (editSeq !== at) return;
   settings = s;
+  if (!edits.language) setLanguage(settings.language || "auto");
   fillSettings();
 }
 for (const el of $$("[data-set]")) {
   const k = el.dataset.set;
-  const ev = el.type === "checkbox" || el.type === "range" ? "change" : "input";
+  const ev = el.type === "checkbox" || el.type === "range" || el.tagName === "SELECT" ? "change" : "input";
   el.addEventListener(ev, () => {
     if (k === "connections") $("#connVal").textContent = el.value;
     edits[k] = ++editSeq;
+    if (k === "language") setLanguage(el.value);
     clearTimeout(timers[k]);
     timers[k] = setTimeout(() => save(k, el), el.tagName === "TEXTAREA" || el.type === "text" || el.type === "password" || !el.type ? 500 : 0);
   });
@@ -239,13 +275,17 @@ async function save(k, el) {
   if (k === "knownPasswords") v = el.value.split("\n").map(s => s.trim()).filter(Boolean);
   try {
     const r = await api("PUT", "/api/settings", { [k]: v });
-    const err = r.errors[k] || "";
+    const err = r.errorsMessages?.[k] || r.errors[k] || "";
     el.classList.toggle("bad", !!err);
     const hint = $(`[data-err="${k}"]`);
-    if (hint) hint.textContent = err;
+    if (hint) bindText(hint, err);
     settings = r.settings;
+    if (k === "language" && edits[k] === mine) {
+      if (lastState) lastState.language = settings.language || "auto";
+      setLanguage(settings.language || "auto");
+    }
     if (k === "remoteDir") $("#preset").value = [...$("#preset").options].some(o => o.value === v) ? v : "";
-  } catch (e) { toast("error", "Não salvou", e.message); }
+  } catch (e) { toast("error", message("ui.saveFailed"), errorMessage(e)); }
   finally { if (edits[k] === mine) delete edits[k]; } // editou de novo enquanto salvava: continua pendente
 }
 
@@ -260,10 +300,10 @@ $("#preset").addEventListener("change", () => {
 async function test() {
   $("#testBtn").disabled = true;
   $("#testResult").className = "test-result";
-  $("#testResult").textContent = "Testando…";
+  bindText($("#testResult"), message("ui.testing"));
   try {
     const r = await api("POST", "/api/ps5/test");
-    $("#testResult").textContent = r.message;
+    bindText($("#testResult"), r.messageData || r.message);
     $("#testResult").classList.add(r.ok ? "ok" : "fail");
   } finally { $("#testBtn").disabled = false; }
 }
@@ -272,8 +312,8 @@ $("#sideTest").addEventListener("click", test);
 $("#findBtn").addEventListener("click", async () => {
   $("#findBtn").disabled = true;
   $("#testResult").className = "test-result";
-  $("#testResult").textContent = "Procurando o PS5 na rede…";
-  try { $("#testResult").textContent = (await api("POST", "/api/ps5/discover")).message; }
+  bindText($("#testResult"), message("ui.searching"));
+  try { const r = await api("POST", "/api/ps5/discover"); bindText($("#testResult"), r.messageData || r.message); }
   finally { $("#findBtn").disabled = false; }
 });
 $("#useFound").addEventListener("click", async () => {
@@ -284,38 +324,44 @@ $("#dismissFound").addEventListener("click", () => api("POST", "/api/ps5/dismiss
 $("#logout").addEventListener("click", async () => { await api("POST", "/api/auth/logout"); showAuth(false); });
 
 // ---------- log ----------
-function appendLog(line) {
+let logRows = [];
+function renderLog() {
   const box = $("#logBox"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-  box.append(line + "\n");
-  if (box.childNodes.length > 4000) box.textContent = box.textContent.split("\n").slice(-2000).join("\n");
+  box.textContent = logRows.map(row => typeof row === "string" ? row : `${row.time}  ${renderMessage(row.message)}`).join("\n") + (logRows.length ? "\n" : "");
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
-$("#clearLog").addEventListener("click", async () => { await api("POST", "/api/log/clear"); $("#logBox").textContent = ""; });
+function appendLog(line) {
+  if (line.seq != null && logRows.some(row => row.seq === line.seq)) return;
+  logRows.push(line);
+  if (logRows.length > 4000) logRows = logRows.slice(-2000);
+  renderLog();
+}
+$("#clearLog").addEventListener("click", async () => { await api("POST", "/api/log/clear"); logRows = []; renderLog(); });
 $("#copyLog").addEventListener("click", async () => {
   const t = $("#logBox").textContent;
   try { await navigator.clipboard.writeText(t); } // só em https/localhost
   catch { const r = document.createRange(); r.selectNodeContents($("#logBox")); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand("copy"); }
-  toast("done", "Log copiado", "");
+  toast("done", message("ui.logCopied"), "");
 });
 
 // ---------- avisos: na página sempre; do sistema quando o navegador deixa (https ou localhost) ----------
 function notice(n) {
-  toast(n.kind, n.title, n.text);
-  if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification(n.title, { body: n.text, icon: "logo.svg" });
+  const title = n.titleMessage || n.title, body = n.textMessage || n.text;
+  toast(n.kind, title, body);
+  if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification(renderMessage(title), { body: renderMessage(body), icon: "logo.svg" });
 }
 function toast(kind, title, body) {
   const t = document.createElement("div");
   t.className = "toast " + kind;
-  const b = document.createElement("b"); b.textContent = title; t.append(b);
-  if (body) t.append(body);
+  const b = document.createElement("b"); bindText(b, title); t.append(b);
+  const detail = document.createElement("span"); bindText(detail, body); t.append(detail);
   $("#toasts").append(t);
-  setTimeout(() => t.remove(), 6000);
+  setTimeout(() => { localizedText.delete(b); localizedText.delete(detail); t.remove(); }, 6000);
 }
 function refreshNotify() {
   const can = "Notification" in window && window.isSecureContext;
   $("#notifyBtn").hidden = !can || Notification.permission !== "default";
-  $("#notifyText").textContent = !can ? "Avisos do sistema precisam de https (ou localhost); os avisos aparecem aqui na página."
-    : Notification.permission === "granted" ? "Avisos do sistema ativados." : Notification.permission === "denied" ? "Avisos do sistema bloqueados no navegador." : "Avisos do sistema quando a aba estiver em segundo plano.";
+  $("#notifyText").textContent = t(!can ? "ui.notifyInsecure" : Notification.permission === "granted" ? "ui.notifyGranted" : Notification.permission === "denied" ? "ui.notifyDenied" : "ui.notifyDefault");
 }
 $("#notifyBtn").addEventListener("click", async () => { await Notification.requestPermission(); refreshNotify(); });
 
@@ -346,10 +392,11 @@ function addUploads(files) {
     if (uploads.has(key)) continue;
     const el = document.createElement("div");
     el.className = "upload";
-    el.innerHTML = `<b></b><span class="up-num"></span><span class="up-detail">Na fila de envio ao servidor</span><span></span><div class="up-bar"><i style="width:0"></i></div>`;
+    el.innerHTML = `<b></b><span class="up-num"></span><span class="up-detail"></span><span></span><div class="up-bar"><i style="width:0"></i></div>`;
     $("b", el).textContent = f.name;
     $("#uploads").append(el);
-    const u = { f, el, done: false };
+    const u = { f, el, done: false, off: 0, mode: "queued" };
+    renderUpload(u);
     uploads.set(key, u);
     uploading = uploading.then(() => upload(u)).catch(() => { });
   }
@@ -358,10 +405,9 @@ function addUploads(files) {
 
 async function upload(u) {
   const { f, el } = u;
-  const show = (off, detail) => {
-    $(".up-num", el).textContent = fmt1.format(f.size ? off * 100 / f.size : 100) + "%";
-    $(".up-bar i", el).style.width = (f.size ? off * 100 / f.size : 100) + "%";
-    $(".up-detail", el).textContent = detail;
+  const show = (off, mode, rate = 0, error = "") => {
+    Object.assign(u, { off, mode, rate, error });
+    renderUpload(u);
   };
   for (let wait = 1000; ;) {
     try {
@@ -369,29 +415,39 @@ async function upload(u) {
       let off = s.offset, t0 = performance.now(), sent = 0;
       while (!s.done && off < f.size) {
         const r = await fetch(`/api/uploads/${s.id}?offset=${off}`, { method: "PUT", headers: { "Content-Type": "application/octet-stream" }, body: f.slice(off, off + CHUNK) });
-        if (r.status === 401) { showAuth(); throw new Error("sessão expirada"); }
+        if (r.status === 401) { showAuth(); throw Object.assign(new Error(t("ui.sessionExpired")), { status: 401, code: "SESSION_EXPIRED", messageData: message("ui.sessionExpired") }); }
         const j = await r.json().catch(() => ({}));
         if (r.status === 409) { off = j.offset; continue; }
-        if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { fatal: r.status === 400 });
+        if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { fatal: r.status === 400, data: j });
         sent += j.offset - off; off = j.offset; wait = 1000;
         const rate = sent / ((performance.now() - t0) / 1000);
-        const [rv, ru] = size(rate), [dv, du] = size(off), [tv, tu] = size(f.size);
-        show(off, `Enviando ao servidor · ${dv} ${du} de ${tv} ${tu} · ${rv} ${ru}/s`);
+        show(off, "sending", rate);
       }
       u.done = true;
-      show(f.size, "No servidor. Entra na fila quando todas as partes chegarem.");
+      show(f.size, "done");
       setTimeout(() => { el.remove(); uploads.delete(`${f.name}|${f.size}|${f.lastModified}`); if (lastState) render(lastState); }, 4000);
       return;
     } catch (e) {
-      if (e.fatal || e.message === "sessão expirada") { el.classList.add("fail"); $(".up-detail", el).textContent = "Falhou: " + e.message; u.done = true; return; }
+      if (e.fatal || e.status === 401 || e.code === "SESSION_EXPIRED") { el.classList.add("fail"); show(u.off, "failed", 0, errorMessage(e)); u.done = true; return; }
       // rede caiu ou servidor reiniciou: tenta de novo e continua do byte em que o servidor parou
       el.classList.add("fail");
-      $(".up-detail", el).textContent = `Sem conexão com o servidor, tentando de novo… (${e.message})`;
+      show(u.off, "retry", 0, errorMessage(e));
       await new Promise(r => setTimeout(r, wait));
       wait = Math.min(wait * 2, 30000);
       el.classList.remove("fail");
     }
   }
+}
+
+function renderUpload(u) {
+  const progress = u.f.size ? u.off * 100 / u.f.size : 100;
+  $(".up-num", u.el).textContent = fmt1.format(progress) + "%";
+  $(".up-bar i", u.el).style.width = progress + "%";
+  const detail = u.mode === "sending" ? message("ui.uploadSending", size(u.off).join(" "), size(u.f.size).join(" "), size(u.rate).join(" "))
+    : u.mode === "failed" ? message("ui.uploadFailed", u.error)
+    : u.mode === "retry" ? message("ui.uploadRetry", u.error)
+    : message(u.mode === "done" ? "ui.uploadDone" : "ui.uploadQueued");
+  $(".up-detail", u.el).textContent = renderMessage(detail);
 }
 
 boot().catch(e => { document.body.textContent = "Ferry: " + e.message; });

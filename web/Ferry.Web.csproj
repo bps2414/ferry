@@ -15,7 +15,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\core\Ferry.Core.csproj" />
-    <EmbeddedResource Include="ui\**" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="ui\**" Exclude="ui\locales\*.json" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="ui\locales\*.json" LogicalName="ui/locales/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="locales\*.json" LogicalName="locales/%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\app\fonts\*.ttf" LogicalName="ui/fonts/%(Filename)%(Extension)" />
   </ItemGroup>
 

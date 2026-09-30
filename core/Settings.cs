@@ -13,6 +13,7 @@ public class Settings
     public static string FilePath { get; set; } = Path.Combine(AppDir, "settings.json"); // o E2E aponta para outro lugar
     static readonly object SaveLock = new();
 
+    public string Language { get; set; } = "auto";
     public string Host { get; set; } = "192.168.0.10";
     public int Port { get; set; } = 2121;
     public string User { get; set; } = "anonymous";
@@ -54,7 +55,7 @@ public class Settings
                 File.Copy(from, Path.Combine(newDir, name));
                 copied.Add(name);
             }
-            if (copied.Count > 0) FileLog.Write($"Dados migrados de {oldDir}: {string.Join(", ", copied)}");
+            if (copied.Count > 0) FileLog.Write(new Message("core.migrated", oldDir, string.Join(", ", copied)).Render());
         }
         catch { } // migrar nunca impede o app de abrir
     }

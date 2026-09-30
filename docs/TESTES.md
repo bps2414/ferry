@@ -64,6 +64,29 @@ Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`
 
 ## E2E web (Docker)
 
+### Contratos de localização
+
+`dotnet run --project e2e -- --localization` verifica configuração antiga com idioma automático, persistência, variantes/fallback, mensagens aninhadas, diagnósticos brutos e códigos de erro de extração, progresso/ações e igualdade de chaves/parâmetros nos três catálogos (núcleo, API, UI). Não sobe FTP nem gera arquivos de jogo. A CI executa esse modo no Windows e Linux.
+
+### Idiomas e execução local
+
+O comando `node web.mjs` executa o fluxo completo duas vezes, em dados e processos isolados: `pt-BR` e `en`. Os relatórios individuais são `e2e_report_web_pt-BR.md` e `e2e_report_web_en.md`; o relatório agregado mantém `e2e_report_web.md`. As capturas ficam em `e2e/web/report/<idioma>/`. Para rodar só um idioma, configure `FERRY_TEST_LOCALE=pt-BR` ou `en`.
+
+Além de preservar as verificações de hash, login, pausa, retomada e reinício, confere textos explícitos por idioma, Automático com ordem de preferência/fallback, preferência explícita sobre o navegador, rejeição de idioma inválido, persistência e troca durante upload/transferência. A troca com diálogo aberto aciona o mesmo evento do seletor via DOM para verificar a preservação do modal e da senha; não simula clicar atrás do modal.
+
+Sem Docker, há um modo local que inicia e reinicia a DLL do servidor com dados temporários isolados. Ele exercita o produto e a persistência, mas não valida a imagem Docker:
+
+```powershell
+dotnet build web -c Release
+cd e2e/web
+npm ci
+npx playwright install chromium
+$env:FERRY_WEB_MODE = "local"
+node web.mjs
+```
+
+`FERRY_WEB_DLL`, `FERRY_PYTHON` e `FERRY_7ZIP` permitem caminhos explícitos. No Windows, o gerador usa `app/tools/7z.exe` e `python`; no Linux, busca `7zz`/`7z` e `python3`. Python requer `pyftpdlib` em ambos. A DLL local usa `FERRY_DATA`, `FERRY_GAMES` e porta exclusivos da rodada; nunca usa a configuração real do usuário.
+
 `e2e/web/web.mjs` sobe a imagem com `--network host` e `--user <seu uid>` (como no `docker-compose.yml`), o mesmo `ftpserver.py` (com APPE) e abre a página num Chromium (Playwright). Gera `e2e_report_web.md` na raiz e as capturas em `e2e/web/report/`.
 
 ```bash

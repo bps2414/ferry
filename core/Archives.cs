@@ -98,7 +98,7 @@ public static class Archives
         foreach (var d in dirs.Where(d => d != ""))
             foreach (var n in names)
                 if (File.Exists(Path.Combine(d, n))) return Path.Combine(d, n);
-        throw new Exception("7-Zip não encontrado: instale o 7zz (ou 7z) ou deixe-o ao lado do programa");
+        throw new LocalizedException(new("core.archive.notFound"));
     }
 
     /// Caminho de dentro do arquivo ("a/b") como o 7-Zip do sistema espera na lista de arquivos e no "7z t".

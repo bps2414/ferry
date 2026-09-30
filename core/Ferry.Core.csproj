@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="locales/*.json" WithCulture="false" LogicalName="Ferry.locales.%(Filename)%(Extension)" />
     <PackageReference Include="FluentFTP" Version="53.*" />
     <!-- DPAPI no Windows (senha do jogo na fila) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.*" />

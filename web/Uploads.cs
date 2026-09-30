@@ -26,7 +26,7 @@ public static class Uploads
         {
             var name = body.Name?.Trim() ?? "";
             if (name == "" || name != Path.GetFileName(name) || name.StartsWith('.') || name.Any(char.IsControl) || body.Size < 0)
-                return Results.BadRequest(new { error = "Nome de arquivo inválido." });
+                return Results.BadRequest(WebText.Error(new("web.invalidFilename")));
             var s = hub.Settings;
             // arquivo com o mesmo nome na pasta: sobe de novo e substitui no fim (mesmo tamanho não quer dizer mesmo conteúdo)
             // mesmo arquivo (nome, tamanho, data) = mesmo id: reenviar continua o parcial
@@ -54,13 +54,13 @@ public static class Uploads
                 await c.Request.Body.CopyToAsync(fs, c.RequestAborted);
                 length = fs.Length;
             }
-            if (length > meta.Size) { File.Delete(partPath); return Results.BadRequest(new { error = "Recebido mais que o tamanho do arquivo." }); }
+            if (length > meta.Size) { File.Delete(partPath); return Results.BadRequest(WebText.Error(new("web.uploadTooLarge"))); }
             if (length < meta.Size) return Results.Ok(new { offset = length, done = false });
 
             var final = Path.Combine(Dir(s), meta.Name);
             File.Move(partPath, final, true);
             File.Delete(metaFile);
-            hub.Log($"{meta.Name} recebido pelo navegador ({Job.Size(meta.Size)})");
+            hub.Log(new Message("web.uploadReceived", meta.Name, new Message("core.size", meta.Size)));
             hub.Engine.AddFiles([final]); // fora da pasta monitorada entra na fila; dentro, volta mesmo se tinha sido removido
             return Results.Ok(new { offset = length, done = true });
         }).WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(MaxChunk));

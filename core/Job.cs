@@ -23,21 +23,12 @@ public class Job : INotifyPropertyChanged
         set
         {
             _stage = value;
-            foreach (var p in new[] { nameof(Stage), nameof(StageText), nameof(CanPause), nameof(CanResume), nameof(CanCancel), nameof(CanRetry), nameof(CanSendNow), nameof(IsActive) }) Changed(p);
+            foreach (var p in new[] { nameof(Stage), nameof(StageMessage), nameof(StageText), nameof(CanPause), nameof(CanResume), nameof(CanCancel), nameof(CanRetry), nameof(CanSendNow), nameof(IsActive) }) Changed(p);
         }
     }
 
-    public string StageText => Stage switch
-    {
-        Stage.AguardandoPartes => "Aguardando partes",
-        Stage.NaFila => "Na fila",
-        Stage.Extraindo => "Lendo arquivo",
-        Stage.Enviando => "Enviando",
-        Stage.Verificado => "Concluído",
-        Stage.Pausado => "Pausado",
-        Stage.Cancelado => "Cancelado",
-        _ => "Erro",
-    };
+    public Message StageMessage => new("core.stage." + Stage);
+    public string StageText => Enum.IsDefined(Stage) ? StageMessage.Render() : new Message("core.stage.Erro").Render();
 
     public bool IsActive => Stage is Stage.Extraindo or Stage.Enviando;
     public bool CanPause => Stage is Stage.NaFila or Stage.Extraindo or Stage.Enviando;
@@ -47,13 +38,19 @@ public class Job : INotifyPropertyChanged
     public bool CanSendNow => Stage is Stage.NaFila or Stage.Pausado; // "Transferir agora": passa na frente do que está enviando
 
     double _progress; public double Progress { get => _progress; set { _progress = value; Changed(); } }
-    string _detail = ""; public string Detail { get => _detail; set { _detail = value; Changed(); } }
+    string _detail = "";
+    public Message? DetailMessage { get; private set; }
+    public string Detail { get => _detail; set { DetailMessage = null; _detail = value; Changed(); Changed(nameof(DetailMessage)); } }
+    public void SetDetail(Message message) { _detail = message.Render(); DetailMessage = message; Changed(nameof(Detail)); Changed(nameof(DetailMessage)); }
+    public long DoneBytes { get; private set; }
+    public long TotalBytes { get; private set; }
+    public double? SecondsRemaining { get; private set; }
     // números grandes do card: "18.21 de 29.20 GB", "87.3" + "MB/s", "2:09" + "min restantes" ("—" parado)
     string _amount = ""; public string Amount { get => _amount; set { _amount = value; Changed(); } }
     string _rateValue = "—"; public string RateValue { get => _rateValue; set { _rateValue = value; Changed(); } }
     string _rateUnit = "MB/s"; public string RateUnit { get => _rateUnit; set { _rateUnit = value; Changed(); } }
     string _etaValue = "—"; public string EtaValue { get => _etaValue; set { _etaValue = value; Changed(); } }
-    string _etaUnit = "restante"; public string EtaUnit { get => _etaUnit; set { _etaUnit = value; Changed(); } }
+    string _etaUnit = new Message("core.remaining").Render(); public string EtaUnit { get => _etaUnit; set { _etaUnit = value; Changed(); } }
     string _file = ""; public string CurrentFile { get => _file; set { _file = value; Changed(); } }
     // do sce_sys/param.sfo e icon0.png de dentro do arquivo ("" / null = não deu para ler)
     string _title = ""; public string Title { get => _title; set { _title = value; Changed(); } }
@@ -78,8 +75,9 @@ public class Job : INotifyPropertyChanged
                 Rate = Rate == 0 ? inst : Rate * 0.7 + inst * 0.3;
                 _lastBytes = done; _lastTime = now;
             }
+            DoneBytes = done; TotalBytes = total; SecondsRemaining = Rate > 0 && double.IsFinite(Rate) ? Math.Min(359999, Math.Max(0, total - done) / Rate) : null;
             Progress = total > 0 ? 100.0 * done / total : 0;
-            Amount = $"{Size(done)} de {Size(total)}";
+            Amount = new Message("core.amount", Size(done), Size(total)).Render();
             if (Rate <= 0) return;
             var r = Size((long)Rate).Split(' ');
             (RateValue, RateUnit) = (r[0], r[1] + "/s");
@@ -87,11 +85,13 @@ public class Job : INotifyPropertyChanged
         }
     }
 
-    public void ResetRate() { lock (_gate) { _lastBytes = 0; Rate = 0; _lastTime = DateTime.UtcNow; _lastUi = default; } Idle(); Amount = ""; CurrentFile = ""; }
+    public void ResetRate() { lock (_gate) { _lastBytes = 0; Rate = 0; _lastTime = DateTime.UtcNow; _lastUi = default; } Idle(); DoneBytes = TotalBytes = 0; Amount = ""; CurrentFile = ""; }
 
     public void Finish(string detail) { Rate = 0; Progress = 100; Idle(); CurrentFile = ""; Detail = detail; }
 
-    void Idle() { (RateValue, RateUnit, EtaValue, EtaUnit) = ("—", "MB/s", "—", "restante"); }
+    public void Finish(Message detail) { Finish(detail.Render()); SetDetail(detail); }
+
+    void Idle() { SecondsRemaining = null; (RateValue, RateUnit, EtaValue, EtaUnit) = ("—", "MB/s", "—", new Message("core.remaining").Render()); }
 
     public static string Size(long b) => b switch
     {
@@ -104,7 +104,7 @@ public class Job : INotifyPropertyChanged
     static (string, string) Time(double s)
     {
         var t = TimeSpan.FromSeconds(Math.Min(s, 359999));
-        return t.TotalHours >= 1 ? ($"{(int)t.TotalHours}:{t.Minutes:00}", "h restantes") : t.TotalMinutes >= 1 ? ($"{t.Minutes}:{t.Seconds:00}", "min restantes") : ($"{t.Seconds}", "s restantes");
+        return t.TotalHours >= 1 ? ($"{(int)t.TotalHours}:{t.Minutes:00}", new Message("core.hoursRemaining").Render()) : t.TotalMinutes >= 1 ? ($"{t.Minutes}:{t.Seconds:00}", new Message("core.minutesRemaining").Render()) : ($"{t.Seconds}", new Message("core.secondsRemaining").Render());
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

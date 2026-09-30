@@ -1,5 +1,13 @@
 # E2E tests
 
+## Localization contracts and browser languages
+
+Run `dotnet run --project e2e -- --localization` for legacy automatic settings, persistence, locale variants/fallback, nested messages, raw diagnostics, extraction error codes, progress/actions and matching keys/arguments across core, backend and UI catalogs. This focused mode needs no FTP or generated game files; CI runs it on Windows and Linux.
+
+`node e2e/web/web.mjs` runs the full browser flow serially in isolated `pt-BR` and `en` data/processes, preserving hashes, authentication, pause/resume and restart checks. Reports are `e2e_report_web_pt-BR.md` and `e2e_report_web_en.md`, aggregated into `e2e_report_web.md`; screenshots use `e2e/web/report/<locale>/`. Set `FERRY_TEST_LOCALE=pt-BR` or `en` for one run. Expected visible text is explicit for each language. Automatic language order/fallback, explicit precedence, invalid preferences, persistence, and switching during upload/transfer are covered. The open-dialog switch dispatches the settings event via DOM and verifies modal/input preservation; it does not simulate a pointer click behind the modal.
+
+Without Docker, build `dotnet build web -c Release`, install `e2e/web` dependencies and Chromium, then set `FERRY_WEB_MODE=local` before `node web.mjs`. This spawns/restarts the local DLL using isolated temporary settings/games and an exclusive port; it does not validate the Docker image. Optional `FERRY_WEB_DLL`, `FERRY_PYTHON`, `FERRY_7ZIP` override tool paths. Windows uses bundled `app/tools/7z.exe` and `python`; Linux resolves `7zz`/`7z` and `python3`. Python requires `pyftpdlib`.
+
 **English** · [Português (BR)](../TESTES.md) · [Español](../es/PRUEBAS.md)
 
 Two end-to-end tests:

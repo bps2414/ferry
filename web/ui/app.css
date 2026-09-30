@@ -250,3 +250,5 @@ dialog input { margin: 14px 0 18px; }
   .port, .preset { width: 120px; }
   .row-2 { flex-wrap: wrap; }
 }
+/* The language preference shares the existing field sizing on narrow screens. */
+.language select { width: 100%; max-width: 280px; }

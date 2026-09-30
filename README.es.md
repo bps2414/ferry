@@ -2,6 +2,8 @@
 
 # Ferry
 
+La interfaz web ofrece portugués (Brasil) e inglés. En **Settings → Language**, elige **Automatic**, **Português (Brasil)** o **English**. El modo automático usa el primer idioma compatible del navegador y recurre al inglés si no hay ninguno. La elección explícita se guarda para la instalación, incluido el acceso, y persiste al reiniciar. La interfaz Windows WPF sigue en portugués.
+
 [English](README.md) · [Português (BR)](README.pt-BR.md) · **Español**
 
 envío de juegos a la PS5
@@ -16,8 +18,6 @@ Ferry toma juegos comprimidos (`.zip`, `.rar`, `.7z`, incluso divididos en parte
 - **Self-hosted** (Docker o Linux): corre en tu servidor de casa y lo usas desde el navegador en `http://<ip-del-servidor>:8021`
 - Interfaz oscura con cola, progreso, velocidad y tiempo restante
 - Pausa, reanuda, cierra y vuelve a abrir sin perder lo que ya se envió
-
-> Por ahora la interfaz está en portugués; el inglés es el siguiente punto del [roadmap](docs/ROADMAP.md). Los nombres de los botones aparecen abajo tal como están en la app, con su significado.
 
 > Hecho para tus propios homebrew/backups en una consola desbloqueada. Úsalo bajo tu propio riesgo.
 

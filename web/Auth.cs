@@ -32,17 +32,17 @@ public static class Auth
     static string Hash(string password, byte[] salt) =>
         Convert.ToBase64String(Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, Iterations, HashAlgorithmName.SHA512, 32));
 
-    public static void Map(WebApplication app)
+    public static void Map(WebApplication app, Settings settings)
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
-        auth.MapGet("/state", (HttpContext c) => Results.Json(new { setup = Load() == null, user = c.User.Identity?.IsAuthenticated == true ? c.User.Identity.Name : null }));
+        auth.MapGet("/state", (HttpContext c) => Results.Json(new { setup = Load() == null, user = c.User.Identity?.IsAuthenticated == true ? c.User.Identity.Name : null, language = settings.Language }));
 
         // primeira abertura: cria o usuário (só se ainda não existe) e já entra
         auth.MapPost("/setup", async (HttpContext c, Credentials body) =>
         {
-            if (Load() != null) return Results.Conflict(new { error = "O usuário já foi criado." });
-            if (Invalid(body) is { } error) return Results.BadRequest(new { error });
+            if (Load() != null) return Results.Conflict(WebText.Error(new("web.accountExists")));
+            if (Invalid(body) is { } error) return Results.BadRequest(WebText.Error(error));
             var salt = RandomNumberGenerator.GetBytes(16);
             var json = JsonSerializer.Serialize(new Account(body.User!.Trim(), Convert.ToBase64String(salt), Hash(body.Password!, salt)));
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
@@ -55,14 +55,14 @@ public static class Auth
         {
             var ip = c.Connection.RemoteIpAddress?.ToString() ?? "?";
             if (Fails.TryGetValue(ip, out var f) && f.fails >= MaxFails && DateTime.UtcNow - f.since < Window)
-                return Results.Json(new { error = "Muitas tentativas. Espere alguns minutos." }, statusCode: 429);
+                return Results.Json(WebText.Error(new("web.tooManyAttempts")), statusCode: 429);
             var acc = Load();
             var ok = acc != null && body.User?.Trim() == acc.User && body.Password is { } pw
                 && CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(Hash(pw, Convert.FromBase64String(acc.Salt))), Convert.FromBase64String(acc.Hash));
             if (!ok)
             {
                 Fails.AddOrUpdate(ip, _ => (1, DateTime.UtcNow), (_, o) => DateTime.UtcNow - o.since < Window ? (o.fails + 1, o.since) : (1, DateTime.UtcNow));
-                return Results.Json(new { error = "Usuário ou senha incorretos." }, statusCode: 401);
+                return Results.Json(WebText.Error(new("web.badCredentials")), statusCode: 401);
             }
             Fails.TryRemove(ip, out _);
             await SignIn(c, acc!.User);
@@ -72,9 +72,9 @@ public static class Auth
         auth.MapPost("/logout", async (HttpContext c) => { await c.SignOutAsync(); return Results.Ok(); });
     }
 
-    static string? Invalid(Credentials b) =>
-        string.IsNullOrWhiteSpace(b.User) ? "Informe o usuário."
-        : b.Password is not { Length: >= 8 } ? "A senha precisa ter pelo menos 8 caracteres."
+    static Message? Invalid(Credentials b) =>
+        string.IsNullOrWhiteSpace(b.User) ? new("web.userRequired")
+        : b.Password is not { Length: >= 8 } ? new("web.shortPassword")
         : null;
 
     static Task SignIn(HttpContext c, string user) =>

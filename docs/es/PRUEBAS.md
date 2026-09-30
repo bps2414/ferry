@@ -1,5 +1,13 @@
 # Pruebas E2E
 
+## Contratos de idiomas y navegador
+
+`dotnet run --project e2e -- --localization` comprueba configuración antigua automática, persistencia, variantes/fallback, mensajes anidados, diagnósticos originales, códigos de error de extracción, progreso/acciones y claves/parámetros coincidentes entre catálogos del núcleo, API y UI. No requiere FTP ni juegos generados; CI lo ejecuta en Windows y Linux.
+
+`node e2e/web/web.mjs` ejecuta el flujo completo en rondas aisladas de `pt-BR` y `en`, preservando hashes, autenticación, pausa, continuación y reinicio. Produce `e2e_report_web_pt-BR.md`, `e2e_report_web_en.md` y el agregado `e2e_report_web.md`; capturas en `e2e/web/report/<idioma>/`. Usa `FERRY_TEST_LOCALE=pt-BR` o `en` para una sola ronda. Comprueba textos explícitos, orden/fallback automático, elección explícita, rechazo de preferencias inválidas, persistencia y cambio durante subida/transferencia. Con diálogo abierto, dispara el evento del selector mediante DOM para comprobar la preservación del modal/contraseña; no simula un clic detrás del modal.
+
+Sin Docker, ejecuta `dotnet build web -c Release`, instala dependencias y Chromium en `e2e/web`, configura `FERRY_WEB_MODE=local` y ejecuta `node web.mjs`. Inicia/reinicia la DLL local con datos, juegos y puerto temporales aislados; no valida Docker. `FERRY_WEB_DLL`, `FERRY_PYTHON` y `FERRY_7ZIP` permiten rutas explícitas. En Windows usa `app/tools/7z.exe` y `python`; en Linux busca `7zz`/`7z` y `python3`. Python requiere `pyftpdlib`.
+
 [English](../en/TESTS.md) · [Português (BR)](../TESTES.md) · **Español**
 
 Dos pruebas de extremo a extremo:
