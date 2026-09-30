@@ -11,6 +11,7 @@ O botão **Testar webhook** usa os valores salvos, mesmo com os avisos automáti
 | Evento | Quando |
 |---|---|
 | `completed` | O jogo foi enviado, publicado e conferido no PS5 |
+| `installation_requested` | O DPI aceitou a solicitação de instalação de PKG; não comprova término no console |
 | `error` | Uma falha coloca o jogo em Erro; inclui o aviso de jogo já instalado |
 | `password_required` | Primeiro pedido manual de senha; senhas conhecidas e tentativas incorretas não repetem o aviso |
 | `test` | Botão de teste; `job` é `null` |

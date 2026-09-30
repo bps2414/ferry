@@ -2,7 +2,7 @@
   "app.title": "Ferry",
   "app.emptyHint": "Arraste os arquivos do jogo para esta janela ou clique para escolher. Selecione todas as partes de uma vez.",
   "app.thisPc": "este PC",
-  "app.extensions": ".zip   .rar   .7z   .001   .z01   .part1.rar   .r00   .exfat",
+  "app.extensions": ".zip   .rar   .7z   .001   .z01   .part1.rar   .r00   .exfat   .pkg   .ffpkg   .ffpfs   .ffpfsc",
   "app.ps5": "PS5",
   "app.m2": "M.2",
   "app.discord": "Discord",
@@ -13,7 +13,7 @@
   "app.gamesFolderHint": "Cada jogo vai para uma pasta com o nome dele dentro deste caminho. M.2 = /mnt/ext1/homebrew · SSD interno = /data/homebrew",
   "app.storage": "Armazenamento",
   "app.exfatHint": "A imagem vai com o próprio nome para esta pasta. Tem que ser uma pasta que o ShadowMount+ varre (padrão: /data/homebrew, /mnt/ext1/homebrew, /mnt/usbN…).",
-  "app.exfatFolder": "Pasta das imagens .exfat",
+  "app.exfatFolder": "Pasta das imagens do ShadowMount+",
   "app.webhookService": "Serviço do webhook",
   "app.webhookUrlHint": "URL HTTP/HTTPS do webhook ou do tópico ntfy",
   "app.webhookHint": "Avisa em concluído, erro e pedido de senha. Sem reenvio automático. Em Automático, segue o idioma do Windows. A URL pode conter um token; proteja o settings.json.",
@@ -42,7 +42,7 @@
   "app.filesDropped": "{0} arquivo(s) adicionado(s) por arrastar e soltar",
   "app.filesSelected": "{0} arquivo(s) selecionado(s)",
   "app.pickFiles": "Escolher jogos (selecione todas as partes)",
-  "app.fileFilter": "Jogos compactados ou imagem|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat|Todos os arquivos|*.*",
+  "app.fileFilter": "Compactados, imagens ou PKG|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat;*.pkg;*.ffpkg;*.ffpfs;*.ffpfsc|Todos os arquivos|*.*",
   "app.trayOpen": "Abrir Ferry",
   "app.trayExit": "Sair"
 }

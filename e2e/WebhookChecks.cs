@@ -81,6 +81,24 @@ static class WebhookChecks
                 Check(payload.GetProperty("title").GetString() == (locale == "en" ? "Transfer complete" : "Envio concluído"), "localized title " + locale);
             }
             settings.Language = "auto";
+            foreach (var locale in new[] { "pt-BR", "en" })
+            {
+                settings.Language = locale;
+                var package = new Job { Key = "package", Name = "Homebrew.pkg", Stage = Stage.InstalacaoSolicitada };
+                webhook.OnDone(package);
+                using var json = JsonDocument.Parse((await receiver.NextAsync()).Body);
+                Check(json.RootElement.GetProperty("event").GetString() == "installation_requested"
+                    && json.RootElement.GetProperty("title").GetString() == (locale == "en" ? "Installation requested" : "Instalação solicitada"),
+                    "package acceptance has a distinct honest event " + locale);
+                var count = receiver.Count;
+                package.Stage = Stage.VerifiqueNoPs5;
+                webhook.OnDone(package);
+                package.Stage = Stage.PacotePronto;
+                webhook.OnDone(package);
+                await Task.Delay(80);
+                Check(receiver.Count == count, "unknown or prepared package never emits completion " + locale);
+            }
+            settings.Language = "auto";
             settings.WebhookAutoLocale = "pt-BR";
             var test = await webhook.TestAsync();
             using (var json = JsonDocument.Parse((await receiver.NextAsync()).Body))

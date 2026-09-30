@@ -51,6 +51,7 @@ internal static class Program
             LocaleContracts();
             EditableFields(window, data);
             RealTransfer(window, data, root);
+            PackageTransfer(window, data, root);
             PasswordDialogs(window);
             Tray(window);
         }
@@ -106,6 +107,8 @@ internal static class Program
         Field<TextBox>(window, "PortBox").Text = "invalid-port";
         Field<TextBox>(window, "FolderBox").Text = Path.Combine(data, "does-not-exist");
         Field<TextBox>(window, "ImageBox").Text = "invalid-relative";
+        Field<TextBox>(window, "PkgBox").Text = "../invalid-package-folder";
+        Field<TextBox>(window, "DpiPortBox").Text = "not-a-port";
         Field<PasswordBox>(window, "WebhookUrlBox").Password = "invalid webhook secret";
         Field<TextBox>(window, "PwList").Text = "known one\nknown two";
         var settings = Field<Settings>(window, "_settings");
@@ -117,6 +120,8 @@ internal static class Program
             Assert(Field<TextBox>(window, "PortBox").Text == "invalid-port" && settings.Port > 0, "invalid port edit preserved: " + locale);
             Assert(Field<TextBox>(window, "FolderBox").Text.EndsWith("does-not-exist"), "invalid folder edit preserved: " + locale);
             Assert(Field<TextBox>(window, "ImageBox").Text == "invalid-relative", "invalid image path edit preserved: " + locale);
+            Assert(Field<TextBox>(window, "PkgBox").Text == "../invalid-package-folder" && settings.PkgDir == "/data/ferry/pkg", "invalid PKG path edit preserved: " + locale);
+            Assert(Field<TextBox>(window, "DpiPortBox").Text == "not-a-port" && settings.DpiPort == 9090, "invalid DPI port edit preserved: " + locale);
             Assert(Field<PasswordBox>(window, "PwBox").Password == "ps5pass", "FTP password preserved: " + locale);
             Assert(Field<PasswordBox>(window, "WebhookUrlBox").Password == "invalid webhook secret", "webhook secret edit preserved: " + locale);
             Assert(Field<TextBox>(window, "PwList").Text == "known one\nknown two", "known passwords preserved: " + locale);
@@ -125,6 +130,8 @@ internal static class Program
             Assert(locale == "en" ? hint.Contains("port", StringComparison.OrdinalIgnoreCase) : hint.Contains("porta", StringComparison.OrdinalIgnoreCase), "validation translated immediately: " + locale);
         }
         Field<TextBox>(window, "ImageBox").Text = "/images";
+        Field<TextBox>(window, "PkgBox").Text = "/data/ferry/pkg";
+        Field<TextBox>(window, "DpiPortBox").Text = "9090";
         SelectLanguage(window, "auto");
         Assert(Settings.Load().Language == "auto" && WpfText.Current.Locale == WpfText.ResolveLocale("auto", WpfText.Current.SystemLocale), "Automatic persisted and uses Windows culture");
     }
@@ -157,6 +164,84 @@ internal static class Program
         Assert(File.Exists(destination) && SHA256.HashData(File.ReadAllBytes(destination)).SequenceEqual(SHA256.HashData(bytes)), "FTP destination hash after switching languages");
         Assert(!Directory.EnumerateFiles(root, "*.ferry-part", SearchOption.AllDirectories).Any(), "atomic FTP publication preserved");
         Assert(File.ReadAllText(FileLog.FilePath).Contains("226 Transfer complete.", StringComparison.Ordinal), "raw FTP diagnostics preserved");
+    }
+
+    static void PackageTransfer(MainWindow window, string data, string root)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        using var stop = new CancellationTokenSource();
+        var dpiPort = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var received = new System.Collections.Concurrent.ConcurrentQueue<(string Path, byte[] Hash)>();
+        var loseResponse = false;
+        var receiver = Task.Run(async () =>
+        {
+            try
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    using var client = await listener.AcceptTcpClientAsync(stop.Token);
+                    var stream = client.GetStream();
+                    var buffer = new byte[1024];
+                    var count = await stream.ReadAsync(buffer, stop.Token);
+                    if (count == 0) continue;
+                    using var json = System.Text.Json.JsonDocument.Parse(buffer.AsMemory(0, count));
+                    var path = json.RootElement.GetProperty("url").GetString()!;
+                    var file = Path.Combine(root, path.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                    received.Enqueue((file, SHA256.HashData(File.ReadAllBytes(file))));
+                    if (!loseResponse) await stream.WriteAsync("{\"res\":\"0\"}"u8.ToArray(), stop.Token);
+                }
+            }
+            catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+            catch (SocketException) when (stop.IsCancellationRequested) { }
+        });
+        try
+        {
+            var engine = Field<Engine>(window, "_engine");
+            var settings = Field<Settings>(window, "_settings");
+            Field<TextBox>(window, "DpiPortBox").Text = dpiPort.ToString(CultureInfo.InvariantCulture);
+            Assert(settings.DpiPort == dpiPort && Settings.Load().DpiPort == dpiPort, "DPI port auto-saves in WPF");
+            settings.DeleteOriginal = true;
+            var bytes = new byte[1_000_000];
+            new Random(611).NextBytes(bytes);
+            bytes[0] = 0x7f; bytes[1] = (byte)'C'; bytes[2] = (byte)'N'; bytes[3] = (byte)'T';
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bytes.AsSpan(0x430, 8), (ulong)bytes.Length);
+            var source = Path.Combine(data, "Windows package.pkg");
+            File.WriteAllBytes(source, bytes);
+            engine.AddFiles([source]);
+            Job? job = null;
+            WaitUntil(() => { lock (engine.Lock) job = engine.Jobs.FirstOrDefault(j => j.Name == "Windows package"); return job?.Stage is Stage.InstalacaoSolicitada or Stage.Erro; }, TimeSpan.FromSeconds(25), "WPF package request");
+            Assert(job!.Stage == Stage.InstalacaoSolicitada, "WPF package accepted: " + job.Detail);
+            Assert(received.Count == 1 && received.Single().Hash.SequenceEqual(SHA256.HashData(bytes)), "WPF package hash before DPI");
+            Assert(File.Exists(source), "WPF retains PKG original despite DeleteOriginal");
+            foreach (var locale in new[] { "pt-BR", "en" })
+            {
+                SelectLanguage(window, locale);
+                window.UpdateLayout();
+                Assert(Visuals<TextBlock>(window).Any(b => b.Text == (locale == "en" ? "Installation requested" : "Instalação solicitada")), "honest package state in WPF: " + locale);
+                Assert(!job.CanPause && !job.CanCancel && !job.CanRetry && !job.CanRequestInstall, "accepted package disables transfer/retry actions: " + locale);
+            }
+            loseResponse = true;
+            var archive = Path.Combine(data, "Windows archive.zip");
+            using (var zip = System.IO.Compression.ZipFile.Open(archive, System.IO.Compression.ZipArchiveMode.Create))
+            {
+                var entry = zip.CreateEntry("inside.pkg", System.IO.Compression.CompressionLevel.NoCompression);
+                using var output = entry.Open(); output.Write(bytes);
+            }
+            engine.AddFiles([archive]);
+            Job? archived = null;
+            WaitUntil(() => { lock (engine.Lock) archived = engine.Jobs.FirstOrDefault(j => j.Name == "Windows archive"); return archived?.Stage is Stage.VerifiqueNoPs5 or Stage.Erro; }, TimeSpan.FromSeconds(25), "WPF uncertain package archive");
+            Assert(archived!.Stage == Stage.VerifiqueNoPs5 && archived.CanRequestInstall && !archived.CanPause && !archived.CanCancel, "lost DPI response exposes confirmed manual action");
+            Assert(!engine.RequestInstall(archived), "uncertain request requires explicit confirmation");
+            Assert(received.Count == 2 && received.Last().Hash.SequenceEqual(SHA256.HashData(bytes)) && File.Exists(archive), "WPF streams archive without losing the original");
+            settings.DeleteOriginal = false;
+        }
+        finally
+        {
+            stop.Cancel();
+            listener.Stop();
+            receiver.GetAwaiter().GetResult();
+        }
     }
 
     static void PasswordDialogs(MainWindow window)

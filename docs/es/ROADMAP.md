@@ -4,7 +4,7 @@
 
 Decidido el 2026-09-30. Orden: lógica → UI/marca → self-hosted (Docker) → inglés → webhook → PKG/fPKG → envío progresivo → payload.
 
-Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Fase 5 implementada y validada localmente (núcleo y web en pt-BR/en); publicación de prerelease depende de CI. Fase 5.1: idioma y bandeja Windows; siguiente: Fase 6 (PKG/fPKG).**
+Estado: Fases 1, 1.5, 2 y 3 terminadas (la 3 salió en la release `v1.3.0-beta.1`). **Fases 5, 5.1 y 6 implementadas. La fase 6 admite PKG suelto y un PKG por ZIP/RAR/7z; la instalación real aún requiere validación en PS5. Siguiente: Fase 7 (envío progresivo). Publicación depende de CI.**
 
 ## Fase 1 — Lógica (release `v1.1.0-beta.1`)
 
@@ -115,15 +115,9 @@ Implementada y validada localmente: 124 comprobaciones WPF pasaron en ambos idio
 
 ## Fase 6 — PKG y fPKG
 
-Investigación completa (firmwares, kstuff, instaladores) en [PKG-PS5.md](PKG-PS5.md).
+Entrega inicial implementada: PKG suelto y un PKG por comprimido mediante FTP + etaHEN DPI con ruta local. Persiste preparación/solicitud; resultados inciertos requieren comprobar la PS5. Las imágenes adicionales usan ShadowMount+. HTTP directo sigue pendiente. Las pruebas locales no prueban instalación en consola.
 
-- **Imágenes `.ffpkg`, `.ffpfs` y `.ffpfsc`** (ShadowMount+) aceptadas como el `.exfat`: mismo destino, `.ferry-part` y renombrar al final. Vale en cualquier firmware con jailbreak.
-- **`.pkg` suelto** (fPKG de PS4 o de PS5): Ferry sirve el archivo por HTTP (con *range* y un token en la URL) y pide la instalación a etaHEN DPI (puerto 9090, `{ "url": … }`). La PS5 lo descarga directamente.
-- **`.pkg` dentro de un comprimido**: enviarlo por FTP a la PS5 e instalar desde la ruta local, o extraerlo en el servidor y servirlo. Decidir después de confirmar si DPI acepta ruta local.
-- **Tarjeta**: PS4 o PS5 por la cabecera del `.pkg`, con aviso cuando el tipo no corre en el firmware (p. ej. fPKG de PS5 en 12.xx y 13.xx aún no funciona).
-- **Ajustes**: instalador de paquetes (etaHEN DPI, puerto), con prueba de conexión y el recordatorio de activar `DPI=1` en el `config.ini` de etaHEN.
-- **E2E**: un DPI falso recibe el pedido y descarga la URL con *range* y reanudación; comprueba hash, token y el error sin DPI.
-- **Antes de empezar**: revisar la investigación (la escena cambia rápido) y cerrar los puntos "por confirmar".
+[PKG](PKG-PS5.md)
 
 ## Fase 7 — Envío progresivo (RAR por partes)
 

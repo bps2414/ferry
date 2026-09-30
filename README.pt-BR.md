@@ -68,7 +68,8 @@ Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho 
 | RAR novo | `Jogo.part1.rar` … `Jogo.partN.rar` |
 | RAR antigo | `Jogo.rar` + `Jogo.r00`, `Jogo.r01`… |
 | Com senha | abre um diálogo pedindo a senha (avisa se estiver errada) |
-| Imagem do ShadowMount+ | `Jogo.exfat` solto ou dentro de qualquer formato acima. Vai inteira para a pasta de imagens (Configurações) |
+| Imagem do ShadowMount+ | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc` solto ou compactado. Vai inteira para a pasta de imagens (Configurações) |
+| PKG / fPKG | `.pkg` solto ou um único PKG dentro de ZIP/RAR/7z, inclusive splits e senha. FTP seguido de solicitação ao etaHEN DPI |
 
 O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** antes de começar (dá para deixar o download terminando).
 
@@ -85,7 +86,7 @@ O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** a
 
 - [Arquitetura e fluxo](docs/ARQUITETURA.md) — como a extração em streaming funciona
 - [Compatibilidade FTP com o PS5](docs/FTP-PS5.md) — o que o ftpsrv suporta e por que isso importa
-- [PKG e fPKG no PS5](docs/PKG-PS5.md) — jailbreak e fPKG por firmware, instaladores de pacote (pesquisa para uma fase futura)
+- [PKG e fPKG no PS5](docs/PKG-PS5.md) — configuração DPI, estados e limites da instalação
 - [Testes E2E](docs/TESTES.md) — como rodar e o que é verificado
 - [Roadmap](docs/ROADMAP.md)
 - [Último relatório E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md)
@@ -107,7 +108,7 @@ O CI (GitHub Actions) roda o E2E no Windows e no Linux, constrói a imagem Docke
 - **Notificação no PS5**: não implementada. Nem o ftpsrv nem o etaHEN expõem notificação pela rede; exigiria um payload ELF próprio (SDK do PS5) enviado ao elfldr.
 - Pausar/retomar ou reabrir faz o 7-Zip reler o arquivo desde o início (não reenvia o que já está no PS5, mas gasta CPU/disco).
 - Arquivos grandes vão por uma conexão só (o 7-Zip entrega um arquivo por vez); as conexões paralelas aceleram os arquivos pequenos.
-- Pacotes `.pkg`/fPKG e imagens `.ffpkg` ainda não são aceitos; estão planejados (ver [PKG e fPKG no PS5](docs/PKG-PS5.md)).
+- PKG precisa de etaHEN com `DPI=1` (porta 9090) e espaço para o pacote mais o jogo instalado. “Instalação solicitada” confirma o pedido aceito; acompanhe o término no PS5. Originais e pacote remoto são preservados, inclusive com “Apagar originais” ligado. Resposta perdida exige conferência no console antes de reenviar. HTTP direto e vários PKGs por compactado ficam para uma etapa posterior.
 
 ## Créditos
 

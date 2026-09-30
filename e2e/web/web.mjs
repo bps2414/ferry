@@ -122,6 +122,24 @@ fs.writeFileSync(up, crypto.randomBytes(64_000_000));
 
 // ---------- FTP falso (com APPE, como o ftpsrv novo) e o container ----------
 const ftpPort = await freePort(), webPort = await freePort();
+const dpiPort = await freePort();
+const dpiRequests = [];
+let dpiMode = "accept";
+const dpiServer = net.createServer(socket => {
+  let input = "";
+  socket.on("error", () => {});
+  socket.on("data", chunk => {
+    input += chunk.toString("utf8");
+    let payload;
+    try { payload = JSON.parse(input); } catch { return; }
+    const remote = path.join(ftpRoot, ...payload.url.split("/").filter(Boolean));
+    dpiRequests.push({ payload, remote, hash: fs.existsSync(remote) ? sha(remote) : null });
+    if (dpiMode === "lost") socket.end();
+    else if (dpiMode === "reject") socket.end('{"res":"-1"}');
+    else { socket.write('{"res":'); setTimeout(() => socket.end('"0"}'), 30); }
+  });
+});
+await new Promise(resolve => dpiServer.listen(dpiPort, "127.0.0.1", resolve));
 const hookPort = await freePort(), hookUrl = `http://127.0.0.1:${hookPort}/topic?token=e2e-token`;
 const hookRequests = [];
 let hookStatus = 200;
@@ -229,6 +247,8 @@ try {
   const anon = await (await fetch(base + "/api/settings")).status;
   const anonEvents = await (await fetch(base + "/api/events")).status;
   check("Teste de webhook exige login", (await fetch(base + "/api/webhook/test", { method: "POST" })).status === 401 && hookRequests.length === 0);
+  check("DPI e solicitação exigem login", (await fetch(base + "/api/ps5/dpi/test", { method: "POST" })).status === 401
+    && (await fetch(base + "/api/jobs/not-a-job/install", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"confirmUnknown":true}' })).status === 401);
   check("API sem login responde 401", anon === 401 && anonEvents === 401, `settings ${anon}, events ${anonEvents}`);
   await page.goto(base);
   await page.locator("#auth").waitFor();
@@ -490,6 +510,58 @@ try {
   await until(() => hookEvents("error", "UP").length === 1, 5000, "webhook de erro");
   check("Webhook de erro não exporta senha nem diagnósticos brutos", hookEvents("error", "UP")[0].payload.language === locale && !hookEvents("error", "UP")[0].body.includes("ps5pass") && !hookEvents("error", "UP")[0].body.includes("webpass"));
 
+  // ---------- PKG: settings, upload, archive, honest state and uncertain retry ----------
+  await page.click('.nav[data-page="settings"]');
+  await page.fill('[data-set="dpiPort"]', "invalid");
+  await until(async () => (await page.locator('[data-err="dpiPort"]').textContent())?.length > 0, 5000, "porta DPI inválida");
+  check("Porta DPI inválida preserva configuração", (await getSettings()).dpiPort === 9090);
+  await page.fill('[data-set="dpiPort"]', String(dpiPort));
+  await page.fill('[data-set="pkgDir"]', "/data/ferry/pkg");
+  await until(async () => (await getSettings()).dpiPort === dpiPort, 6000, "porta DPI salva");
+  const dpiTest = await page.request.post(base + "/api/ps5/dpi/test");
+  check("Teste DPI não instala", dpiTest.ok() && (await dpiTest.json()).ok && dpiRequests.length === 0);
+  await page.request.put(base + "/api/settings", { data: { deleteOriginal: true } });
+  await page.click('.nav[data-page="queue"]');
+  const pkgBytes = crypto.randomBytes(2_000_000);
+  pkgBytes.set([0x7f, 0x43, 0x4e, 0x54]);
+  pkgBytes.writeBigUInt64BE(BigInt(pkgBytes.length), 0x430);
+  const pkg = path.join(src, "PKGWEB.pkg");
+  fs.writeFileSync(pkg, pkgBytes);
+  await page.setInputFiles("#fileInput", [pkg]);
+  await until(async () => await stage("PKGWEB") === "InstalacaoSolicitada", 45000, "PKG solto solicitado");
+  const requested = dpiRequests.at(-1);
+  check("PKG web publicado antes do pedido, hash e origem preservados", requested?.hash === sha(pkg)
+    && fs.existsSync(path.join(games, "PKGWEB.pkg")) && !fs.existsSync(requested.remote + ".ferry-part"));
+  check("PKG mostra solicitação, sem afirmar instalação concluída", (await row("PKGWEB").locator(".stage").textContent()) === (locale === "en" ? "Installation requested" : "Instalação solicitada"));
+  await until(() => hookEvents("installation_requested", "PKGWEB").length === 1, 5000, "webhook PKG");
+  check("Webhook de PKG é distinto de completed", hookEvents("completed", "PKGWEB").length === 0
+    && hookEvents("installation_requested", "PKGWEB")[0].payload.language === locale);
+  const packageDir = path.join(src, "pkg-archive");
+  fs.mkdirSync(packageDir);
+  fs.writeFileSync(path.join(packageDir, "inside.pkg"), pkgBytes);
+  fs.writeFileSync(path.join(packageDir, "README.txt"), "auxiliary file");
+  const pkgZip = path.join(src, "PKGARCH.zip");
+  execFileSync(sevenZip, ["a", "-tzip", "-mx0", pkgZip, "inside.pkg", "README.txt"], { cwd: packageDir, stdio: "ignore" });
+  dpiMode = "lost";
+  await page.setInputFiles("#fileInput", [pkgZip]);
+  await until(async () => await stage("PKGARCH") === "VerifiqueNoPs5", 45000, "resposta perdida de PKG compactado");
+  check("PKG compactado chega íntegro, sem sucesso em resposta perdida", dpiRequests.at(-1)?.hash === sha(pkg)
+    && fs.existsSync(path.join(games, "PKGARCH.zip")) && hookEvents("installation_requested", "PKGARCH").length === 0);
+  const requestsBefore = dpiRequests.length;
+  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
+  await until(up200, 30000, "servidor reiniciado com PKG");
+  await page.reload();
+  await until(async () => await stage("PKGARCH") === "VerifiqueNoPs5" && await stage("PKGWEB") === "InstalacaoSolicitada", 15000, "PKGs restaurados");
+  check("Reinício nunca repete pedidos PKG", dpiRequests.length === requestsBefore);
+  // The UI action provides the confirmation needed for an uncertain remote effect.
+  dpiMode = "accept";
+  page.once("dialog", dialog => dialog.accept());
+  await row("PKGARCH").locator(".install").click();
+  await until(async () => await stage("PKGARCH") === "InstalacaoSolicitada", 15000, "reenvio manual confirmado");
+  check("Reenvio confirmado não retransfere PKG", dpiRequests.length === requestsBefore + 1 && dpiRequests.at(-1).hash === sha(pkg));
+  shotsTaken.pkg = await shot("11-pkg");
+  await page.request.put(base + "/api/settings", { data: { deleteOriginal: false } });
+
   // ---------- 6. sair e entrar ----------
   await page.click('.nav[data-page="settings"]');
   await page.click("#logout");
@@ -546,6 +618,7 @@ await stopServer();
 ftp.kill();
 hookServer.closeAllConnections();
 await new Promise(resolve => hookServer.close(resolve));
+await new Promise(resolve => dpiServer.close(resolve));
 
 const ok = results.every(r => r.ok);
 const sevenVer = execFileSync(sevenZip, [], { encoding: "utf8" }).split("\n").find(l => l.trim()) ?? "";

@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace Ferry;
 
 /// <summary>Varre a pasta de entrada + arquivos adicionados, agrupa partes e processa um jogo por vez.</summary>
-public class Engine(Settings settings, Action<string> log, Func<Job, Task<string?>> askPassword)
+public partial class Engine(Settings settings, Action<string> log, Func<Job, Task<string?>> askPassword)
 {
     public ObservableCollection<Job> Jobs { get; } = [];
     public object Lock { get; } = new();
@@ -28,7 +28,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     // jogos já enviados e conferidos: ao reabrir (ou reiniciar o container) voltam como "Concluído", não entram na fila de novo
     HashSet<string> _done = new(StringComparer.OrdinalIgnoreCase);
 
-    record Saved(List<string> Dropped, List<string> Removed, Dictionary<string, string>? Passwords, Dictionary<string, Dictionary<string, long>>? Started, List<string>? Done = null);
+    record Saved(List<string> Dropped, List<string> Removed, Dictionary<string, string>? Passwords, Dictionary<string, Dictionary<string, long>>? Started, List<string>? Done = null, Dictionary<string, PackagePreparation>? Packages = null);
 
     /// Sufixo dos arquivos que fazem o loader reconhecer o jogo, até o jogo inteiro estar no PS5 e conferido.
     public const string PartSuffix = ".ferry-part";
@@ -48,7 +48,10 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 _passwords = new(s.Passwords ?? [], StringComparer.OrdinalIgnoreCase);
                 _started = new(s.Started ?? [], StringComparer.OrdinalIgnoreCase);
                 _done = new(s.Done ?? [], StringComparer.OrdinalIgnoreCase);
+                _packages = new(s.Packages ?? [], StringComparer.OrdinalIgnoreCase);
+                foreach (var package in _packages.Values.Where(p => p.State == "submitting")) package.State = "unknown";
             }
+            RestorePackages();
             if (_dropped.Count > 0) Emit(new("core.queueRestored", _dropped.Count));
         }
         catch { }
@@ -58,9 +61,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     {
         try
         {
-            lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started, [.. _done])));
+            SaveQueueRequired();
         }
         catch (Exception e) { Emit(new("core.queueSaveFailed", Localization.ExceptionMessage(e))); }
+    }
+
+    void SaveQueueRequired()
+    {
+        lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started, [.. _done], _packages)));
     }
 
     // jogo saiu da fila: esquece senha e envios começados
@@ -73,10 +81,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in keys) { _removed.Remove(k); _done.Remove(k); } }
         // adicionar de novo um jogo concluído = enviar de novo: o card volta para a checagem de partes
         lock (Lock)
+        {
+            foreach (var j in Jobs.Where(j => j.Package != null && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
+                _checkedPackages.Remove(j.Package!.Identity);
             foreach (var j in Jobs.Where(j => j.Stage == Stage.Verificado && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
             {
                 j.Detail = ""; j.Progress = 0; j.Stage = Stage.AguardandoPartes;
             }
+        }
         SaveQueue();
     }
 
@@ -103,6 +115,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         while (!stop.IsCancellationRequested)
         {
             Job? next;
+            if (_installRequests.TryDequeue(out var requested)) { await SubmitPackageAsync(requested); continue; }
             lock (Lock) next = Jobs.FirstOrDefault(j => j.Stage == Stage.NaFila);
             if (next == null) { await Task.Delay(500, stop).ContinueWith(_ => { }); continue; }
             await ProcessAsync(next);
@@ -123,6 +136,8 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     async Task ScanAsync()
     {
+        RestorePackages();
+        await ValidateRestoredPackagesAsync();
         var groups = CurrentGroups();
         lock (_dropped) foreach (var k in _removed) groups.Remove(k);
         lock (Lock)
@@ -157,7 +172,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             if (!_stable.TryGetValue(g.Key, out var st) || st.sig != sig) { _stable[g.Key] = (sig, DateTime.UtcNow); job.SetDetail(new("core.stabilizing")); continue; }
             if ((DateTime.UtcNow - st.since).TotalSeconds < StableSeconds) continue;
 
-            if (!Archives.IsImage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
+            if (!Archives.IsImage(job.MainFile) && !Archives.IsPackage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
             {
                 job.SetDetail(lost.Length > 0 ? Missing(g, lost) : new("core.incompleteParts")); // .001: o 7z não diz qual
                 _stable[g.Key] = (sig, DateTime.UtcNow); // reavalia depois de outra janela
@@ -186,7 +201,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             job.Stage = Stage.Extraindo; job.ResetRate();
             job.SetDetail(new("core.reading"));
             // .exfat solto: um item só, lido direto do disco
-            var loose = Archives.IsImage(job.MainFile);
+            var loose = Archives.IsImage(job.MainFile) || Archives.IsPackage(job.MainFile);
             var (res, entries, _) = loose ? (ListResult.Ok, [new(Path.GetFileName(job.MainFile), new FileInfo(job.MainFile).Length, false, false)], [])
                 : await Archives.ListAsync(job.MainFile, job.ArchivePassword);
             // senha lembrada → senhas conhecidas (em silêncio) → diálogo
@@ -217,6 +232,12 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 SaveQueue();
             }
             ct.ThrowIfCancellationRequested();
+
+            if (Archives.PackagePlan(entries) is { } package)
+            {
+                await ProcessPackageAsync(job, package, loose, ct);
+                return;
+            }
 
             // pasta de jogo → RemoteDir/<jogo>; senão imagem(ns) .exfat → ImageDir/<nome>.exfat
             string remote; string?[] targets;
@@ -330,10 +351,10 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
             var message = Localization.ExceptionMessage(e);
-            job.Stage = Stage.Erro; job.SetDetail(message); job.CurrentFile = ""; JobLog(job, new("core.error", message));
+            job.Stage = job.Package?.State == "prepared" ? Stage.PacotePronto : Stage.Erro; job.SetDetail(message); job.CurrentFile = ""; JobLog(job, new("core.error", message));
             Done?.Invoke(job);
         }
-        catch { } // pausado/cancelado: Stage já foi definido por Pause/Cancel
+        catch { if (job.Package?.State == "prepared") SetPackageStage(job); } // Preserve a published PKG even if cancellation races publication.
         finally { if (listFile != null) try { File.Delete(listFile); } catch { } }
     }
 
@@ -372,8 +393,8 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             else job.Icon = data[k];
     }
 
-    public void Pause(Job job) { job.Stage = Stage.Pausado; job.Cts?.Cancel(); JobLog(job, new("core.paused")); }
-    public void Resume(Job job) { job.Stage = Stage.NaFila; JobLog(job, new("core.resumed")); }
+    public void Pause(Job job) { if (!job.CanPause) return; job.Stage = Stage.Pausado; job.Cts?.Cancel(); JobLog(job, new("core.paused")); }
+    public void Resume(Job job) { if (!job.CanResume) return; job.Stage = Stage.NaFila; JobLog(job, new("core.resumed")); }
 
     // "Transferir agora": passa na frente da fila. O que estava enviando volta para a fila (NaFila, não Pausado):
     // o Cts cancelado cai no catch vazio do ProcessAsync e ele retoma depois, só com o que falta.
@@ -383,7 +404,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
         Job? active;
         lock (Lock)
         {
-            active = Jobs.FirstOrDefault(j => j.IsActive && j != job);
+            active = Jobs.FirstOrDefault(j => j.CanPause && j.IsActive && j != job);
             Jobs.Move(Jobs.IndexOf(job), 0);
             if (active != null) { Jobs.Move(Jobs.IndexOf(active), 1); active.Stage = Stage.NaFila; active.Cts?.Cancel(); }
             job.Stage = Stage.NaFila;
@@ -393,6 +414,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     public void Cancel(Job job)
     {
+        if (!job.CanCancel) return;
         job.Stage = Stage.Cancelado;
         job.Cts?.Cancel();
         job.ResetRate();
@@ -401,13 +423,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
 
     public void ClearFinished()
     {
-        lock (Lock) foreach (var j in Jobs.Where(j => j.Stage == Stage.Verificado).ToList()) { Jobs.Remove(j); Forget(j.Key); }
+        lock (Lock) foreach (var j in Jobs.Where(j => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada).ToList()) { Jobs.Remove(j); Forget(j.Key); }
         SaveQueue();
     }
 
     // Volta para a checagem de partes; o envio pula o que já está no PS5. Jogo já instalado: "reenviar mesmo assim".
     public void Retry(Job job)
     {
+        if (!job.CanRetry) return;
         job.Force |= job.Installed;
         job.Detail = ""; job.Progress = 0; job.Stage = Stage.AguardandoPartes;
         JobLog(job, new("core.concat", new Message("core.retry"), job.Force ? new Message("core.overwriteInstalled") : new Message("core.raw", "")));

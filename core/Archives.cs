@@ -50,8 +50,22 @@ public static class Archives
         (new(@"^(?<n>.+)\.(?<e>r)(?<i>\d{2})$", RegexOptions.IgnoreCase), true, 0),
     ];
     // .exfat solto = imagem do ShadowMount+, enviada como está (sem 7-Zip)
-    static readonly Regex PlainRe = new(@"^(.+)\.(zip|7z|rar|exfat)$", RegexOptions.IgnoreCase);
-    public static bool IsImage(string path) => path.EndsWith(".exfat", StringComparison.OrdinalIgnoreCase);
+    static readonly Regex PlainRe = new(@"^(.+)\.(zip|7z|rar|exfat|ffpkg|ffpfs|ffpfsc|pkg)$", RegexOptions.IgnoreCase);
+    public static bool IsImage(string path) => new[] { ".exfat", ".ffpkg", ".ffpfs", ".ffpfsc" }.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase));
+    public static bool IsPackage(string path) => path.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase);
+
+    public static Entry? PackagePlan(List<Entry> entries)
+    {
+        var packages = entries.Where(e => !e.IsDir && IsPackage(e.Path)).ToList();
+        if (packages.Count == 0) return null;
+        if (packages.Count > 1) throw new LocalizedException(new("core.pkg.multiple", string.Join(", ", packages.Select(e => e.Path))));
+        if (FindGameRoot(entries) != null || entries.Any(e => !e.IsDir && IsImage(e.Path)))
+            throw new LocalizedException(new("core.pkg.mixed"));
+        var path = packages[0].Path.Replace('\\', '/');
+        if (path.StartsWith('/') || path.Split('/').Any(p => p is "." or ".." || p.Contains(':') || p.Any(char.IsControl)))
+            throw new LocalizedException(new("core.pkg.path"));
+        return packages[0];
+    }
 
     public static Dictionary<string, ArchiveGroup> Group(IEnumerable<string> files)
     {
@@ -239,6 +253,8 @@ public static class Archives
     public static string?[]? ImagePlan(List<Entry> entries)
     {
         var targets = entries.Select(e => !e.IsDir && IsImage(e.Path) ? e.Path[(e.Path.LastIndexOf('/') + 1)..] : null).ToArray();
+        if (targets.Where(t => t != null).GroupBy(t => t, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+            throw new LocalizedException(new("core.image.duplicate"));
         return targets.Any(t => t != null) ? targets : null;
     }
 }

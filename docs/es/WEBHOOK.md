@@ -11,6 +11,7 @@ En **Ajustes → Webhook**, elija Discord, ntfy o JSON genérico, indique la URL
 | Evento | Cuándo |
 |---|---|
 | `completed` | El juego se ha enviado, publicado y verificado en la PS5 |
+| `installation_requested` | DPI aceptó una solicitud de instalación PKG; no confirma el final en la consola |
 | `error` | Un fallo deja el juego en Error, incluido el aviso de juego ya instalado |
 | `password_required` | Primera solicitud manual de contraseña; contraseñas conocidas e intentos incorrectos no repiten el aviso |
 | `test` | Botón de prueba; `job` es `null` |

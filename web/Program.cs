@@ -65,6 +65,8 @@ app.MapGet("/i18n/{locale}.json", (string locale) =>
 var api = app.MapGroup("/api").RequireAuthorization();
 
 api.MapPost("/jobs/{id}/{action}", (string id, string action) => hub.Act(id, action) ? Results.Ok() : Results.NotFound());
+api.MapPost("/jobs/{id}/install", (string id, InstallAnswer body) =>
+    hub.Find(id) is not { } job ? Results.NotFound() : engine.RequestInstall(job, body.ConfirmUnknown) ? Results.Ok() : Results.Conflict());
 api.MapPost("/jobs/clear-finished", () => { engine.ClearFinished(); return Results.Ok(); });
 api.MapPost("/jobs/{id}/password", (string id, PasswordAnswer body) => hub.Answer(id, body.Password) ? Results.Ok() : Results.NotFound());
 api.MapGet("/jobs/{id}/icon", (string id) => hub.Find(id)?.Icon is { } icon ? Results.File(icon, "image/png") : Results.NotFound());
@@ -106,6 +108,14 @@ api.MapPut("/settings", (JsonElement body) =>
                 if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var c) && c is >= 1 and <= 8) settings.Connections = c;
                 else errorsMessages["connections"] = new("web.invalidConnections");
                 break;
+            case "pkgdir":
+                if (Str() is { } pkg && pkg.StartsWith('/') && !pkg.Any(char.IsControl) && !pkg.Split('/').Any(x => x is "." or "..")) settings.PkgDir = pkg;
+                else errorsMessages["pkgDir"] = new("web.invalidPkgDir");
+                break;
+            case "dpiport":
+                if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var dpi) && dpi is >= 1 and <= 65535) settings.DpiPort = dpi;
+                else errorsMessages["dpiPort"] = new("web.invalidPort");
+                break;
             case "language":
                 if (Str() is "auto" or "pt-BR" or "en") settings.Language = Str()!;
                 else errorsMessages["language"] = new("web.invalidLanguage");
@@ -124,6 +134,14 @@ api.MapPut("/settings", (JsonElement body) =>
 });
 
 api.MapPost("/ps5/test", async () => { var ok = await hub.TestConnection(); return Results.Json(new { ok, message = hub.TestMessage, messageData = hub.TestMessageData }); });
+api.MapPost("/ps5/dpi/test", async (HttpContext context) =>
+{
+    Message msg; bool ok;
+    try { msg = await PkgInstaller.TestAsync(settings, context.RequestAborted); ok = true; }
+    catch (Exception ex) { msg = new("web.dpiTestFailed", Localization.ExceptionMessage(ex)); ok = false; }
+    hub.Log(msg);
+    return Results.Json(new { ok, message = msg.Render(), messageData = msg });
+});
 api.MapPost("/webhook/test", async (HttpContext context) =>
 {
     var result = await webhooks.TestAsync(context.RequestAborted);
@@ -191,3 +209,4 @@ app.Run();
 await run;
 
 record PasswordAnswer(string? Password);
+record InstallAnswer(bool ConfirmUnknown = false);

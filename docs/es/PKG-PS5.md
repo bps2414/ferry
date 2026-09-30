@@ -4,9 +4,29 @@
 
 Investigación para la Fase 6 del [roadmap](ROADMAP.md). Situación a **30/09/2026**. La escena cambia rápido; revisa las fuentes antes de implementar. Lo que no pude confirmar está marcado como **por confirmar**.
 
+
+## Uso en Ferry — Fase 6
+
+Acepta `.pkg` suelto o **un PKG por comprimido** (ZIP/RAR/7z, volúmenes y contraseña). Ignora archivos auxiliares; rechaza varios PKGs o mezcla con dump/imagen.
+
+En Ajustes, conserva la conexión FTP de la PS5, configura la carpeta de paquetes (por defecto `/data/ferry/pkg`) y puerto DPI (9090). Activa `DPI=1` en `/data/etaHEN/config.ini`. Probar DPI comprueba la disponibilidad del puerto sin instalar.
+
+Ferry transmite por FTP sin extraer todo el paquete al PC, comprueba SIZE, publica mediante rename y solicita instalación desde la ruta local de la consola. Hace falta espacio para paquete y juego instalado. Windows y web comparten el flujo.
+
+Paquete preparado significa transferencia lista; instalación solicitada significa que DPI aceptó el pedido. Comprueba el final en las descargas de la PS5. Resultado desconocido exige comprobar la consola antes de reenviar. Reiniciar nunca repite automáticamente pedidos enviados.
+
+Conserva el PKG/comprimido original y el paquete remoto incluso con borrar originales activado. Quitar el card no cancela instalación ni borra el paquete. Sin limpieza automática, confirmación remota de finalización, HTTP directo ni orden automático de juego/update/DLC.
+
+`.exfat`, `.ffpkg`, `.ffpfs` y `.ffpfsc` son imágenes de ShadowMount+, sin DPI. Las cabeceras identifican CNT/PS4 o FIH/PS5 sin garantizar firma falsa ni compatibilidad. La ruta local requiere aceptación en una PS5 real; las pruebas locales no la sustituyen.
+
+Prueba enfocada: `dotnet run --project e2e -- --pkg`. Windows: `dotnet run --project e2e/windows -c Release`. E2E web ejecuta pt-BR/en. Docker, CI remota y consola necesitan ejecución propia.
+
+## Investigación de referencia
+
+La investigación siguiente registra fuentes consultadas el 30/09/2026, incluidas propuestas anteriores. El contrato anterior describe el comportamiento implementado; HTTP directo queda pendiente y la compatibilidad de firmware no es una garantía de Ferry.
 ## Formas de tener un juego en una PS5 con jailbreak
 
-| Forma | Qué es | Quién lo instala/carga | Ferry hoy |
+| Forma | Qué es | Quién lo instala/carga | Ferry antes de la Fase 6 |
 |---|---|---|---|
 | **Carpeta del juego** (dump) | Carpeta `PPSA…` con `eboot.bin` y `sce_sys/` | ShadowMount+ (instala solo al encontrar `sce_sys/param.json`) o itemzflow | ✅ extrae y envía por FTP |
 | **Imagen `.exfat`** | El juego dentro de una imagen de disco | ShadowMount+ la monta | ✅ la envía entera a la carpeta de imágenes |

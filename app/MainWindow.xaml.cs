@@ -61,6 +61,8 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(() =>
             {
                 if (job.Stage == Stage.Verificado) Toast(new("core.webhook.completedTitle"), new("core.webhook.completedText", job.Title != "" ? job.Title : job.Name));
+                else if (job.Stage == Stage.InstalacaoSolicitada) Toast(new("ui.installationTitle"), new("ui.installationText", job.Title != "" ? job.Title : job.Name));
+                else if (job.Stage == Stage.VerifiqueNoPs5) Toast(new("ui.installationUnknownTitle"), new("ui.installationUnknownText", job.Title != "" ? job.Title : job.Name));
                 else Toast(new("core.webhook.errorTitle"), new("core.webhook.errorText", job.Name, Short(job.DetailMessage is { } detail ? WpfText.Current.Render(detail) : job.Detail)));
             });
         };
@@ -149,11 +151,19 @@ public partial class MainWindow : Window
         var sending = Count(Stage.Extraindo, Stage.Enviando);
         var queued = Count(Stage.NaFila, Stage.AguardandoPartes, Stage.Pausado);
         var done = Count(Stage.Verificado);
+        var requested = Count(Stage.InstalacaoSolicitada);
+        var ready = Count(Stage.PacotePronto);
+        var submitting = Count(Stage.SolicitandoInstalacao);
+        var unknown = Count(Stage.VerifiqueNoPs5);
         var errors = Count(Stage.Erro);
         var parts = new List<string>();
         if (sending > 0) parts.Add(T("ui.sending", sending));
         if (queued > 0) parts.Add(T("ui.queued", queued));
         if (done > 0) parts.Add(T(done == 1 ? "ui.doneOne" : "ui.doneMany", done));
+        if (requested > 0) parts.Add(T("ui.installationsRequested", requested));
+        if (ready > 0) parts.Add(T("ui.packagesReady", ready));
+        if (submitting > 0) parts.Add(T("ui.installationsSubmitting", submitting));
+        if (unknown > 0) parts.Add(T("ui.installationsUnknown", unknown));
         if (errors > 0) parts.Add(T(errors == 1 ? "ui.errorsOne" : "ui.errorsMany", errors));
         SummaryText.Text = parts.Count == 0 ? T("ui.emptyQueue") : string.Join(" · ", parts);
 
@@ -161,9 +171,9 @@ public partial class MainWindow : Window
         SpeedPill.Visibility = rate > 0 ? Visibility.Visible : Visibility.Collapsed;
         var sz = WpfText.Current.Size((long)rate).Split(' ');
         (SpeedText.Text, SpeedUnit.Text) = (sz[0], " " + sz[1] + "/s");
-        ClearBtn.Visibility = done > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ClearBtn.Visibility = done + requested > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyHint.Visibility = jobs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        var pending = jobs.Count - done;
+        var pending = jobs.Count - done - requested;
         QueueBadge.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
         QueueBadgeText.Text = pending.ToString(WpfText.Current.Culture);
     }
@@ -192,11 +202,14 @@ public partial class MainWindow : Window
         PortBox.Text = _settings.Port.ToString();
         FolderBox.Text = _settings.InputFolder;
         ImageBox.Text = _settings.ImageDir;
+        PkgBox.Text = _settings.PkgDir;
+        DpiPortBox.Text = _settings.DpiPort.ToString(CultureInfo.InvariantCulture);
         WebhookUrlBox.Password = _settings.WebhookUrl;
         WebhookEnabledBox.IsChecked = _settings.WebhookEnabled;
         foreach (ComboBoxItem item in WebhookKindBox.Items) if ((string)item.Tag == _settings.WebhookKind) WebhookKindBox.SelectedItem = item;
         _loading = false;
         Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null); Validate(ImageBox, ImageHint, null);
+        Validate(PkgBox, PkgHint, null); Validate(DpiPortBox, DpiPortHint, null);
     }
 
     void Validate(TextBox box, TextBlock hint, string? error)
@@ -244,6 +257,55 @@ public partial class MainWindow : Window
         Validate(ImageBox, ImageHint, ok ? null : "app.imageDirInvalid");
         if (!ok || t == _settings.ImageDir) return;
         _settings.ImageDir = t; Persist();
+    }
+
+    void OnPkgDirChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var path = PkgBox.Text;
+        var ok = path.StartsWith('/') && !path.Any(char.IsControl) && !path.Split('/').Any(x => x is "." or "..");
+        Validate(PkgBox, PkgHint, ok ? null : "ui.pkgDirInvalid");
+        if (!ok || path == _settings.PkgDir) return;
+        _settings.PkgDir = path; Persist();
+    }
+
+    void OnDpiPortChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var ok = int.TryParse(DpiPortBox.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535;
+        Validate(DpiPortBox, DpiPortHint, ok ? null : "app.portInvalid");
+        if (!ok || port == _settings.DpiPort) return;
+        _settings.DpiPort = port; Persist();
+    }
+
+    async void OnDpiTest(object s, RoutedEventArgs e)
+    {
+        if (HostHint.Visibility == Visibility.Visible || DpiPortHint.Visibility == Visibility.Visible)
+        { SetText(DpiTestResult, "ui.dpiSaveFirst"); return; }
+        DpiTestBtn.IsEnabled = false;
+        SetText(DpiTestResult, "ui.dpiTesting");
+        try
+        {
+            var result = await PkgInstaller.TestAsync(_settings, _stop.Token);
+            SetText(DpiTestResult, result);
+            DpiTestResult.Foreground = (Brush)FindResource("Green");
+            Log(result);
+        }
+        catch (Exception ex)
+        {
+            SetText(DpiTestResult, "ui.dpiTestFailed", Localization.ExceptionMessage(ex));
+            DpiTestResult.Foreground = (Brush)FindResource("Red");
+        }
+        finally { DpiTestBtn.IsEnabled = true; }
+    }
+
+    void OnRequestInstall(object s, RoutedEventArgs e)
+    {
+        if ((s as FrameworkElement)?.DataContext is not Job job || !job.CanRequestInstall) return;
+        var unknown = job.Stage == Stage.VerifiqueNoPs5;
+        if (unknown && MessageBox.Show(this, T("ui.installConfirm", job.Title != "" ? job.Title : job.Name),
+            T("ui.installationUnknownTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        if (!_engine.RequestInstall(job, unknown)) Log(new Message("ui.installRequestFailed"));
     }
 
     void OnPwListChanged(object s, TextChangedEventArgs e)

@@ -30,5 +30,11 @@
   "web.shortPassword": "A senha precisa ter pelo menos 8 caracteres.",
   "web.invalidFilename": "Nome de arquivo inválido.",
   "web.uploadTooLarge": "Recebido mais que o tamanho do arquivo.",
-  "web.uploadReceived": "{0} recebido pelo navegador ({1})"
+  "web.uploadReceived": "{0} recebido pelo navegador ({1})",
+  "web.installationTitle": "Instalação solicitada",
+  "web.installationText": "Solicitação aceita para {0}. Acompanhe os downloads no PS5.",
+  "web.installationUnknownTitle": "Verifique no PS5",
+  "web.installationUnknownText": "Confira os downloads do PS5 para {0} antes de reenviar a solicitação.",
+  "web.dpiTestFailed": "Falha no teste DPI: {0}. Verifique DPI=1 no etaHEN.",
+  "web.invalidPkgDir": "Informe um caminho no PS5 iniciado com /, sem . ou .. (ex.: /data/ferry/pkg)."
 }

@@ -123,12 +123,16 @@ function render(s, acceptLanguage = true) {
   if (m.sending) parts.push(t("ui.sending", fmt(m.sending, 0)));
   if (m.queued) parts.push(t("ui.queued", fmt(m.queued, 0)));
   if (m.done) parts.push(t(m.done === 1 ? "ui.doneOne" : "ui.doneMany", fmt(m.done, 0)));
+  if (m.requested) parts.push(t("ui.installationsRequested", fmt(m.requested, 0)));
+  if (m.ready) parts.push(t("ui.packagesReady", fmt(m.ready, 0)));
+  if (m.submitting) parts.push(t("ui.installationsSubmitting", fmt(m.submitting, 0)));
+  if (m.unknown) parts.push(t("ui.installationsUnknown", fmt(m.unknown, 0)));
   if (m.errors) parts.push(t(m.errors === 1 ? "ui.errorsOne" : "ui.errorsMany", fmt(m.errors, 0)));
   $("#summary").textContent = parts.length ? parts.join(" · ") : t("ui.emptyQueue");
   $("#speed").hidden = !(m.rate > 0);
   if (m.rate > 0) { const [v, u] = size(m.rate); $("#speedVal").textContent = v; $("#speedUnit").textContent = u + "/s"; }
-  $("#clearDone").hidden = !m.done;
-  const pending = s.jobs.length - m.done;
+  $("#clearDone").hidden = !(m.done + (m.requested || 0));
+  const pending = s.jobs.length - m.done - (m.requested || 0);
   $("#badge").hidden = pending <= 0;
   $("#badge").textContent = pending;
   $("#empty").hidden = s.jobs.length > 0 || uploads.size > 0;
@@ -150,7 +154,14 @@ function newRow(id) {
   const el = $("#jobTpl").content.firstElementChild.cloneNode(true);
   el.dataset.id = id;
   translateElements(el);
-  $$("[data-act]", el).forEach(b => b.addEventListener("click", () => api("POST", `/api/jobs/${id}/${b.dataset.act}`).catch(e => toast("error", message("ui.actionFailed"), errorMessage(e)))));
+  $$("[data-act]", el).forEach(b => b.addEventListener("click", async () => {
+    const unknown = el.dataset.stage === "VerifiqueNoPs5";
+    if (b.dataset.act === "install" && unknown && !confirm(t("ui.installConfirm", $(".title", el).textContent))) return;
+    b.disabled = true;
+    try { await api("POST", `/api/jobs/${id}/${b.dataset.act}`, b.dataset.act === "install" ? { confirmUnknown: unknown } : undefined); }
+    catch (e) { toast("error", message("ui.actionFailed"), errorMessage(e)); }
+    finally { b.disabled = false; }
+  }));
   return el;
 }
 
@@ -164,6 +175,7 @@ function fillRow(el, j) {
   $(".title", el).title = j.title || j.name;
   text($(".stage", el), j.stageMessage ? renderMessage(j.stageMessage) : t("ui.stage." + j.stage));
   text($(".tid", el), j.titleId);
+  text($(".package-format", el), j.packageFormat);
   text($(".amount", el), j.totalBytes > 0 ? t("ui.amount", size(j.doneBytes).join(" "), size(j.totalBytes).join(" ")) : "");
   text($(".detail", el), renderMessage(j.detailMessage || j.detail));
   text($(".file", el), j.currentFile);
@@ -172,8 +184,11 @@ function fillRow(el, j) {
   text($(".rate .v", el), rv); text($(".rate .u", el), ru + "/s");
   const [ev, eu] = remaining(j.secondsRemaining);
   text($(".eta .v", el), ev); text($(".eta .u", el), eu);
-  $(".rate", el).hidden = $(".eta", el).hidden = j.canSendNow;
+  $(".rate", el).hidden = $(".eta", el).hidden = j.canSendNow || j.canRequestInstall;
+  $(".pct", el).hidden = !!j.canRequestInstall;
   $(".sendnow", el).hidden = !j.canSendNow;
+  $(".install", el).hidden = !j.canRequestInstall;
+  text($(".install", el), t(j.stage === "VerifiqueNoPs5" ? "ui.resendInstall" : "ui.requestInstall"));
   const show = { pause: j.canPause, resume: j.canResume, retry: j.canRetry, cancel: j.canCancel, remove: true };
   $$(".acts [data-act]", el).forEach(b => b.hidden = !show[b.dataset.act]);
   $(".fill", el).style.width = j.progress + "%";
@@ -277,7 +292,7 @@ for (const el of $$("[data-set]")) {
 async function save(k, el) {
   const mine = edits[k];
   let v = el.type === "checkbox" ? el.checked : el.value;
-  if (k === "port" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
+  if (k === "port" || k === "dpiPort" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
   if (k === "knownPasswords") v = el.value.split("\n").map(s => s.trim()).filter(Boolean);
   try {
     const body = { [k]: v };
@@ -310,6 +325,27 @@ async function save(k, el) {
   } catch (e) { toast("error", message("ui.saveFailed"), errorMessage(e)); return false; }
   finally { if (edits[k] === mine) delete edits[k]; } // editou de novo enquanto salvava: continua pendente
 }
+
+$("#dpiTestBtn").addEventListener("click", async () => {
+  const button = $("#dpiTestBtn"), result = $("#dpiTestResult");
+  button.disabled = true;
+  result.className = "test-result";
+  bindText(result, message("ui.dpiTesting"));
+  try {
+    let saved = true;
+    for (const key of ["host", "dpiPort"]) {
+      clearTimeout(timers[key]);
+      saved = await queueSave(key, $(`[data-set="${key}"]`)) && saved;
+    }
+    if (!saved || $('[data-set="host"]').classList.contains("bad") || $('[data-set="dpiPort"]').classList.contains("bad")) {
+      bindText(result, message("ui.dpiSaveFirst")); return;
+    }
+    const response = await api("POST", "/api/ps5/dpi/test");
+    result.classList.add(response.ok ? "ok" : "fail");
+    bindText(result, response.messageData || response.message);
+  } catch (error) { result.classList.add("fail"); bindText(result, errorMessage(error)); }
+  finally { button.disabled = false; }
+});
 
 $("#webhookTestBtn").addEventListener("click", async () => {
   const button = $("#webhookTestBtn"), result = $("#webhookTestResult");

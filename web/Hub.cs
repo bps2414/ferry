@@ -58,6 +58,8 @@ public class Hub(Settings settings)
     public void OnDone(Job job)
     {
         if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name));
+        else if (job.Stage == Stage.InstalacaoSolicitada) Notify("installation_requested", new("web.installationTitle"), new("web.installationText", job.Title != "" ? job.Title : job.Name));
+        else if (job.Stage == Stage.VerifiqueNoPs5) Notify("unknown", new("web.installationUnknownTitle"), new("web.installationUnknownText", job.Title != "" ? job.Title : job.Name));
         else Notify("error", new("web.errorTitle"), new("web.errorText", job.Name, job.DetailMessage ?? new Message("core.raw", Short(job.Detail))));
     }
 
@@ -158,15 +160,16 @@ public class Hub(Settings settings)
             language = settings.Language,
             jobs = jobs.Select(j => new
             {
-                id = Id(j), j.Name, j.Title, j.TitleId, stage = j.Stage.ToString(), j.StageText, j.StageMessage, j.Detail, j.DetailMessage, j.CurrentFile,
+                id = Id(j), j.Name, j.Title, j.TitleId, packageFormat = j.Package?.Format, stage = j.Stage.ToString(), j.StageText, j.StageMessage, j.Detail, j.DetailMessage, j.CurrentFile,
                 progress = Math.Round(j.Progress, 1), j.Amount, j.RateValue, j.RateUnit, j.EtaValue, j.EtaUnit,
                 j.DoneBytes, j.TotalBytes, j.Rate, j.SecondsRemaining,
-                icon = j.Icon is { } ic ? ic.Length : 0, j.IsActive, j.CanPause, j.CanResume, j.CanCancel, j.CanRetry, j.CanSendNow,
+                icon = j.Icon is { } ic ? ic.Length : 0, j.IsActive, j.CanPause, j.CanResume, j.CanCancel, j.CanRetry, j.CanSendNow, j.CanRequestInstall,
             }),
             summary = new
             {
                 sending = Count(Stage.Extraindo, Stage.Enviando), queued = Count(Stage.NaFila, Stage.AguardandoPartes, Stage.Pausado),
-                done = Count(Stage.Verificado), errors = Count(Stage.Erro), rate = (long)jobs.Where(j => j.IsActive).Sum(j => j.Rate),
+                done = Count(Stage.Verificado), requested = Count(Stage.InstalacaoSolicitada), ready = Count(Stage.PacotePronto), submitting = Count(Stage.SolicitandoInstalacao), unknown = Count(Stage.VerifiqueNoPs5),
+                errors = Count(Stage.Erro), rate = (long)jobs.Where(j => j.IsActive).Sum(j => j.Rate),
             },
             ps5 = new { settings.Host, settings.Port, settings.RemoteDir, status = Ps5Status, message = TestMessage, messageData = TestMessageData, found = Found is { } f ? $"{f.Ip}:{f.Port}" : null },
             password = ask == null ? null : new { id = Id(ask.Job), ask.Job.Name, ask.Wrong, ask.Seq },

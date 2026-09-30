@@ -78,7 +78,7 @@
         <h2><span data-i18n="ui.emptyTitle">Nada na travessia.</span></h2>
         <p><span data-i18n="ui.emptyHint">Arraste os arquivos do jogo para esta página ou clique para escolher. Selecione todas as partes de uma vez: elas sobem para o servidor e entram na fila quando todas chegarem.</span></p>
         <p id="emptyFolder" class="muted"></p>
-        <p class="exts">.zip &nbsp; .rar &nbsp; .7z &nbsp; .001 &nbsp; .z01 &nbsp; .part1.rar &nbsp; .r00 &nbsp; .exfat</p>
+        <p class="exts">.zip &nbsp; .rar &nbsp; .7z &nbsp; .001 &nbsp; .z01 &nbsp; .part1.rar &nbsp; .r00 &nbsp; .pkg &nbsp; .exfat &nbsp; .ffpkg &nbsp; .ffpfs &nbsp; .ffpfsc</p>
       </div>
     </section>
 
@@ -119,6 +119,15 @@
           <p class="hint error" data-err="remoteDir"></p>
           <label class="field"><span><span data-i18n="ui.exfat">Imagens .exfat (ShadowMount+)</span></span><input data-set="imageDir" spellcheck="false"></label>
           <p class="hint error" data-err="imageDir"></p>
+          <label class="field"><span data-i18n="ui.pkgDir">Pasta dos PKGs no PS5</span><input data-set="pkgDir" spellcheck="false"></label>
+          <p class="hint error" data-err="pkgDir"></p>
+          <p class="hint" data-i18n="ui.pkgHint"></p>
+          <p class="hint" data-i18n="ui.pkgSpaceHint"></p>
+          <p class="hint" data-i18n="ui.pkgCompatibilityHint"></p>
+          <label class="field port"><span data-i18n="ui.dpiPort">Porta DPI</span><input data-set="dpiPort" inputmode="numeric"></label>
+          <p class="hint error" data-err="dpiPort"></p>
+          <p class="hint" data-i18n="ui.dpiHint"></p>
+          <div class="row-2 test"><button id="dpiTestBtn" class="btn" data-i18n="ui.dpiTest">Testar DPI</button><p id="dpiTestResult" class="test-result" role="status" aria-live="polite"></p></div>
           <hr>
           <h3 data-i18n="ui.webhook">Webhook</h3>
           <label class="check"><input data-set="webhookEnabled" type="checkbox"><span data-i18n="ui.webhookEnabled">Ativar avisos por webhook</span></label>
@@ -146,6 +155,7 @@
             <span class="range"><input data-set="connections" type="range" min="1" max="8" step="1"><b id="connVal"></b></span>
           </label>
           <label class="check"><input data-set="deleteOriginal" type="checkbox"><span><span data-i18n="ui.deleteOriginal">Apagar as partes originais depois do envio conferido</span></span></label>
+          <p class="hint" data-i18n="ui.pkgRetentionHint"></p>
 
           <hr>
           <h3><span data-i18n="ui.knownPasswords">Senhas conhecidas</span> <small><span data-i18n="ui.passwordsHint">uma por linha, testadas antes de perguntar</span></small></h3>
@@ -191,7 +201,7 @@
     <img class="cover" alt="">
     <div class="info">
       <h2 class="title"></h2>
-      <p class="meta"><b class="stage"></b><span class="tid"></span><span class="amount"></span></p>
+      <p class="meta"><b class="stage"></b><span class="tid"></span><span class="package-format"></span><span class="amount"></span></p>
       <p class="detail"></p>
       <p class="file"></p>
     </div>
@@ -199,6 +209,7 @@
     <div class="stat rate"><div class="v"></div><small class="u"></small></div>
     <div class="stat eta"><div class="v"></div><small class="u"></small></div>
     <button class="btn sendnow" data-act="sendnow" title="Começa este agora. O envio em andamento volta para a fila e continua de onde parou." data-i18n-title="ui.sendNowHint"><span data-i18n="ui.sendNow">Transferir agora</span></button>
+    <button class="btn install" data-act="install" data-i18n="ui.requestInstall" data-i18n-title="ui.requestInstallHint" hidden>Solicitar instalação</button>
     <div class="acts">
       <button class="icon" data-act="pause" title="Pausar" data-i18n-title="ui.pause" aria-label="Pausar" data-i18n-aria-label="ui.pause"><svg><use href="#i-pause"/></svg></button>
       <button class="icon" data-act="resume" title="Retomar" data-i18n-title="ui.resume" aria-label="Retomar" data-i18n-aria-label="ui.resume"><svg><use href="#i-play"/></svg></button>

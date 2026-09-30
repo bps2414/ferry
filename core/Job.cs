@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ferry;
 
-public enum Stage { AguardandoPartes, NaFila, Extraindo, Enviando, Verificado, Pausado, Cancelado, Erro }
+public enum Stage { AguardandoPartes, NaFila, Extraindo, Enviando, Verificado, Pausado, Cancelado, Erro, PacotePronto, SolicitandoInstalacao, InstalacaoSolicitada, VerifiqueNoPs5 }
 
 public class Job : INotifyPropertyChanged
 {
@@ -15,6 +15,7 @@ public class Job : INotifyPropertyChanged
     public CancellationTokenSource? Cts { get; set; }
     public bool Installed { get; set; } // destino já tinha o jogo publicado (param.json/sfo com nome final)
     public bool Force { get; set; }     // usuário mandou reenviar por cima do jogo instalado
+    public PackagePreparation? Package { get; internal set; }
 
     Stage _stage;
     public Stage Stage
@@ -23,7 +24,7 @@ public class Job : INotifyPropertyChanged
         set
         {
             _stage = value;
-            foreach (var p in new[] { nameof(Stage), nameof(StageMessage), nameof(StageText), nameof(CanPause), nameof(CanResume), nameof(CanCancel), nameof(CanRetry), nameof(CanSendNow), nameof(IsActive) }) Changed(p);
+            foreach (var p in new[] { nameof(Stage), nameof(Package), nameof(StageMessage), nameof(StageText), nameof(CanPause), nameof(CanResume), nameof(CanCancel), nameof(CanRetry), nameof(CanSendNow), nameof(CanRequestInstall), nameof(IsActive) }) Changed(p);
         }
     }
 
@@ -34,7 +35,8 @@ public class Job : INotifyPropertyChanged
     public bool CanPause => Stage is Stage.NaFila or Stage.Extraindo or Stage.Enviando;
     public bool CanResume => Stage == Stage.Pausado;
     public bool CanCancel => Stage is Stage.AguardandoPartes or Stage.NaFila or Stage.Extraindo or Stage.Enviando or Stage.Pausado;
-    public bool CanRetry => Stage is Stage.Erro or Stage.Cancelado;
+    public bool CanRetry => (Stage is Stage.Erro or Stage.Cancelado) && Package?.State is not ("prepared" or "submitting" or "submitted" or "unknown");
+    public bool CanRequestInstall => Stage is Stage.PacotePronto or Stage.VerifiqueNoPs5;
     public bool CanSendNow => Stage is Stage.NaFila or Stage.Pausado; // "Transferir agora": passa na frente do que está enviando
 
     double _progress; public double Progress { get => _progress; set { _progress = value; Changed(); } }

@@ -30,5 +30,11 @@
   "web.shortPassword": "The password must have at least 8 characters.",
   "web.invalidFilename": "Invalid filename.",
   "web.uploadTooLarge": "Received more than the file size.",
-  "web.uploadReceived": "{0} received from the browser ({1})"
+  "web.uploadReceived": "{0} received from the browser ({1})",
+  "web.installationTitle": "Installation requested",
+  "web.installationText": "Request accepted for {0}. Follow downloads on PS5.",
+  "web.installationUnknownTitle": "Check PS5",
+  "web.installationUnknownText": "Check PS5 downloads for {0} before resending the request.",
+  "web.dpiTestFailed": "DPI test failed: {0}. Check DPI=1 in etaHEN.",
+  "web.invalidPkgDir": "Enter a PS5 path starting with /, without . or .. (e.g. /data/ferry/pkg)."
 }

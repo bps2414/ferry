@@ -20,6 +20,11 @@ if (args.Length == 1 && args[0] == "--webhook")
     await WebhookChecks.RunAsync();
     return 0;
 }
+if (args.Length is 1 or 2 && args[0] == "--pkg")
+{
+    await PkgChecks.RunAsync(args.Length == 2 ? args[1] : null);
+    return 0;
+}
 
 var root = AppContext.BaseDirectory;
 while (!Directory.Exists(Path.Combine(root, "e2e")) || !Directory.Exists(Path.Combine(root, "app"))) root = Path.GetDirectoryName(root)!;

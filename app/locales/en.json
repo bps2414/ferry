@@ -2,7 +2,7 @@
   "app.title": "Ferry",
   "app.emptyHint": "Drag game files onto this window or click to choose. Select all parts at once.",
   "app.thisPc": "this PC",
-  "app.extensions": ".zip   .rar   .7z   .001   .z01   .part1.rar   .r00   .exfat",
+  "app.extensions": ".zip   .rar   .7z   .001   .z01   .part1.rar   .r00   .exfat   .pkg   .ffpkg   .ffpfs   .ffpfsc",
   "app.ps5": "PS5",
   "app.m2": "M.2",
   "app.discord": "Discord",
@@ -13,7 +13,7 @@
   "app.gamesFolderHint": "Each game goes into a folder with its name under this path. M.2 = /mnt/ext1/homebrew · internal SSD = /data/homebrew",
   "app.storage": "Storage",
   "app.exfatHint": "Images keep their filenames in this folder. It must be a folder scanned by ShadowMount+ (default: /data/homebrew, /mnt/ext1/homebrew, /mnt/usbN…).",
-  "app.exfatFolder": ".exfat images folder",
+  "app.exfatFolder": "ShadowMount+ images folder",
   "app.webhookService": "Webhook service",
   "app.webhookUrlHint": "HTTP/HTTPS URL of the webhook or ntfy topic",
   "app.webhookHint": "Notifies when a transfer finishes, fails or needs a password. No automatic retries. In Automatic mode, follows the Windows language. The URL may contain a token; protect settings.json.",
@@ -42,7 +42,7 @@
   "app.filesDropped": "{0} file(s) added by drag and drop",
   "app.filesSelected": "{0} file(s) selected",
   "app.pickFiles": "Choose games (select all parts)",
-  "app.fileFilter": "Game archives or images|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat|All files|*.*",
+  "app.fileFilter": "Archives, images or PKG|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat;*.pkg;*.ffpkg;*.ffpfs;*.ffpfsc|All files|*.*",
   "app.trayOpen": "Open Ferry",
   "app.trayExit": "Exit"
 }

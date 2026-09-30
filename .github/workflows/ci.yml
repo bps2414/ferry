@@ -52,6 +52,9 @@ jobs:
       - name: E2E
         run: dotnet run --project e2e
 
+      - name: Contratos de PKG e DPI
+        run: dotnet run --project e2e -- --pkg
+
       - name: Relatório E2E
         if: always()
         run: Get-Content e2e_report.md -ErrorAction SilentlyContinue >> $env:GITHUB_STEP_SUMMARY
@@ -99,6 +102,9 @@ jobs:
 
       - name: E2E
         run: dotnet run --project e2e
+
+      - name: Contratos de PKG e DPI
+        run: dotnet run --project e2e -- --pkg
 
       - name: Relatório E2E
         if: always()

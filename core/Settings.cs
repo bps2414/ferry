@@ -27,6 +27,8 @@ public class Settings
     public string RemoteDir { get; set; } = "/mnt/ext1/homebrew";
     /// Pasta de imagens .exfat: um scanpath do ShadowMount+ (imagens na raiz dele; ver docs/FTP-PS5.md)
     public string ImageDir { get; set; } = "/mnt/ext1/homebrew";
+    public string PkgDir { get; set; } = "/data/ferry/pkg";
+    public int DpiPort { get; set; } = 9090;
     public int Connections { get; set; } = 4;
     public bool DeleteOriginal { get; set; }
     /// Senhas públicas (de sites) testadas antes de abrir o diálogo; a que funcionar no diálogo entra no fim.

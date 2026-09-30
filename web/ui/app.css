@@ -129,9 +129,9 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .job.nocover .title { font-size: 30px; }
 .job .meta { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 5px; font-size: 13px; }
 .job .stage { color: var(--text2); font-weight: 600; }
-.job .tid, .job .amount, .job .detail, .job .file { color: var(--muted); }
+.job .tid, .job .package-format, .job .amount, .job .detail, .job .file { color: var(--muted); }
 .job .detail, .job .file { font-size: 13px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.job .detail:empty, .job .file:empty, .job .tid:empty, .job .amount:empty { display: none; }
+.job .detail:empty, .job .file:empty, .job .tid:empty, .job .package-format:empty, .job .amount:empty { display: none; }
 .stat { text-align: right; }
 .stat .v { font-size: 28px; font-weight: 600; line-height: 1.1; }
 .stat .u { font-size: 13px; font-weight: 500; color: var(--muted); }
@@ -139,6 +139,7 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .pct { grid-area: pct; } .rate { grid-area: rate; } .eta { grid-area: eta; }
 .job:not(.active) .stat { color: var(--muted); }
 .job .sendnow { grid-area: rate / rate / rate / eta; justify-self: end; font-size: 15px; padding: 8px 16px; }
+.job .install { grid-area: pct / pct / pct / eta; justify-self: end; font-size: 14px; padding: 8px 12px; white-space: normal; }
 .job .acts { grid-area: acts; display: flex; gap: 4px; margin-left: 16px; }
 .job .acts .icon { width: 36px; height: 36px; }
 .job .acts svg { width: 16px; height: 16px; }
@@ -161,6 +162,13 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .job[data-stage=Pausado] { --c: var(--amber); } .job[data-stage=Pausado] .stage { color: var(--amber); }
 .job[data-stage=Erro] { --c: var(--red); } .job[data-stage=Erro] .stage, .job[data-stage=Erro] .detail { color: var(--red); }
 .job[data-stage=Erro] .detail { white-space: normal; }
+.job[data-stage=InstalacaoSolicitada] { --c: var(--green); }
+.job[data-stage=InstalacaoSolicitada] .stage { color: var(--green); }
+.job[data-stage=PacotePronto], .job[data-stage=VerifiqueNoPs5] { --c: var(--amber); }
+.job[data-stage=PacotePronto] .stage, .job[data-stage=VerifiqueNoPs5] .stage { color: var(--amber); }
+.job[data-stage=VerifiqueNoPs5] .detail { white-space: normal; }
+.job[data-stage=SolicitandoInstalacao] { --c: var(--accent); }
+.job[data-stage=SolicitandoInstalacao] .stage { color: var(--accent-text); }
 
 /* envios do navegador */
 .upload { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 24px; padding: 18px 0; border-bottom: 1px solid var(--line); }
@@ -196,6 +204,7 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .toast { background: var(--side); border: 1px solid var(--line2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; font-size: 14px; }
 .toast b { display: block; margin-bottom: 2px; }
 .toast.done { border-left-color: var(--green); } .toast.error { border-left-color: var(--red); } .toast.password { border-left-color: var(--amber); }
+.toast.installation_requested { border-left-color: var(--green); } .toast.unknown { border-left-color: var(--amber); }
 dialog { background: var(--bg); color: var(--text); border: 1px solid var(--line2); border-radius: 8px; padding: 22px; width: min(440px, calc(100vw - 32px)); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 dialog h2 { font-size: 18px; font-weight: 600; }
@@ -244,6 +253,7 @@ dialog input { margin: 14px 0 18px; }
   .job .pct { grid-column: 1 / 2; } .job .rate { grid-column: 2 / 3; justify-self: center; } .job .eta { grid-column: 3 / 4; text-align: right; }
   .stat .v { font-size: 24px; } .stat .u { font-size: 13px; } .stat small { font-size: 12px; }
   .job .sendnow { grid-area: auto; grid-row: 2; grid-column: 2 / 4; justify-self: end; font-size: 14px; padding: 8px 14px; }
+  .job .install { grid-area: auto; grid-row: 2; grid-column: 1 / 4; justify-self: end; max-width: 100%; }
   .job .acts { margin: 0; justify-content: flex-end; }
   .bar { margin-top: 0; }
   .empty { padding-top: 48px; } .empty h2 { font-size: 38px; } .empty p { font-size: 15px; }
