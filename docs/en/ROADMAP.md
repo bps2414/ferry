@@ -4,7 +4,7 @@
 
 Decided on 2026-09-30. Order: logic → UI/brand → self-hosted (Docker) → English → webhook → PKG/fPKG → payload.
 
-Status: Phases 1, 1.5, 2 and 3 done (3 still without a release tag). **Next: Phase 4 (English).**
+Status: Phases 1, 1.5, 2 and 3 done (3 shipped in release `v1.3.0-beta.1`). **Next: Phase 4 (English).**
 
 ## Phase 1 — Logic (release `v1.1.0-beta.1`)
 
