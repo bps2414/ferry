@@ -167,6 +167,7 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .job[data-stage=PacotePronto], .job[data-stage=VerifiqueNoPs5] { --c: var(--amber); }
 .job[data-stage=PacotePronto] .stage, .job[data-stage=VerifiqueNoPs5] .stage { color: var(--amber); }
 .job[data-stage=VerifiqueNoPs5] .detail { white-space: normal; }
+.job[data-stage=PacotePronto] .detail { white-space: pre-line; overflow-wrap: anywhere; }
 .job[data-stage=SolicitandoInstalacao] { --c: var(--accent); }
 .job[data-stage=SolicitandoInstalacao] .stage { color: var(--accent-text); }
 
@@ -193,6 +194,11 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .test { align-items: center; margin-top: 18px; }
 .test-result { font-size: 14px; }
 .test-result.ok { color: var(--green); } .test-result.fail { color: var(--red); }
+.dpi-help { margin-top: 12px; font-size: 13px; color: var(--text2); }
+.dpi-help summary { cursor: pointer; color: var(--text); }
+.dpi-help ol { margin: 10px 0 0; padding-left: 22px; }
+.dpi-help li + li { margin-top: 8px; }
+.dpi-help p { overflow-wrap: anywhere; }
 
 /* ---------- log ---------- */
 .log { margin: 24px 0 0; padding: 18px; background: var(--side); border: 1px solid var(--line); border-radius: 4px; min-height: 60vh; max-height: calc(100vh - 190px); overflow: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--text2); white-space: pre-wrap; word-break: break-word; }
@@ -205,6 +211,7 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .toast b { display: block; margin-bottom: 2px; }
 .toast.done { border-left-color: var(--green); } .toast.error { border-left-color: var(--red); } .toast.password { border-left-color: var(--amber); }
 .toast.installation_requested { border-left-color: var(--green); } .toast.unknown { border-left-color: var(--amber); }
+.toast.package_ready { border-left-color: var(--green); }
 dialog { background: var(--bg); color: var(--text); border: 1px solid var(--line2); border-radius: 8px; padding: 22px; width: min(440px, calc(100vw - 32px)); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 dialog h2 { font-size: 18px; font-weight: 600; }

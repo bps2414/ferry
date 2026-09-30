@@ -69,7 +69,7 @@ Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho 
 | RAR antigo | `Jogo.rar` + `Jogo.r00`, `Jogo.r01`… |
 | Com senha | abre um diálogo pedindo a senha (avisa se estiver errada) |
 | Imagem do ShadowMount+ | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc` solto ou compactado. Vai inteira para a pasta de imagens (Configurações) |
-| PKG / fPKG | `.pkg` solto ou um único PKG dentro de ZIP/RAR/7z, inclusive splits e senha. FTP seguido de solicitação ao etaHEN DPI |
+| PKG / fPKG | `.pkg` solto ou um único PKG dentro de ZIP/RAR/7z, inclusive splits e senha. FTP para instalar manualmente no etaHEN; solicitação automática via DPI opcional |
 
 O app espera **todas as partes** chegarem e o tamanho delas **parar de mudar** antes de começar (dá para deixar o download terminando).
 
@@ -108,7 +108,7 @@ O CI (GitHub Actions) roda o E2E no Windows e no Linux, constrói a imagem Docke
 - **Notificação no PS5**: não implementada. Nem o ftpsrv nem o etaHEN expõem notificação pela rede; exigiria um payload ELF próprio (SDK do PS5) enviado ao elfldr.
 - Pausar/retomar ou reabrir faz o 7-Zip reler o arquivo desde o início (não reenvia o que já está no PS5, mas gasta CPU/disco).
 - Arquivos grandes vão por uma conexão só (o 7-Zip entrega um arquivo por vez); as conexões paralelas aceleram os arquivos pequenos.
-- PKG precisa de etaHEN com `DPI=1` (porta 9090) e espaço para o pacote mais o jogo instalado. “Instalação solicitada” confirma o pedido aceito; acompanhe o término no PS5. Originais e pacote remoto são preservados, inclusive com “Apagar originais” ligado. Resposta perdida exige conferência no console antes de reenviar. HTTP direto e vários PKGs por compactado ficam para uma etapa posterior.
+- PKG é enviado para `/data/etaHEN/pkgs` por padrão. Instale manualmente no Package Installer do etaHEN, ou ative a instalação automática nas Configurações (`DPI=1`, porta 9090). Reserve espaço para o pacote mais o jogo instalado. “Instalação solicitada” confirma o pedido aceito; acompanhe o término no PS5. Originais e pacote remoto são preservados, inclusive com “Apagar originais” ligado. Resposta perdida exige conferência no console antes de reenviar. HTTP direto e vários PKGs por compactado ficam para uma etapa posterior.
 
 ## Créditos
 

@@ -27,8 +27,9 @@ public class Settings
     public string RemoteDir { get; set; } = "/mnt/ext1/homebrew";
     /// Pasta de imagens .exfat: um scanpath do ShadowMount+ (imagens na raiz dele; ver docs/FTP-PS5.md)
     public string ImageDir { get; set; } = "/mnt/ext1/homebrew";
-    public string PkgDir { get; set; } = "/data/ferry/pkg";
+    public string PkgDir { get; set; } = "/data/etaHEN/pkgs";
     public int DpiPort { get; set; } = 9090;
+    public bool AutoInstallPackages { get; set; }
     public int Connections { get; set; } = 4;
     public bool DeleteOriginal { get; set; }
     /// Senhas públicas (de sites) testadas antes de abrir o diálogo; a que funcionar no diálogo entra no fim.
@@ -36,7 +37,13 @@ public class Settings
 
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new(); }
+        try
+        {
+            var settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new();
+            // Change only the former default. Existing queue snapshots keep their paths.
+            if (settings.PkgDir.TrimEnd('/') == "/data/ferry/pkg") settings.PkgDir = "/data/etaHEN/pkgs";
+            return settings;
+        }
         catch { return new(); }
     }
 

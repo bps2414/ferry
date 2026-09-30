@@ -115,7 +115,7 @@ Implementada e validada localmente: 124 verificações WPF passaram nos dois idi
 
 ## Fase 6 — PKG e fPKG
 
-Entrega inicial implementada: PKG solto e um PKG por compactado por FTP + etaHEN DPI com caminho local. Ledger persiste preparo/pedido; resposta incerta requer conferência no PS5. Imagens adicionais usam o fluxo ShadowMount+. HTTP direto permanece complemento futuro. Testes locais não comprovam instalação no console.
+Entrega inicial implementada: PKG solto e um PKG por compactado por FTP para instalação manual no etaHEN; DPI automático opcional nas Configurações. Ledger persiste preparo/pedido; resposta incerta requer conferência no PS5. Imagens adicionais usam o fluxo ShadowMount+. HTTP direto permanece complemento futuro. Testes locais não comprovam instalação no console.
 
 [PKG](PKG-PS5.md)
 

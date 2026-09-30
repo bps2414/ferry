@@ -157,7 +157,7 @@
                                                 <TextBlock Text="{Binding Package.Format}" FontSize="12.5" Foreground="{StaticResource Muted}" Margin="0,0,14,0"/>
                                                 <TextBlock x:Name="AmountLbl" Text="{text:JobText Amount}" FontSize="12.5" Foreground="{StaticResource Muted}"/>
                                             </WrapPanel>
-                                            <TextBlock x:Name="DetailText" Text="{text:JobText Detail}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="DetailText" Text="{text:JobText Detail}" ToolTip="{text:JobText Detail}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock x:Name="FileLbl" Text="{Binding CurrentFile}" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
 
@@ -252,6 +252,8 @@
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="PacotePronto">
                                         <Setter TargetName="StageLbl" Property="Foreground" Value="{StaticResource Amber}"/>
+                                        <Setter TargetName="DetailText" Property="TextWrapping" Value="Wrap"/>
+                                        <Setter TargetName="DetailText" Property="TextTrimming" Value="None"/>
                                         <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="{StaticResource AmberColor}" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="SolicitandoInstalacao">
@@ -369,10 +371,25 @@
                                     <TextBlock Text="{text:Loc ui.pkgHint}" Style="{StaticResource Hint}"/>
                                     <TextBlock Text="{text:Loc ui.pkgSpaceHint}" Style="{StaticResource Hint}"/>
                                     <TextBlock Text="{text:Loc ui.pkgCompatibilityHint}" Style="{StaticResource Hint}"/>
+                                    <CheckBox x:Name="AutoInstallPackagesBox" Margin="0,12,0,0" AutomationProperties.Name="{text:Loc ui.autoInstallPackages}"
+                                              IsChecked="{Binding AutoInstallPackages, NotifyOnSourceUpdated=True}">
+                                        <TextBlock Text="{text:Loc ui.autoInstallPackages}" TextWrapping="Wrap"/>
+                                    </CheckBox>
+                                    <TextBlock Text="{text:Loc ui.autoInstallPackagesHint}" Style="{StaticResource Hint}"/>
                                     <TextBlock Text="{text:Loc ui.dpiPort}" Style="{StaticResource Label}" Margin="0,12,0,5"/>
                                     <TextBox x:Name="DpiPortBox" TextChanged="OnDpiPortChanged" AutomationProperties.Name="{text:Loc ui.dpiPort}"/>
                                     <TextBlock x:Name="DpiPortHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
                                     <TextBlock Text="{text:Loc ui.dpiHint}" Style="{StaticResource Hint}"/>
+                                    <Expander x:Name="DpiHelp" Header="{text:Loc ui.dpiHelpTitle}" Margin="0,10,0,0" AutomationProperties.Name="{text:Loc ui.dpiHelpTitle}">
+                                        <StackPanel Margin="0,6,0,0">
+                                            <TextBlock Text="{text:Loc ui.dpiHelpStep1}" Style="{StaticResource Hint}"/>
+                                            <TextBlock Text="{text:Loc ui.dpiHelpStep2}" Style="{StaticResource Hint}"/>
+                                            <TextBlock Text="{text:Loc ui.dpiHelpStep3}" Style="{StaticResource Hint}"/>
+                                            <TextBlock Text="{text:Loc ui.dpiHelpConfig}" Style="{StaticResource Hint}"/>
+                                            <TextBlock Text="{text:Loc ui.dpiHelpV2}" Style="{StaticResource Hint}"/>
+                                            <TextBlock Text="{text:Loc ui.dpiHelpCompatibility}" Style="{StaticResource Hint}"/>
+                                        </StackPanel>
+                                    </Expander>
                                     <DockPanel Margin="0,10,0,0">
                                         <Button x:Name="DpiTestBtn" Content="{text:Loc ui.dpiTest}" Style="{StaticResource Btn}" Click="OnDpiTest" DockPanel.Dock="Left" Margin="0,0,10,0"/>
                                         <TextBlock x:Name="DpiTestResult" Style="{StaticResource Hint}" VerticalAlignment="Center"/>

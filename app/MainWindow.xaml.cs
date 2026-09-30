@@ -61,6 +61,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(() =>
             {
                 if (job.Stage == Stage.Verificado) Toast(new("core.webhook.completedTitle"), new("core.webhook.completedText", job.Title != "" ? job.Title : job.Name));
+                else if (job.Stage == Stage.PacotePronto) Toast(new("ui.packageReadyTitle"), job.DetailMessage ?? new("ui.packageReadyText", job.Title != "" ? job.Title : job.Name));
                 else if (job.Stage == Stage.InstalacaoSolicitada) Toast(new("ui.installationTitle"), new("ui.installationText", job.Title != "" ? job.Title : job.Name));
                 else if (job.Stage == Stage.VerifiqueNoPs5) Toast(new("ui.installationUnknownTitle"), new("ui.installationUnknownText", job.Title != "" ? job.Title : job.Name));
                 else Toast(new("core.webhook.errorTitle"), new("core.webhook.errorText", job.Name, Short(job.DetailMessage is { } detail ? WpfText.Current.Render(detail) : job.Detail)));

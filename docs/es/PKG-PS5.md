@@ -9,17 +9,37 @@ Investigación para la Fase 6 del [roadmap](ROADMAP.md). Situación a **30/09/20
 
 Acepta `.pkg` suelto o **un PKG por comprimido** (ZIP/RAR/7z, volúmenes y contraseña). Ignora archivos auxiliares; rechaza varios PKGs o mezcla con dump/imagen.
 
-En Ajustes, conserva la conexión FTP de la PS5, configura la carpeta de paquetes (por defecto `/data/ferry/pkg`) y puerto DPI (9090). Activa `DPI=1` en `/data/etaHEN/config.ini`. Probar DPI comprueba la disponibilidad del puerto sin instalar.
+En Configuración, elige solo enviar (por defecto) o solicitar instalación automáticamente por DPI. El destino predeterminado es `/data/etaHEN/pkgs`, con PKGs directamente en esa carpeta y nombres exclusivos; el instalador no muestra envíos parciales como PKG.
 
-Ferry transmite por FTP sin extraer todo el paquete al PC, comprueba SIZE, publica mediante rename y solicita instalación desde la ruta local de la consola. Hace falta espacio para paquete y juego instalado. Windows y web comparten el flujo.
+Después del envío, abre etaHEN Toolbox → ★ Custom Background Package Installer y selecciona el paquete. Para otra carpeta, ajusta “Custom PKG Search Path” en la consola a la carpeta que muestra la tarjeta, sal y vuelve a abrir el instalador. Los paquetes de la versión anterior conservan su ruta: usa la carpeta mostrada sin volver a enviar.
 
-Paquete preparado significa transferencia lista; instalación solicitada significa que DPI aceptó el pedido. Comprueba el final en las descargas de la PS5. Resultado desconocido exige comprobar la consola antes de reenviar. Reiniciar nunca repite automáticamente pedidos enviados.
+El antiguo valor predeterminado `/data/ferry/pkg` migra a `/data/etaHEN/pkgs`. Las carpetas personalizadas y rutas registradas en la cola se conservan. La instalación automática queda desactivada por defecto, también al actualizar.
+
+Para el modo automático o el botón de solicitar instalación, activa `DPI=1` en etaHEN y configura el puerto DPI (9090). La prueba solo comprueba el puerto. Ferry transmite por FTP sin extraer todo el paquete en el PC, comprueba SIZE y publica mediante rename antes de solicitar instalación. Windows y web usan el mismo flujo.
+
+“Paquete listo” significa envío terminado, disponible para instalar manualmente. “Instalación solicitada” significa petición aceptada por DPI; comprueba el final en la PS5. “Comprueba en PS5” significa resultado desconocido: comprueba antes de reenviar. Reiniciar Ferry no repite solicitudes enviadas.
 
 Conserva el PKG/comprimido original y el paquete remoto incluso con borrar originales activado. Quitar el card no cancela instalación ni borra el paquete. Sin limpieza automática, confirmación remota de finalización, HTTP directo ni orden automático de juego/update/DLC.
 
 `.exfat`, `.ffpkg`, `.ffpfs` y `.ffpfsc` son imágenes de ShadowMount+, sin DPI. Las cabeceras identifican CNT/PS4 o FIH/PS5 sin garantizar firma falsa ni compatibilidad. La ruta local requiere aceptación en una PS5 real; las pruebas locales no la sustituyen.
 
 Prueba enfocada: `dotnet run --project e2e -- --pkg`. Windows: `dotnet run --project e2e/windows -c Release`. E2E web ejecuta pt-BR/en. Docker, CI remota y consola necesitan ejecución propia.
+
+## Activar DPI
+
+DPI viene incluido en etaHEN; no se instala un programa en el PC.
+
+1. Con etaHEN cargado, abre **etaHEN Toolbox → Services → Direct Package Installer** (puerto **9090**) y actívalo.
+2. En Ferry, configura la IP de esa PS5, deja el puerto DPI 9090 y pulsa **Probar DPI**. La prueba no instala nada.
+3. Activa solicitudes automáticas para nuevos envíos, o deja la opción desactivada y usa el botón del paquete cuando quieras.
+
+Alternativa: edita `/data/etaHEN/config.ini` por FTP, define `DPI=1` y recarga etaHEN. `DPI_v2=1` activa otro servicio en 12800; cambiar el puerto de Ferry a 12800 no cambia su protocolo.
+
+Para instalar desde almacenamiento interno, abre **★ Custom Background Package Installer**. Lee `/data/etaHEN/pkgs` por defecto; otra carpeta requiere “Custom PKG Search Path” y volver a abrir el instalador. En algunos firmwares depende de DPI v2. No es el Package Installer estándar para USB.
+
+Juego, update y DLC se conservan como PKGs separados con nombres exclusivos, incluso cuando comparten nombre dentro del archivo. El instalador de la consola los aplica; Ferry no comprueba Title ID, compatibilidad de update ni orden de instalación.
+
+Fuentes: [menú de servicios](https://github.com/etaHEN/etaHEN/blob/main/Source%20Code/shellui/assets/etaHEN_toolbox.xml) y [búsqueda de paquetes](https://github.com/etaHEN/etaHEN/blob/main/Source%20Code/shellui/src/MonoUtils.cpp). [GronedWaffel r2](https://github.com/GronedWaffel/etahen-13.60/releases/tag/v2.5B-13.60-r2) mantiene estos servicios, pero declara soporte solo para firmware 13.60, sin certificar 13.42.
 
 ## Investigación de referencia
 

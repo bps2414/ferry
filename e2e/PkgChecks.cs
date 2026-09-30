@@ -31,7 +31,7 @@ static class PkgChecks
 
         // Failure contracts are exercised before success cases. Sections permit focused reruns.
         (string name, Func<Task> run)[] sections = [("inputs", InvalidInputs), ("archives", ArchiveFailures),
-            ("publication", PublicationFailures), ("formats", PackagesAndImages), ("dpi", DpiFailuresAndRetry),
+            ("publication", PublicationFailures), ("manual", ManualDefaultsAndMigration), ("formats", PackagesAndImages), ("dpi", DpiFailuresAndRetry),
             ("persistence", PersistenceAndConcurrency), ("pause", PauseResumeIdentity)];
         if (section != null && !sections.Any(s => s.name == section)) throw new ArgumentException("Unknown PKG section: " + section);
         foreach (var test in sections.Where(s => section == null || section == s.name)) await test.run();
@@ -139,7 +139,7 @@ static class PkgChecks
             try
             {
                 s.Engine.AddFiles([path]);
-                var job = await s.WaitJob();
+                var job = await s.RequestPrepared();
                 Check(job.Stage == Stage.InstalacaoSolicitada && !job.Installed, magic + " requests installation without claiming installed");
                 AssertPublished(s, path);
                 Check(File.Exists(path), "DeleteOriginal preserves loose " + magic);
@@ -174,8 +174,8 @@ static class PkgChecks
             }
             var parts = Directory.GetFiles(s.Input);
             s.Engine.AddFiles(parts);
-            var job = await s.WaitJob();
-            Check(job.Stage == Stage.InstalacaoSolicitada, kind + " accepted from extraction stream");
+            var job = await s.RequestPrepared();
+            Check(job.Stage == Stage.InstalacaoSolicitada, kind + " explicitly requests installation after extraction stream");
             AssertPublished(s, original);
             Check(parts.All(File.Exists), "DeleteOriginal preserves " + kind + " volumes");
             Check(Directory.GetFiles(s.Input, "*.pkg", SearchOption.AllDirectories).Length == 0, kind + " does not extract PKG beside archive");
@@ -196,6 +196,114 @@ static class PkgChecks
             var target = Path.Combine(s.FtpRoot, "images", Path.GetFileName(original));
             Check(job.Stage == Stage.Verificado && File.Exists(target) && Hash(original) == Hash(target), ext + (archived ? " archive" : " loose") + " image uses ImageDir and preserves bytes");
             Check(s.Dpi.Count == 0 && !s.RemoteFiles().Any(p => p.EndsWith(Engine.PartSuffix)), "image publishes without DPI or partial leftovers");
+        }
+    }
+
+    static async Task ManualDefaultsAndMigration()
+    {
+        Check(new Settings().PkgDir == "/data/etaHEN/pkgs" && !new Settings().AutoInstallPackages,
+            "new configuration uses etaHEN search folder with automatic installation disabled");
+        var settingsPath = Settings.FilePath;
+        try
+        {
+            Settings.FilePath = Path.Combine(_work, "migration-settings.json");
+            File.WriteAllText(Settings.FilePath, JsonSerializer.Serialize(new { PkgDir = "/data/ferry/pkg", Host = "192.0.2.23", Port = 2127, DpiPort = 9097, DeleteOriginal = true, Language = "en", ImageDir = "/custom/images" }));
+            var migrated = Settings.Load();
+            Check(migrated.PkgDir == "/data/etaHEN/pkgs" && !migrated.AutoInstallPackages && migrated.Host == "192.0.2.23"
+                && migrated.Port == 2127 && migrated.DpiPort == 9097 && migrated.DeleteOriginal && migrated.Language == "en" && migrated.ImageDir == "/custom/images",
+                "legacy default migrates while unrelated settings and manual default are preserved");
+            File.WriteAllText(Settings.FilePath, JsonSerializer.Serialize(new { PkgDir = "/mnt/ext1/my-packages", AutoInstallPackages = true, Host = "192.0.2.24" }));
+            var custom = Settings.Load();
+            Check(custom.PkgDir == "/mnt/ext1/my-packages" && custom.AutoInstallPackages && custom.Host == "192.0.2.24",
+                "custom package folder and explicit automatic installation preference are preserved");
+            File.WriteAllText(Settings.FilePath, "{\"Host\":\"192.0.2.25\"}");
+            var older = Settings.Load();
+            Check(older.PkgDir == "/data/etaHEN/pkgs" && !older.AutoInstallPackages && older.Host == "192.0.2.25",
+                "configuration without PKG fields inherits current manual defaults");
+        }
+        finally { Settings.FilePath = settingsPath; }
+
+        await using (var s = await Scenario.Create("manual-default"))
+        {
+            s.Settings.DeleteOriginal = true;
+            var notified = new ConcurrentQueue<Stage>(); s.Engine.Done = job => notified.Enqueue(job.Stage);
+            var first = Put(s.Input, "Game.pkg", Payload());
+            s.Engine.AddFiles([first]);
+            var job = await s.Wait(j => j.Stage == Stage.PacotePronto);
+            await Task.Delay(1000);
+            var root = Path.Combine(s.FtpRoot, "data", "etaHEN", "pkgs");
+            Check(s.Dpi.Count == 0 && job.CanRequestInstall && File.Exists(first), "manual default finishes FTP and preserves source without requesting DPI");
+            Check(Directory.GetDirectories(root).Length == 0 && s.RemoteFiles().Length == 1
+                && Path.GetDirectoryName(s.RemoteFiles()[0]) == root && Hash(s.RemoteFiles()[0]) == Hash(first), "manual default publishes exact PKG directly in etaHEN root without subdirectories");
+            Check(notified.Count == 1 && notified.Single() == Stage.PacotePronto, "manual preparation emits a ready notification rather than installation success");
+            var second = Put(Path.Combine(s.Folder, "second-source"), "Game.pkg", Payload("FIH"));
+            s.Engine.AddFiles([second]);
+            await s.Wait(j => j.MainFile == second && j.Stage == Stage.PacotePronto);
+            Check(s.RemoteFiles().Length == 2 && s.RemoteFiles().Select(Path.GetFileName).Distinct().Count() == 2
+                && Directory.GetDirectories(root).Length == 0 && s.Dpi.Count == 0, "same-name packages use exclusive root-level filenames without installation");
+            var uploads = s.UploadCount;
+            await s.Stop(); File.Delete(first); File.Delete(second);
+            // Enabling the option affects new transfers; restored preparations remain manual.
+            s.Settings.AutoInstallPackages = true;
+            var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted); await Task.Delay(1500);
+            lock (restarted.Lock) Check(restarted.Jobs.Count == 2 && restarted.Jobs.All(j => j.Stage == Stage.PacotePronto), "prepared cards survive restart with missing origins");
+            Check(s.Dpi.Count == 0 && s.UploadCount == uploads, "restart never installs or retransfers prepared records even after enabling automatic installation");
+        }
+        foreach (var archived in new[] { false, true })
+        await using (var s = await Scenario.Create("automatic-opt-in-" + archived))
+        {
+            s.Settings.AutoInstallPackages = true;
+            var original = Put(archived ? Path.Combine(s.Folder, "source") : s.Input, "Game.pkg", Payload());
+            var input = original;
+            if (archived)
+            {
+                input = Path.Combine(s.Input, "Game.zip");
+                await Tool(_sevenZip, Path.GetDirectoryName(original)!, "a", "-tzip", "-mx0", input, ".");
+            }
+            s.Engine.AddFiles([input]);
+            await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada);
+            AssertPublished(s, original);
+            Check(s.Dpi.Count == 1, "explicit automatic-install preference requests DPI after " + (archived ? "archive" : "loose") + " publication");
+            await s.Stop(); var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted); await Task.Delay(1500);
+            Check(s.Dpi.Count == 1, "automatic-install preference never resubmits restored requests");
+        }
+        await using (var s = await Scenario.Create("game-update-same-entry"))
+        {
+            var expected = new List<string>();
+            foreach (var kind in new[] { "Game", "Update" })
+            {
+                var bytes = Payload(); if (kind == "Update") bytes[8192] ^= 0x5a;
+                var source = Path.Combine(s.Folder, kind + "-source");
+                expected.Add(Hash(Put(source, "Game.pkg", bytes)));
+                var archive = Path.Combine(s.Input, kind + ".zip");
+                await Tool(_sevenZip, source, "a", "-tzip", "-mx0", archive, ".");
+                s.Engine.AddFiles([archive]);
+                await s.Wait(j => j.MainFile == archive && j.Stage == Stage.PacotePronto);
+            }
+            var finalFiles = s.RemoteFiles();
+            Check(finalFiles.Length == 2 && finalFiles.Select(Hash).Order().SequenceEqual(expected.Order())
+                && finalFiles.Select(Path.GetDirectoryName).Distinct().Count() == 1 && s.Dpi.Count == 0,
+                "separate game and update archives with identical internal PKG filename retain both distinct payloads without overwrite");
+        }
+        await using (var s = await Scenario.Create("legacy-preparation"))
+        {
+            s.Settings.PkgDir = "/data/ferry/pkg";
+            var original = Put(s.Input, "Game.pkg", Payload()); s.Engine.AddFiles([original]);
+            var prepared = await s.Wait(j => j.Stage == Stage.PacotePronto); await s.Stop();
+            var legacyPath = "/data/ferry/pkg/" + prepared.Package!.Identity.ToLowerInvariant() + "/Game.pkg";
+            var legacyFile = Path.Combine(s.FtpRoot, legacyPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(legacyFile)!);
+            File.Move(s.RemoteFiles().Single(), legacyFile);
+            RewritePackageLedger(s.Engine.QueueFile, p => { p["RemotePath"] = legacyPath; p["PartialPath"] = ""; });
+            s.Settings.PkgDir = "/data/etaHEN/pkgs";
+            var uploads = s.UploadCount;
+            var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
+            var restored = await s.Wait(j => j.Stage == Stage.PacotePronto); await Task.Delay(1500);
+            Check(restored.Package!.RemotePath == legacyPath && File.Exists(legacyFile) && Hash(legacyFile) == Hash(original)
+                && s.Dpi.Count == 0 && s.UploadCount == uploads, "legacy preparation retains recorded remote path without installation or reupload after folder migration");
+            Check(restored.Detail.Contains("/data/ferry/pkg", StringComparison.Ordinal), "restored preparation tells user the legacy search folder");
+            await s.RequestPrepared();
+            Check(s.Dpi.Count == 1 && s.Dpi.PublicationValid && s.UploadCount == uploads, "explicit request for migrated ledger uses its original remote package");
         }
     }
 
@@ -239,7 +347,8 @@ static class PkgChecks
     {
         var files = s.RemoteFiles();
         Check(files.Length == 1 && files[0].EndsWith(".pkg", StringComparison.OrdinalIgnoreCase) && Hash(files[0]) == Hash(original), "FTP publishes exact PKG bytes only");
-        Check(files[0].StartsWith(Path.Combine(s.FtpRoot, "packages"), StringComparison.OrdinalIgnoreCase), "PKG uses PkgDir");
+        Check(s.Settings.PkgDir == "/data/etaHEN/pkgs" && Path.GetDirectoryName(files[0]) == Path.Combine(s.FtpRoot, "data", "etaHEN", "pkgs"), "PKG is directly in default etaHEN installer search folder");
+        Check(System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(files[0]), @"[a-f0-9]{64}\.pkg$", System.Text.RegularExpressions.RegexOptions.IgnoreCase), "root-level PKG name contains unique preparation identity");
         Check(s.Dpi.Count == 1 && s.Dpi.PublicationValid && s.Dpi.HashAtRequest == Hash(original), "DPI observes final file and hash after rename, never partial");
         Check(s.Dpi.DurableSubmitting, "submitting state is durable before DPI receives request");
     }
@@ -253,7 +362,7 @@ static class PkgChecks
             s.Dpi.Reply = reply;
             var path = Put(s.Input, "Game.pkg", Payload());
             s.Engine.AddFiles([path]);
-            var job = await s.WaitJob();
+            var job = await s.RequestPrepared();
             var expected = reply == "string" ? Stage.InstalacaoSolicitada : reply == "rejected" ? Stage.PacotePronto : Stage.VerifiqueNoPs5;
             Check(job.Stage == expected, "DPI " + reply + " yields " + expected + " (actual " + job.Stage + ")");
             Check(s.Dpi.Count == 1 && File.Exists(path) && s.RemoteFiles().Length == 1 && Hash(s.RemoteFiles()[0]) == Hash(path), "DPI " + reply + " preserves prepared bytes and DeleteOriginal source");
@@ -273,7 +382,7 @@ static class PkgChecks
         {
             s.Settings.DpiPort = FreePort();
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            var job = await s.WaitJob();
+            var job = await s.RequestPrepared();
             Check(job.Stage == Stage.PacotePronto && job.CanRequestInstall && s.RemoteFiles().Length == 1, "closed DPI port retains retryable prepared PKG");
         }
         await using (var s = await Scenario.Create("dpi-probe"))
@@ -294,7 +403,7 @@ static class PkgChecks
         {
             s.Dpi.Reply = "lost";
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            var job = await s.WaitJob(); Check(job.Stage == Stage.VerifiqueNoPs5, "lost response records uncertain remote effect");
+            var job = await s.RequestPrepared(); Check(job.Stage == Stage.VerifiqueNoPs5, "lost response records uncertain remote effect");
             s.Dpi.Reply = "rejected";
             Check(s.Engine.RequestInstall(job, confirmUnknown: true), "confirmed uncertain retry is queued");
             job = await s.WaitJob();
@@ -304,8 +413,10 @@ static class PkgChecks
             job = await s.WaitJob();
             Check(job.Stage == Stage.VerifiqueNoPs5 && s.Dpi.Count == 2, "connection failure after uncertain request preserves original uncertainty");
         }
-        await using (var s = await Scenario.Create("automatic-manual-race"))
+        foreach (var automatic in new[] { false, true })
+        await using (var s = await Scenario.Create("publication-click-" + automatic))
         {
+            s.Settings.AutoInstallPackages = automatic;
             var clicks = 0;
             s.Engine.Jobs.CollectionChanged += (_, ev) =>
             {
@@ -320,13 +431,14 @@ static class PkgChecks
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
             await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada);
             await Task.Delay(1500);
-            Check(s.Dpi.Count == 1, "manual click at publication and automatic install share one remote submission");
+            Check(s.Dpi.Count == 1, automatic ? "automatic preference and simultaneous manual publication click create exactly one remote submission"
+                : "manual click at publication creates exactly one remote submission");
         }
         await using (var s = await Scenario.Create("restart-missing-source"))
         {
             var path = Put(s.Input, "Game.pkg", Payload());
             s.Engine.AddFiles([path]);
-            await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada);
+            await s.RequestPrepared();
             await s.Stop();
             File.Delete(path);
             var restarted = s.NewEngine();
@@ -340,7 +452,7 @@ static class PkgChecks
         {
             s.Dpi.Reply = "lost";
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            await s.Wait(j => j.Stage == Stage.VerifiqueNoPs5);
+            await s.RequestPrepared();
             await s.Stop();
             var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
             await s.Wait(j => j.Stage == Stage.VerifiqueNoPs5);
@@ -351,7 +463,7 @@ static class PkgChecks
         await using (var s = await Scenario.Create("crash-window-" + state))
         {
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada); await s.Stop();
+            await s.RequestPrepared(); await s.Stop();
             RewritePackageLedger(s.Engine.QueueFile, p => p["State"] = state);
             var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
             await s.Wait(j => j.Stage == (state == "submitting" ? Stage.VerifiqueNoPs5 : Stage.PacotePronto));
@@ -362,7 +474,7 @@ static class PkgChecks
         {
             s.Dpi.Reply = "rejected";
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            var job = await s.WaitJob();
+            var job = await s.RequestPrepared();
             Check(job.Stage == Stage.PacotePronto, "rejected package ready for persistence test");
             var blocked = Path.Combine(s.Folder, "blocked-queue"); Directory.CreateDirectory(blocked);
             s.Engine.QueueFile = blocked;
@@ -375,7 +487,7 @@ static class PkgChecks
         {
             s.Dpi.Reply = "rejected";
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            var job = await s.WaitJob();
+            var job = await s.RequestPrepared();
             s.Dpi.Reply = "held";
             var accepted = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => Task.Run(() => s.Engine.RequestInstall(job))));
             await s.Wait(j => j.Stage == Stage.SolicitandoInstalacao);
@@ -388,14 +500,13 @@ static class PkgChecks
         {
             s.Dpi.Reply = "rejected";
             s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
-            var job = await s.WaitJob(); await s.Stop();
+            var job = await s.RequestPrepared(); await s.Stop();
             Check(s.Engine.RequestInstall(job), "installation can be queued before removal");
             s.Engine.Remove(job); await s.Run(s.Engine); await Task.Delay(1500);
             Check(s.Dpi.Count == 1 && s.Engine.Jobs.Count == 0, "removed pending installation never reaches DPI");
         }
         await using (var s = await Scenario.Create("restored-header-change"))
         {
-            s.Dpi.Reply = "rejected";
             var path = Put(s.Input, "Game.pkg", Payload());
             s.Engine.AddFiles([path]);
             await s.WaitJob(); await s.Stop();
@@ -404,17 +515,18 @@ static class PkgChecks
             bytes[100] ^= 0x5a; File.WriteAllBytes(path, bytes); File.SetLastWriteTimeUtc(path, time);
             s.Dpi.Reply = "success";
             var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
-            await Until(() => s.Dpi.Count == 2, 30_000);
-            await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada);
+            await Until(() => s.RemoteFiles().Count(p => p.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase)) == 2, 30_000);
+            await s.Wait(j => j.Stage == Stage.PacotePronto);
             var finalFiles = s.RemoteFiles().Where(p => p.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase)).ToArray();
             Check(finalFiles.Length == 2 && Hash(oldRemote) == oldHash && finalFiles.Any(p => Hash(p) == Hash(path)), "restart detects same-size/mtime changed header and preserves historical remote package");
+            Check(s.Dpi.Count == 0, "source identity change prepares new bytes without requesting installation");
         }
         foreach (var response in new[] { "lost", "success" })
         await using (var s = await Scenario.Create("immutable-history-" + response))
         {
             s.Dpi.Reply = response;
             var path = Put(s.Input, "Game.pkg", Payload()); s.Engine.AddFiles([path]);
-            var job = await s.WaitJob(); var historicalStage = job.Stage;
+            var job = await s.RequestPrepared(); var historicalStage = job.Stage;
             var historicalPath = job.Package!.RemotePath; var uploads = s.UploadCount;
             await s.Stop();
             var bytes = File.ReadAllBytes(path); bytes[100] ^= 0x5a;
@@ -445,6 +557,7 @@ static class PkgChecks
             var job = await s.Wait(j => j.Stage == Stage.Enviando && j.DoneBytes > 500_000 && j.Progress < 90);
             s.Engine.Pause(job);
             await s.Wait(j => j.Stage == Stage.Pausado);
+            Check(s.RemoteFiles().Length > 0 && s.RemoteFiles().All(p => !Path.GetFileName(p).Contains(".pkg", StringComparison.OrdinalIgnoreCase)), "etaHEN substring scanner cannot list an in-progress partial as PKG");
             // Stage switches immediately; wait for cancellation to release its open source.
             await Until(() =>
             {
@@ -463,10 +576,12 @@ static class PkgChecks
                 var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
             }
             else s.Engine.Resume(job);
-            await s.Wait(j => j.Stage == Stage.InstalacaoSolicitada, 45_000);
+            await s.Wait(j => j.Stage == Stage.PacotePronto, 45_000);
             Check(Hash(s.RemoteFiles().Single(p => p.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase))) == Hash(path), "pause/resume " + kind + " publishes exact current bytes");
             Check(kind != "same" ? s.AppendCount == 0 : s.AppendCount > 0, kind == "same" ? "owned unchanged partial resumes with APPE" : kind + " origin never appends untrusted partial");
-            Check(s.Dpi.Count == 1, "pause/resume submits only after completed transfer");
+            Check(s.Dpi.Count == 0, "pause/resume prepares without automatic installation");
+            await s.RequestPrepared();
+            Check(s.Dpi.Count == 1, "pause/resume submits only on explicit request after completed transfer");
         }
     }
 
@@ -509,7 +624,7 @@ static class PkgChecks
             var folder = Path.Combine(_work, name); var input = Path.Combine(folder, "input"); var ftpRoot = Path.Combine(folder, "ftp");
             Directory.CreateDirectory(input); Directory.CreateDirectory(ftpRoot);
             var port = FreePort(); var dpi = new FakeDpi(ftpRoot);
-            var settings = new Settings { Host = "127.0.0.1", Port = port, DpiPort = dpi.Port, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/dumps", ImageDir = "/images", PkgDir = "/packages", Connections = 1 };
+            var settings = new Settings { Host = "127.0.0.1", Port = port, DpiPort = dpi.Port, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/dumps", ImageDir = "/images", Connections = 1 };
             var info = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var arg in new[] { Path.Combine(_root, "e2e", "ftpserver.py"), port.ToString(), ftpRoot, "appe", rate.ToString() }) info.ArgumentList.Add(arg);
             var ftp = Process.Start(info)!;
@@ -530,8 +645,16 @@ static class PkgChecks
         public Engine NewEngine() => new(Settings, _engineLogs.Enqueue, _password) { StableSeconds = 0, QueueFile = Path.Combine(Folder, "queue.json") };
         public Task Run(Engine engine) { Engine = engine; _stop = new(); _run = engine.RunAsync(_stop.Token); return Task.CompletedTask; }
         public async Task Stop() { if (_stop == null) return; _stop.Cancel(); if (_run != null) await _run.WaitAsync(TimeSpan.FromSeconds(20)); _stop.Dispose(); _stop = null; }
-        public Task<Job> WaitJob() => Wait(j => j.Stage is Stage.Erro or Stage.Cancelado or Stage.InstalacaoSolicitada or Stage.VerifiqueNoPs5 or Stage.Verificado
-            || j.Stage == Stage.PacotePronto && j.DetailMessage?.Key == "core.concat");
+        public Task<Job> WaitJob() => Wait(j => j.Stage is Stage.Erro or Stage.Cancelado or Stage.InstalacaoSolicitada or Stage.VerifiqueNoPs5 or Stage.Verificado or Stage.PacotePronto);
+        // Represents a deliberate user action; the scenario never opts into automatic installation.
+        public async Task<Job> RequestPrepared()
+        {
+            var before = Dpi.Count;
+            var job = await Wait(j => j.Stage == Stage.PacotePronto);
+            Check(Dpi.Count == before, "preparation alone emits no DPI request");
+            Check(Engine.RequestInstall(job), "explicit installation action is accepted after preparation");
+            return await WaitJob();
+        }
         public async Task<Job> Wait(Func<Job, bool> predicate, int timeout = 20_000)
         {
             Job? result = null;
@@ -596,8 +719,11 @@ static class PkgChecks
                 PublicationValid &= url.StartsWith('/') && !url.Contains("..") && File.Exists(remote) && !File.Exists(remote + Engine.PartSuffix);
                 if (File.Exists(remote)) HashAtRequest = Hash(remote);
                 using var ledger = JsonDocument.Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(_ftpRoot)!, "queue.json")));
-                DurableSubmitting &= ledger.RootElement.GetProperty("Packages").EnumerateObject().Any(p =>
-                    p.Value.GetProperty("RemotePath").GetString() == url && p.Value.GetProperty("State").GetString() == "submitting");
+                var preparation = ledger.RootElement.GetProperty("Packages").EnumerateObject().Single(p => p.Value.GetProperty("RemotePath").GetString() == url).Value;
+                DurableSubmitting &= preparation.GetProperty("State").GetString() == "submitting";
+                var partialPath = preparation.TryGetProperty("PartialPath", out var partial) && partial.GetString() is { Length: > 0 } stored
+                    ? stored : url + Engine.PartSuffix;
+                PublicationValid &= !File.Exists(Path.Combine(_ftpRoot, partialPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
             }
             var reply = Reply;
             if (reply == "lost") return;

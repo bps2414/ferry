@@ -69,7 +69,7 @@ Optional: a **watched folder** — anything that lands in it is queued automatic
 | Old RAR | `Game.rar` + `Game.r00`, `Game.r01`… |
 | Password-protected | a dialog asks for the password (and tells you if it's wrong) |
 | ShadowMount+ image | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc`, loose or archived. Sent whole to the images folder (Settings) |
-| PKG / fPKG | Loose `.pkg` or one PKG inside ZIP/RAR/7z, including splits and passwords. FTP followed by an etaHEN DPI request |
+| PKG / fPKG | Loose `.pkg` or one PKG inside ZIP/RAR/7z, including splits and passwords. FTP for manual installation in etaHEN; optional automatic DPI request |
 
 The app waits for **all parts** to arrive and for their size to **stop changing** before starting (you can leave a download finishing).
 
@@ -108,7 +108,7 @@ CI (GitHub Actions) runs the E2E tests on Windows and Linux, builds the Docker i
 - **Notification on the PS5**: not implemented. Neither ftpsrv nor etaHEN exposes notifications over the network; it would need a custom ELF payload (PS5 SDK) sent to elfldr.
 - Pausing/resuming or reopening makes 7-Zip read the archive from the start again (it doesn't re-send what is already on the PS5, but it costs CPU/disk).
 - Large files go over a single connection (7-Zip outputs one file at a time); parallel connections speed up small files.
-- PKG requires etaHEN with `DPI=1` (port 9090) and room for both package and installed game. “Installation requested” confirms acceptance; follow completion on the PS5. Originals and the remote package are retained even with “Delete originals” enabled. A lost response requires checking the console before submitting again. Direct HTTP and multiple PKGs per archive are deferred.
+- PKG uploads to `/data/etaHEN/pkgs` by default. Install manually in etaHEN Package Installer, or enable automatic installation in Settings (`DPI=1`, port 9090). Allow room for both package and installed game. “Installation requested” confirms acceptance; follow completion on the PS5. Originals and the remote package are retained even with “Delete originals” enabled. A lost response requires checking the console before submitting again. Direct HTTP and multiple PKGs per archive are deferred.
 
 ## Credits
 

@@ -36,5 +36,8 @@
   "web.installationUnknownTitle": "Verifique no PS5",
   "web.installationUnknownText": "Confira os downloads do PS5 para {0} antes de reenviar a solicitação.",
   "web.dpiTestFailed": "Falha no teste DPI: {0}. Verifique DPI=1 no etaHEN.",
-  "web.invalidPkgDir": "Informe um caminho no PS5 iniciado com /, sem . ou .. (ex.: /data/ferry/pkg)."
+  "web.invalidPkgDir": "Informe um caminho no PS5 iniciado com /, sem . ou .. (ex.: /data/etaHEN/pkgs).",
+  "web.invalidAutoInstallPackages": "Escolha ligado ou desligado para a instalação automática pelo DPI.",
+  "web.packageReadyTitle": "PKG enviado",
+  "web.packageReadyText": "{0} enviado. Abra etaHEN Toolbox > ★ Custom Background Package Installer no PS5 para instalar manualmente."
 }

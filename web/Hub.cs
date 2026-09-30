@@ -58,6 +58,7 @@ public class Hub(Settings settings)
     public void OnDone(Job job)
     {
         if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name));
+        else if (job.Stage == Stage.PacotePronto) Notify("package_ready", new("web.packageReadyTitle"), job.DetailMessage ?? new("web.packageReadyText", job.Title != "" ? job.Title : job.Name));
         else if (job.Stage == Stage.InstalacaoSolicitada) Notify("installation_requested", new("web.installationTitle"), new("web.installationText", job.Title != "" ? job.Title : job.Name));
         else if (job.Stage == Stage.VerifiqueNoPs5) Notify("unknown", new("web.installationUnknownTitle"), new("web.installationUnknownText", job.Title != "" ? job.Title : job.Name));
         else Notify("error", new("web.errorTitle"), new("web.errorText", job.Name, job.DetailMessage ?? new Message("core.raw", Short(job.Detail))));

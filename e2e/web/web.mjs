@@ -512,11 +512,17 @@ try {
 
   // ---------- PKG: settings, upload, archive, honest state and uncertain retry ----------
   await page.click('.nav[data-page="settings"]');
+  await page.locator("#dpiHelp summary").click();
+  const dpiHelp = await page.locator("#dpiHelp").textContent();
+  check("Guia DPI acessível e traduzido", (await page.locator("#dpiHelp summary").textContent()) === (locale === "en" ? "How do I enable DPI?" : "Como ativar o DPI?")
+    && dpiHelp.includes("Toolbox > Services") && dpiHelp.includes("Direct Package Installer (9090)")
+    && dpiHelp.includes("/data/etaHEN/config.ini") && dpiHelp.includes("DPI=1") && dpiHelp.includes("12800"));
+  await page.locator("#dpiHelp summary").click();
   await page.fill('[data-set="dpiPort"]', "invalid");
   await until(async () => (await page.locator('[data-err="dpiPort"]').textContent())?.length > 0, 5000, "porta DPI inválida");
   check("Porta DPI inválida preserva configuração", (await getSettings()).dpiPort === 9090);
   await page.fill('[data-set="dpiPort"]', String(dpiPort));
-  await page.fill('[data-set="pkgDir"]', "/data/ferry/pkg");
+  await page.fill('[data-set="pkgDir"]', "/data/etaHEN/pkgs");
   await until(async () => (await getSettings()).dpiPort === dpiPort, 6000, "porta DPI salva");
   const dpiTest = await page.request.post(base + "/api/ps5/dpi/test");
   check("Teste DPI não instala", dpiTest.ok() && (await dpiTest.json()).ok && dpiRequests.length === 0);
@@ -528,6 +534,20 @@ try {
   const pkg = path.join(src, "PKGWEB.pkg");
   fs.writeFileSync(pkg, pkgBytes);
   await page.setInputFiles("#fileInput", [pkg]);
+  await until(async () => await stage("PKGWEB") === "PacotePronto", 45000, "PKG solto enviado sem instalar");
+  check("Modo padrão apenas envia, zero solicitações DPI", !(await getSettings()).autoInstallPackages && dpiRequests.length === 0);
+  const pkgFiles = fs.readdirSync(path.join(ftpRoot, "data", "etaHEN", "pkgs")).filter(file => file.endsWith(".pkg"));
+  check("PKG publicado na raiz padrão etaHEN e íntegro", pkgFiles.length === 1 && sha(path.join(ftpRoot, "data", "etaHEN", "pkgs", pkgFiles[0])) === sha(pkg));
+  const readyDetail = await row("PKGWEB").locator(".detail").textContent();
+  check("PKG enviado mostra caminho completo e instalação manual", readyDetail.includes("/data/etaHEN/pkgs/") && readyDetail.includes("Custom PKG Search Path") && readyDetail.includes("Package Installer"));
+  await until(() => hookEvents("package_ready", "PKGWEB").length === 1, 5000, "webhook PKG pronto");
+  check("PKG pronto não dispara completed nem installation_requested", hookEvents("completed", "PKGWEB").length === 0 && hookEvents("installation_requested", "PKGWEB").length === 0);
+  await page.click('.nav[data-page="settings"]');
+  await page.check('[data-set="autoInstallPackages"]');
+  await until(async () => (await getSettings()).autoInstallPackages === true, 5000, "modo automático explícito salvo");
+  await page.click('.nav[data-page="queue"]');
+  check("Ativar automático não reinstala PKG já preparado", await stage("PKGWEB") === "PacotePronto" && dpiRequests.length === 0);
+  await row("PKGWEB").locator(".install").click();
   await until(async () => await stage("PKGWEB") === "InstalacaoSolicitada", 45000, "PKG solto solicitado");
   const requested = dpiRequests.at(-1);
   check("PKG web publicado antes do pedido, hash e origem preservados", requested?.hash === sha(pkg)

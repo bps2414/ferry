@@ -115,7 +115,7 @@ Implementada y validada localmente: 124 comprobaciones WPF pasaron en ambos idio
 
 ## Fase 6 — PKG y fPKG
 
-Entrega inicial implementada: PKG suelto y un PKG por comprimido mediante FTP + etaHEN DPI con ruta local. Persiste preparación/solicitud; resultados inciertos requieren comprobar la PS5. Las imágenes adicionales usan ShadowMount+. HTTP directo sigue pendiente. Las pruebas locales no prueban instalación en consola.
+Entrega inicial implementada: PKG suelto y un PKG por comprimido mediante FTP para instalación manual en etaHEN; solicitudes DPI automáticas opcionales en Configuración. Persiste preparación/solicitud; resultados inciertos requieren comprobar la PS5. Las imágenes adicionales usan ShadowMount+. HTTP directo sigue pendiente. Las pruebas locales no prueban instalación en consola.
 
 [PKG](PKG-PS5.md)
 

@@ -116,6 +116,10 @@ api.MapPut("/settings", (JsonElement body) =>
                 if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var dpi) && dpi is >= 1 and <= 65535) settings.DpiPort = dpi;
                 else errorsMessages["dpiPort"] = new("web.invalidPort");
                 break;
+            case "autoinstallpackages":
+                if (v.ValueKind is JsonValueKind.True or JsonValueKind.False) settings.AutoInstallPackages = v.GetBoolean();
+                else errorsMessages["autoInstallPackages"] = new("web.invalidAutoInstallPackages");
+                break;
             case "language":
                 if (Str() is "auto" or "pt-BR" or "en") settings.Language = Str()!;
                 else errorsMessages["language"] = new("web.invalidLanguage");

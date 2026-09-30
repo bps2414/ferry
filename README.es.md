@@ -69,7 +69,7 @@ Opcional: una **carpeta vigilada** — todo lo que caiga en ella entra solo en l
 | RAR antiguo | `Juego.rar` + `Juego.r00`, `Juego.r01`… |
 | Con contraseña | se abre un diálogo pidiendo la contraseña (avisa si es incorrecta) |
 | Imagen de ShadowMount+ | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc`, suelto o comprimido. Va entera a la carpeta de imágenes (Ajustes) |
-| PKG / fPKG | `.pkg` suelto o un PKG dentro de ZIP/RAR/7z, incluidos volúmenes y contraseña. FTP seguido de solicitud al etaHEN DPI |
+| PKG / fPKG | `.pkg` suelto o un PKG dentro de ZIP/RAR/7z, incluidos volúmenes y contraseña. FTP para instalación manual en etaHEN; solicitud automática DPI opcional |
 
 La app espera a que lleguen **todas las partes** y a que su tamaño **deje de cambiar** antes de empezar (puedes dejar una descarga terminando).
 
@@ -108,7 +108,7 @@ El CI (GitHub Actions) ejecuta el E2E en Windows y Linux, construye la imagen Do
 - **Notificación en la PS5**: no implementada. Ni ftpsrv ni etaHEN exponen notificaciones por red; haría falta un payload ELF propio (SDK de PS5) enviado a elfldr.
 - Pausar/reanudar o volver a abrir hace que 7-Zip relea el archivo desde el principio (no reenvía lo que ya está en la PS5, pero gasta CPU/disco).
 - Los archivos grandes van por una sola conexión (7-Zip entrega un archivo a la vez); las conexiones paralelas aceleran los archivos pequeños.
-- PKG requiere etaHEN con `DPI=1` (puerto 9090) y espacio para el paquete y el juego instalado. “Installation requested” confirma la solicitud aceptada; comprueba el final en la PS5. Los originales y el paquete remoto se conservan incluso con borrar originales activado. Una respuesta perdida requiere comprobar la consola antes de reenviar. HTTP directo y varios PKGs por comprimido quedan para otra etapa.
+- PKG se envía a `/data/etaHEN/pkgs` por defecto. Instálalo manualmente en el Package Installer de etaHEN, o activa la instalación automática en Configuración (`DPI=1`, puerto 9090). Reserva espacio para el paquete y el juego instalado. “Installation requested” confirma la solicitud aceptada; comprueba el final en la PS5. Los originales y el paquete remoto se conservan incluso con borrar originales activado. Una respuesta perdida requiere comprobar la consola antes de reenviar. HTTP directo y varios PKGs por comprimido quedan para otra etapa.
 
 ## Créditos
 

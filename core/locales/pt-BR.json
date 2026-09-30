@@ -114,7 +114,7 @@
   "core.webhook.installed": "O jogo já está instalado no PS5.",
   "core.webhook.archiveError": "Não foi possível extrair o arquivo. Veja o log do Ferry.",
   "core.webhook.errorDetail": "Veja o log do Ferry para os detalhes.",
-  "core.stage.PacotePronto": "Pacote pronto",
+  "core.stage.PacotePronto": "PKG enviado",
   "core.stage.SolicitandoInstalacao": "Solicitando instalação",
   "core.stage.InstalacaoSolicitada": "Instalação solicitada",
   "core.stage.VerifiqueNoPs5": "Verifique no PS5",
@@ -128,7 +128,7 @@
   "core.pkg.connectionFailed": "Falha no DPI: {0}. Confira DPI=1 e a porta configurada.",
   "core.pkg.changed": "A origem mudou durante o preparo; tente novamente com o arquivo completo.",
   "core.pkg.remoteConflict": "O destino exclusivo do pacote tem tamanho inesperado; envio interrompido.",
-  "core.pkg.prepared": "PKG publicado e preservado. Solicite a instalação quando o DPI estiver disponível.",
+  "core.pkg.prepared": "PKG enviado: {0}\nNo PS5, abra etaHEN Toolbox > ★ Custom Background Package Installer. Se a pasta não aparecer, configure Custom PKG Search Path como {1}. Você também pode solicitar pelo botão DPI.",
   "core.pkg.submitting": "Solicitando instalação. Acompanhe a fila de downloads no PS5.",
   "core.pkg.requested": "Solicitação aceita. Acompanhe a instalação no PS5; origem e PKG remoto preservados.",
   "core.pkg.unknown": "Não foi possível confirmar a solicitação. Verifique a fila de downloads no PS5 antes de reenviar.",
@@ -136,5 +136,7 @@
   "core.pkg.retryHint": " O PKG foi preservado; tente solicitar a instalação novamente sem reenviar o arquivo.",
   "core.webhook.installationRequestedTitle": "Instalação solicitada",
   "core.webhook.installationRequestedText": "{0}: solicitação aceita. Acompanhe a instalação no PS5.",
+  "core.webhook.packageReadyTitle": "PKG pronto",
+  "core.webhook.packageReadyText": "{0}: PKG enviado. Abra etaHEN Toolbox > ★ Custom Background Package Installer no PS5 para instalar manualmente.",
   "core.image.duplicate": "O compactado tem imagens com nomes de destino repetidos; separe ou renomeie as imagens."
 }

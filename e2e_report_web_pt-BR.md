@@ -1,7 +1,7 @@
 # Relatório E2E web — Ferry self-hosted (pt-BR)
 
-- Data: 2026-09-30 16:51:24 UTC
-- Resultado geral: **PASSOU**  (82s)
+- Data: 2026-09-30 17:23:35 UTC
+- Resultado geral: **PASSOU**  (87s)
 - Servidor: DLL local .NET, dados isolados; Chromium (Playwright). Docker não exercitado nesta rodada.
 - PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 24.07 (x64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-06-19
 
@@ -41,13 +41,18 @@
 | Reinício interrompe uma transferência ainda incompleta | ✅  |
 | Idioma persiste após reiniciar e recarregar | ✅  |
 | Pausar e retomar pela página | ✅ congelou em 21.8% por 1,5 s e retomou |
-| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 64.2% (337731256 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
+| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 64.2% (337797925 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
 | Webhook persiste ao reiniciar e não repete conclusão restaurada | ✅  |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Jogo já instalado no PS5 — o loader pode…" |
 | Webhook de erro não exporta senha nem diagnósticos brutos | ✅  |
 | Porta DPI inválida preserva configuração | ✅  |
 | Teste DPI não instala | ✅  |
+| Modo padrão apenas envia, zero solicitações DPI | ✅  |
+| PKG publicado na raiz padrão etaHEN e íntegro | ✅  |
+| PKG enviado mostra caminho completo e instalação manual | ✅  |
+| PKG pronto não dispara completed nem installation_requested | ✅  |
+| Ativar automático não reinstala PKG já preparado | ✅  |
 | PKG web publicado antes do pedido, hash e origem preservados | ✅  |
 | PKG mostra solicitação, sem afirmar instalação concluída | ✅  |
 | Webhook de PKG é distinto de completed | ✅  |

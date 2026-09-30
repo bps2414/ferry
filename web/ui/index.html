@@ -124,9 +124,19 @@
           <p class="hint" data-i18n="ui.pkgHint"></p>
           <p class="hint" data-i18n="ui.pkgSpaceHint"></p>
           <p class="hint" data-i18n="ui.pkgCompatibilityHint"></p>
+          <label class="check"><input data-set="autoInstallPackages" type="checkbox"><span data-i18n="ui.autoInstallPackages">Solicitar instalação automaticamente pelo DPI</span></label>
+          <p class="hint error" data-err="autoInstallPackages"></p>
+          <p class="hint" data-i18n="ui.autoInstallPackagesHint"></p>
           <label class="field port"><span data-i18n="ui.dpiPort">Porta DPI</span><input data-set="dpiPort" inputmode="numeric"></label>
           <p class="hint error" data-err="dpiPort"></p>
           <p class="hint" data-i18n="ui.dpiHint"></p>
+          <details id="dpiHelp" class="dpi-help">
+            <summary data-i18n="ui.dpiHelpTitle">Como ativar o DPI?</summary>
+            <ol><li data-i18n="ui.dpiHelpStep1"></li><li data-i18n="ui.dpiHelpStep2"></li><li data-i18n="ui.dpiHelpStep3"></li></ol>
+            <p class="hint" data-i18n="ui.dpiHelpConfig"></p>
+            <p class="hint" data-i18n="ui.dpiHelpV2"></p>
+            <p class="hint" data-i18n="ui.dpiHelpCompatibility"></p>
+          </details>
           <div class="row-2 test"><button id="dpiTestBtn" class="btn" data-i18n="ui.dpiTest">Testar DPI</button><p id="dpiTestResult" class="test-result" role="status" aria-live="polite"></p></div>
           <hr>
           <h3 data-i18n="ui.webhook">Webhook</h3>

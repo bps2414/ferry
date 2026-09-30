@@ -50,6 +50,7 @@ internal static class Program
         {
             LocaleContracts();
             EditableFields(window, data);
+            DpiGuide(window);
             RealTransfer(window, data, root);
             PackageTransfer(window, data, root);
             PasswordDialogs(window);
@@ -120,7 +121,7 @@ internal static class Program
             Assert(Field<TextBox>(window, "PortBox").Text == "invalid-port" && settings.Port > 0, "invalid port edit preserved: " + locale);
             Assert(Field<TextBox>(window, "FolderBox").Text.EndsWith("does-not-exist"), "invalid folder edit preserved: " + locale);
             Assert(Field<TextBox>(window, "ImageBox").Text == "invalid-relative", "invalid image path edit preserved: " + locale);
-            Assert(Field<TextBox>(window, "PkgBox").Text == "../invalid-package-folder" && settings.PkgDir == "/data/ferry/pkg", "invalid PKG path edit preserved: " + locale);
+            Assert(Field<TextBox>(window, "PkgBox").Text == "../invalid-package-folder" && settings.PkgDir == "/data/etaHEN/pkgs", "invalid PKG path edit preserved: " + locale);
             Assert(Field<TextBox>(window, "DpiPortBox").Text == "not-a-port" && settings.DpiPort == 9090, "invalid DPI port edit preserved: " + locale);
             Assert(Field<PasswordBox>(window, "PwBox").Password == "ps5pass", "FTP password preserved: " + locale);
             Assert(Field<PasswordBox>(window, "WebhookUrlBox").Password == "invalid webhook secret", "webhook secret edit preserved: " + locale);
@@ -130,10 +131,29 @@ internal static class Program
             Assert(locale == "en" ? hint.Contains("port", StringComparison.OrdinalIgnoreCase) : hint.Contains("porta", StringComparison.OrdinalIgnoreCase), "validation translated immediately: " + locale);
         }
         Field<TextBox>(window, "ImageBox").Text = "/images";
-        Field<TextBox>(window, "PkgBox").Text = "/data/ferry/pkg";
+        Field<TextBox>(window, "PkgBox").Text = "/data/etaHEN/pkgs";
         Field<TextBox>(window, "DpiPortBox").Text = "9090";
         SelectLanguage(window, "auto");
         Assert(Settings.Load().Language == "auto" && WpfText.Current.Locale == WpfText.ResolveLocale("auto", WpfText.Current.SystemLocale), "Automatic persisted and uses Windows culture");
+    }
+
+    static void DpiGuide(MainWindow window)
+    {
+        Field<RadioButton>(window, "NavSettings").IsChecked = true;
+        var dpiHelp = Field<Expander>(window, "DpiHelp");
+        dpiHelp.IsExpanded = true;
+        foreach (var locale in new[] { "pt-BR", "en" })
+        {
+            SelectLanguage(window, locale);
+            Pump();
+            Assert(Equals(dpiHelp.Header, locale == "en" ? "How do I enable DPI?" : "Como ativar o DPI?"), "DPI activation guide title translated: " + locale);
+            var guideText = string.Join("\n", Visuals<TextBlock>(dpiHelp).Select(b => b.Text));
+            Assert(guideText.Contains("Toolbox > Services", StringComparison.Ordinal) && guideText.Contains("Direct Package Installer (9090)", StringComparison.Ordinal)
+                && guideText.Contains("/data/etaHEN/config.ini", StringComparison.Ordinal) && guideText.Contains("DPI=1", StringComparison.Ordinal)
+                && guideText.Contains("12800", StringComparison.Ordinal), "DPI activation guide contains console steps and separate V2: " + locale);
+        }
+        dpiHelp.IsExpanded = false;
+        Field<RadioButton>(window, "NavQueue").IsChecked = true;
     }
 
     static void RealTransfer(MainWindow window, string data, string root)
@@ -210,7 +230,25 @@ internal static class Program
             File.WriteAllBytes(source, bytes);
             engine.AddFiles([source]);
             Job? job = null;
-            WaitUntil(() => { lock (engine.Lock) job = engine.Jobs.FirstOrDefault(j => j.Name == "Windows package"); return job?.Stage is Stage.InstalacaoSolicitada or Stage.Erro; }, TimeSpan.FromSeconds(25), "WPF package request");
+            WaitUntil(() => { lock (engine.Lock) job = engine.Jobs.FirstOrDefault(j => j.Name == "Windows package"); return job?.Stage is Stage.PacotePronto or Stage.Erro; }, TimeSpan.FromSeconds(25), "WPF package upload");
+            Assert(job!.Stage == Stage.PacotePronto && received.IsEmpty && !settings.AutoInstallPackages, "WPF defaults to upload only, zero DPI requests");
+            var readyFile = Path.Combine(root, job.Package!.RemotePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            Assert(Path.GetDirectoryName(readyFile) == Path.Combine(root, "data", "etaHEN", "pkgs") && File.Exists(readyFile), "WPF publishes PKG directly in etaHEN default folder");
+            Assert(job.Detail.Contains(job.Package.RemotePath, StringComparison.Ordinal) && job.Detail.Contains("Custom PKG Search Path", StringComparison.Ordinal), "WPF ready detail gives full path and manual installer guidance");
+            foreach (var locale in new[] { "pt-BR", "en" })
+            {
+                SelectLanguage(window, locale);
+                window.UpdateLayout();
+                Assert(Visuals<TextBlock>(window).Any(b => b.Text == (locale == "en" ? "PKG uploaded" : "PKG enviado")), "manual ready state translated in WPF: " + locale);
+            }
+            Field<CheckBox>(window, "AutoInstallPackagesBox").IsChecked = true;
+            Pump();
+            Assert(settings.AutoInstallPackages && Settings.Load().AutoInstallPackages, "WPF automatic DPI mode saves explicitly");
+            SelectLanguage(window, "pt-BR"); SelectLanguage(window, "en");
+            Assert(Field<CheckBox>(window, "AutoInstallPackagesBox").IsChecked == true && settings.AutoInstallPackages, "automatic DPI mode survives language switch");
+            var requestButton = new Button { DataContext = job };
+            Invoke(window, "OnRequestInstall", requestButton, new RoutedEventArgs());
+            WaitUntil(() => job.Stage is Stage.InstalacaoSolicitada or Stage.Erro, TimeSpan.FromSeconds(15), "explicit WPF DPI request");
             Assert(job!.Stage == Stage.InstalacaoSolicitada, "WPF package accepted: " + job.Detail);
             Assert(received.Count == 1 && received.Single().Hash.SequenceEqual(SHA256.HashData(bytes)), "WPF package hash before DPI");
             Assert(File.Exists(source), "WPF retains PKG original despite DeleteOriginal");

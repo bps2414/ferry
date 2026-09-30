@@ -93,10 +93,14 @@ static class WebhookChecks
                 var count = receiver.Count;
                 package.Stage = Stage.VerifiqueNoPs5;
                 webhook.OnDone(package);
+                await Task.Delay(80);
+                Check(receiver.Count == count, "unknown package never emits completion " + locale);
                 package.Stage = Stage.PacotePronto;
                 webhook.OnDone(package);
-                await Task.Delay(80);
-                Check(receiver.Count == count, "unknown or prepared package never emits completion " + locale);
+                using var ready = JsonDocument.Parse((await receiver.NextAsync()).Body);
+                Check(ready.RootElement.GetProperty("event").GetString() == "package_ready"
+                    && ready.RootElement.GetProperty("title").GetString() == (locale == "en" ? "PKG ready" : "PKG pronto"),
+                    "prepared package reports manual readiness without installation success " + locale);
             }
             settings.Language = "auto";
             settings.WebhookAutoLocale = "pt-BR";

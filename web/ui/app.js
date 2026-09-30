@@ -178,6 +178,7 @@ function fillRow(el, j) {
   text($(".package-format", el), j.packageFormat);
   text($(".amount", el), j.totalBytes > 0 ? t("ui.amount", size(j.doneBytes).join(" "), size(j.totalBytes).join(" ")) : "");
   text($(".detail", el), renderMessage(j.detailMessage || j.detail));
+  $(".detail", el).title = renderMessage(j.detailMessage || j.detail);
   text($(".file", el), j.currentFile);
   text($(".pct .v", el), fmt1.format(j.progress));
   const [rv, ru] = j.rate > 0 ? size(j.rate) : ["—", "MB"];

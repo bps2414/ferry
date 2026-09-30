@@ -86,6 +86,7 @@ public sealed class Webhooks : IAsyncDisposable
     {
         if (job.Stage is Stage.Verificado or Stage.Erro) Enqueue(job.Stage == Stage.Verificado ? "completed" : "error", job);
         else if (job.Stage == Stage.InstalacaoSolicitada) Enqueue("installation_requested", job);
+        else if (job.Stage == Stage.PacotePronto) Enqueue("package_ready", job);
     }
     public void OnPassword(Job job)
     {
@@ -119,11 +120,12 @@ public sealed class Webhooks : IAsyncDisposable
         {
             "completed" => new Message("core.webhook.completedText", name),
             "installation_requested" => new Message("core.webhook.installationRequestedText", name),
+            "package_ready" => new Message("core.webhook.packageReadyText", name),
             "password_required" => new Message("core.webhook.passwordText", game!.Name),
             "error" => new Message("core.webhook.errorText", name, SafeError(job!)),
             _ => new Message("core.webhook.testText")
         };
-        var titleKey = kind switch { "completed" => "core.webhook.completedTitle", "installation_requested" => "core.webhook.installationRequestedTitle", "error" => "core.webhook.errorTitle", "password_required" => "core.webhook.passwordTitle", _ => "core.webhook.testTitle" };
+        var titleKey = kind switch { "completed" => "core.webhook.completedTitle", "installation_requested" => "core.webhook.installationRequestedTitle", "package_ready" => "core.webhook.packageReadyTitle", "error" => "core.webhook.errorTitle", "password_required" => "core.webhook.passwordTitle", _ => "core.webhook.testTitle" };
         return new(1, kind, DateTimeOffset.UtcNow, options.Locale, game,
             new Message(titleKey).Render(options.Locale), Limit(message.Render(options.Locale), 1000));
     }

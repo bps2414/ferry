@@ -115,7 +115,7 @@ Implemented and validated locally: 124 WPF checks passed across both languages, 
 
 ## Phase 6 — PKG and fPKG
 
-Initial delivery implemented: loose PKG and one PKG per archive through FTP + etaHEN DPI using a local path. The ledger persists preparation/submission; uncertain results require checking the PS5. Additional images use the ShadowMount+ flow. Direct HTTP remains a future extension. Local tests do not prove console installation.
+Initial delivery implemented: loose PKG and one PKG per archive through FTP for manual installation in etaHEN; optional automatic DPI requests in Settings. The ledger persists preparation/submission; uncertain results require checking the PS5. Additional images use the ShadowMount+ flow. Direct HTTP remains a future extension. Local tests do not prove console installation.
 
 [PKG](PKG-PS5.md)
 

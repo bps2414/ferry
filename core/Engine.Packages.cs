@@ -22,6 +22,7 @@ public sealed class PackagePreparation
     public string User { get; set; } = "";
     public string ProtectedPassword { get; set; } = "";
     public string RemotePath { get; set; } = "";
+    public string PartialPath { get; set; } = "";
     public long Size { get; set; }
     public string State { get; set; } = "transferring";
     public bool PartialStarted { get; set; }
@@ -98,8 +99,11 @@ public partial class Engine
         };
         if (job.Stage == Stage.InstalacaoSolicitada) job.Finish(new Message("core.pkg.requested"));
         else if (job.Stage == Stage.VerifiqueNoPs5) job.Finish(new Message("core.pkg.unknown"));
-        else if (job.Stage == Stage.PacotePronto) job.Finish(new Message("core.pkg.prepared"));
+        else if (job.Stage == Stage.PacotePronto) job.Finish(PackageReadyMessage(job.Package!));
     }
+
+    static Message PackageReadyMessage(PackagePreparation package) => new("core.pkg.prepared",
+        package.RemotePath, package.RemotePath[..package.RemotePath.LastIndexOf('/')]);
 
     public bool RequestInstall(Job job, bool confirmUnknown = false)
     {
@@ -223,7 +227,9 @@ public partial class Engine
                     Format = PackageHeader.Validate(header, entry.Size) == "CNT" ? "PS4 / CNT" : "PS5 / FIH",
                     Parts = [.. job.Parts], Host = settings.Host, Port = settings.Port, DpiPort = settings.DpiPort,
                     User = settings.User, ProtectedPassword = Secret.Protect(settings.Password), Size = entry.Size,
-                    RemotePath = dir + "/" + identity.ToLowerInvariant() + "/" + SafePackageName(entry.Path) };
+                    RemotePath = dir + "/" + Path.GetFileNameWithoutExtension(SafePackageName(entry.Path)) + "-" + identity.ToLowerInvariant() + ".pkg",
+                    // etaHEN matches any filename containing .pkg, including .pkg.ferry-part.
+                    PartialPath = dir + "/" + identity.ToLowerInvariant() + PartSuffix };
                 _packages[identity] = p;
             }
             job.Package = p;
@@ -233,13 +239,13 @@ public partial class Engine
         if (p.State != "transferring") { SetPackageStage(job); return; }
         var snapshot = new Settings { Host = p.Host, Port = p.Port, DpiPort = p.DpiPort, User = p.User,
             Password = Secret.Unprotect(p.ProtectedPassword) ?? "", Connections = settings.Connections };
-        var partial = p.RemotePath + PartSuffix;
+        var partial = p.PartialPath.Length > 0 ? p.PartialPath : p.RemotePath + PartSuffix;
         var final = await Ftp.RemoteStateAsync(snapshot, [p.RemotePath], ct);
         // An exclusive final path can only have been published after successful extraction and SIZE.
         if (final.have[0] == p.Size)
         {
             lock (_dropped) { p.State = "prepared"; SaveQueueRequired(); }
-            job.Stage = Stage.PacotePronto; job.Finish(new Message("core.pkg.prepared"));
+            job.Stage = Stage.PacotePronto; job.Finish(PackageReadyMessage(p));
             return; // Recovery never initiates an installation request.
         }
         if (final.have[0] >= 0) throw new LocalizedException(new("core.pkg.remoteConflict"));
@@ -288,7 +294,9 @@ public partial class Engine
         if (published.have[0] != entry.Size) throw new LocalizedException(new("core.ftp.size", p.RemotePath, entry.Size, published.have[0]));
         lock (_dropped) { p.State = "prepared"; SaveQueueRequired(); }
         ct.ThrowIfCancellationRequested();
-        job.Stage = Stage.PacotePronto; job.Finish(new Message("core.pkg.prepared"));
-        RequestInstall(job); // Automatic and manual requests share the same serialized gate.
+        job.Stage = Stage.PacotePronto; job.Finish(PackageReadyMessage(p));
+        JobLog(job, PackageReadyMessage(p));
+        if (settings.AutoInstallPackages) RequestInstall(job);
+        else if (job.Stage == Stage.PacotePronto) NotifyPackageDone(job);
     }
 }

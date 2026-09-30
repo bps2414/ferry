@@ -114,7 +114,7 @@
   "core.webhook.installed": "The game is already installed on the PS5.",
   "core.webhook.archiveError": "Could not extract the archive. See the Ferry log.",
   "core.webhook.errorDetail": "See the Ferry log for details.",
-  "core.stage.PacotePronto": "Package ready",
+  "core.stage.PacotePronto": "PKG uploaded",
   "core.stage.SolicitandoInstalacao": "Requesting installation",
   "core.stage.InstalacaoSolicitada": "Installation requested",
   "core.stage.VerifiqueNoPs5": "Check on the PS5",
@@ -128,7 +128,7 @@
   "core.pkg.connectionFailed": "DPI failed: {0}. Check DPI=1 and the configured port.",
   "core.pkg.changed": "The source changed during preparation; retry with the complete file.",
   "core.pkg.remoteConflict": "The exclusive package destination has an unexpected size; transfer stopped.",
-  "core.pkg.prepared": "PKG published and retained. Request installation when DPI is available.",
+  "core.pkg.prepared": "PKG uploaded: {0}\nOn PS5, open etaHEN Toolbox > ★ Custom Background Package Installer. If the folder is not listed, set Custom PKG Search Path to {1}. You can also request with the DPI button.",
   "core.pkg.submitting": "Requesting installation. Follow the download queue on the PS5.",
   "core.pkg.requested": "Request accepted. Follow installation on the PS5; source and remote PKG retained.",
   "core.pkg.unknown": "Could not confirm the request. Check the PS5 download queue before resending.",
@@ -136,5 +136,7 @@
   "core.pkg.retryHint": " The PKG was retained; request installation again without uploading the file again.",
   "core.webhook.installationRequestedTitle": "Installation requested",
   "core.webhook.installationRequestedText": "{0}: request accepted. Follow installation on the PS5.",
+  "core.webhook.packageReadyTitle": "PKG ready",
+  "core.webhook.packageReadyText": "{0}: PKG uploaded. Open etaHEN Toolbox > ★ Custom Background Package Installer on PS5 to install manually.",
   "core.image.duplicate": "The archive contains images with duplicate destination names; separate or rename the images."
 }
