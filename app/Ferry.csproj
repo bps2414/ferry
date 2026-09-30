@@ -22,7 +22,7 @@
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
-    <PackageReference Include="FluentFTP" Version="53.*" />
+    <ProjectReference Include="..\core\Ferry.Core.csproj" />
     <EmbeddedResource Include="tools\7z.exe" LogicalName="7z.exe" />
     <EmbeddedResource Include="tools\7z.dll" LogicalName="7z.dll" />
     <!-- Geist (OFL, ver fonts/OFL.txt) e o ícone da janela, dentro do exe -->

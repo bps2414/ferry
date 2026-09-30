@@ -18,12 +18,14 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     readonly HashSet<string> _dropped = new(StringComparer.OrdinalIgnoreCase);
     readonly HashSet<string> _removed = new(StringComparer.OrdinalIgnoreCase); // grupos tirados da fila pelo usuário
     readonly Dictionary<string, (string sig, DateTime since)> _stable = [];
-    // por jogo (Key): senha do arquivo cifrada com DPAPI; e arquivo remoto → tamanho esperado dos envios
+    // por jogo (Key): senha do arquivo cifrada (Secret: DPAPI no Windows); e arquivo remoto → tamanho esperado dos envios
     // que ESTE app começou (só esses podem continuar com APPE: outro arquivo menor no PS5 pode ser outra versão)
     Dictionary<string, string> _passwords = new(StringComparer.OrdinalIgnoreCase);
     Dictionary<string, Dictionary<string, long>> _started = new(StringComparer.OrdinalIgnoreCase);
+    // jogos já enviados e conferidos: ao reabrir (ou reiniciar o container) voltam como "Concluído", não entram na fila de novo
+    HashSet<string> _done = new(StringComparer.OrdinalIgnoreCase);
 
-    record Saved(List<string> Dropped, List<string> Removed, Dictionary<string, string>? Passwords, Dictionary<string, Dictionary<string, long>>? Started);
+    record Saved(List<string> Dropped, List<string> Removed, Dictionary<string, string>? Passwords, Dictionary<string, Dictionary<string, long>>? Started, List<string>? Done = null);
 
     /// Sufixo dos arquivos que fazem o loader reconhecer o jogo, até o jogo inteiro estar no PS5 e conferido.
     public const string PartSuffix = ".ferry-part";
@@ -42,6 +44,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 _dropped.UnionWith(s.Dropped.Where(File.Exists)); _removed.UnionWith(s.Removed);
                 _passwords = new(s.Passwords ?? [], StringComparer.OrdinalIgnoreCase);
                 _started = new(s.Started ?? [], StringComparer.OrdinalIgnoreCase);
+                _done = new(s.Done ?? [], StringComparer.OrdinalIgnoreCase);
             }
             if (_dropped.Count > 0) log($"Fila restaurada: {_dropped.Count} arquivo(s) adicionados antes");
         }
@@ -52,25 +55,25 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
     {
         try
         {
-            lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started)));
+            lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started, [.. _done])));
         }
         catch (Exception e) { log("Não salvou a fila: " + e.Message); }
     }
 
     // jogo saiu da fila: esquece senha e envios começados
-    void Forget(string key) { lock (_dropped) { _removed.Add(key); _passwords.Remove(key); _started.Remove(key); } }
-
-    static string Protect(string pw) => Convert.ToBase64String(System.Security.Cryptography.ProtectedData.Protect(System.Text.Encoding.UTF8.GetBytes(pw), null, System.Security.Cryptography.DataProtectionScope.CurrentUser));
-    static string? Unprotect(string? b64)
-    {
-        try { return b64 == null ? null : System.Text.Encoding.UTF8.GetString(System.Security.Cryptography.ProtectedData.Unprotect(Convert.FromBase64String(b64), null, System.Security.Cryptography.DataProtectionScope.CurrentUser)); }
-        catch { return null; }
-    }
+    void Forget(string key) { lock (_dropped) { _removed.Add(key); _passwords.Remove(key); _started.Remove(key); _done.Remove(key); } }
 
     public void AddFiles(IEnumerable<string> paths)
     {
         var list = paths.Where(File.Exists).ToList();
-        lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in Archives.Group(list).Keys) _removed.Remove(k); }
+        var keys = Archives.Group(list).Keys.ToList();
+        lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in keys) { _removed.Remove(k); _done.Remove(k); } }
+        // adicionar de novo um jogo concluído = enviar de novo: o card volta para a checagem de partes
+        lock (Lock)
+            foreach (var j in Jobs.Where(j => j.Stage == Stage.Verificado && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
+            {
+                j.Detail = ""; j.Progress = 0; j.Stage = Stage.AguardandoPartes;
+            }
         SaveQueue();
     }
 
@@ -125,8 +128,11 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             foreach (var j in Jobs.Where(j => j.Stage == Stage.AguardandoPartes && !groups.ContainsKey(j.Key)).ToList()) Jobs.Remove(j);
             foreach (var g in groups.Values.Where(g => !Jobs.Any(j => j.Key == g.Key)))
             {
-                string? pw; lock (_dropped) pw = Unprotect(_passwords.GetValueOrDefault(g.Key)); // lembrada de antes de fechar o app
-                Jobs.Add(new Job { Key = g.Key, Name = g.Name, Stage = Stage.AguardandoPartes, ArchivePassword = pw });
+                string? pw; bool done;
+                lock (_dropped) { pw = Secret.Unprotect(_passwords.GetValueOrDefault(g.Key)); done = _done.Contains(g.Key); } // lembrados de antes de fechar o app
+                var job = new Job { Key = g.Key, Name = g.Name, Stage = done ? Stage.Verificado : Stage.AguardandoPartes, ArchivePassword = pw, Parts = [.. g.Parts] };
+                if (done) job.Finish("Enviado e conferido antes de reabrir");
+                Jobs.Add(job);
             }
         }
         string Missing(ArchiveGroup g, IEnumerable<string> names) => "faltando " + string.Join(", ", names.Select(n => n.StartsWith(g.Name + ".") ? n[(g.Name.Length + 1)..] : n));
@@ -204,7 +210,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                     try { settings.Save(); } catch { }
                     log($"[{job.Name}] senha nova adicionada às senhas conhecidas");
                 }
-                lock (_dropped) _passwords[job.Key] = Protect(okPw);
+                lock (_dropped) _passwords[job.Key] = Secret.Protect(okPw);
                 SaveQueue();
             }
             ct.ThrowIfCancellationRequested();
@@ -258,7 +264,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
                 if (need.Count == 0) break;
 
                 listFile ??= Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
-                File.WriteAllLines(listFile, need.Select(i => entries[i].Path.Replace('/', '\\')));
+                File.WriteAllLines(listFile, need.Select(i => Archives.Native(entries[i].Path)));
                 using var p = loose ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
                 using var src = p?.StandardOutput.BaseStream ?? File.OpenRead(job.MainFile);
                 using var reg = ct.Register(() => { try { p?.Kill(true); } catch { } });
@@ -302,7 +308,7 @@ public class Engine(Settings settings, Action<string> log, Func<Job, Task<string
             for (var i = 0; i < paths.Length; i++)
                 if (heldFinal[i] is { } to) await Ftp.RenameAsync(settings, paths[i]!, to, ct);
             await Verify(job, entries, heldFinal, Lenient, ct);
-            lock (_dropped) _started.Remove(job.Key);
+            lock (_dropped) { _started.Remove(job.Key); _done.Add(job.Key); }
             job.Force = job.Installed = false;
             job.Stage = Stage.Verificado;
             job.Finish(remote + (warned > 0 ? $" · {warned} arquivo(s) com tamanho do backport do loader (ver log)" : ""));

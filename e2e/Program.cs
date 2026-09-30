@@ -13,8 +13,10 @@ using Ferry;
 var root = AppContext.BaseDirectory;
 while (!Directory.Exists(Path.Combine(root, "e2e")) || !Directory.Exists(Path.Combine(root, "app"))) root = Path.GetDirectoryName(root)!;
 var tools = Path.Combine(root, "e2e", "tools");
-var sevenZip = Path.Combine(root, "app", "tools", "7z.exe");
-var rar = Path.Combine(tools, "Rar.exe");
+// Windows: o 7z.exe embutido no app; Linux: o 7zz/7z do sistema (o mesmo que o servidor web usa)
+if (OperatingSystem.IsWindows()) Archives.SevenZipPath = Path.Combine(root, "app", "tools", "7z.exe");
+var sevenZip = Archives.SevenZip();
+var rar = Path.Combine(tools, OperatingSystem.IsWindows() ? "Rar.exe" : "rar");
 // Uso: dotnet run --project e2e            -> tudo (formatos + fases extras)
 //      dotnet run --project e2e -- G2 G7   -> modo rápido: só esses casos, sem fases extras
 var only = args.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -25,7 +27,7 @@ string Dir(string name) => Directory.CreateDirectory(Path.Combine(work, name)).F
 var input = Dir("input"); var dropped = Dir("dropped"); var ftpRoot = Dir("ftproot");
 // Jogos falsos e arquivos compactados são determinísticos: ficam em cache entre rodadas.
 // Mude GenVersion quando mexer no gerador.
-const string GenVersion = "v3";
+const string GenVersion = "v4";
 var cache = Path.Combine(Path.GetTempPath(), "ferry-e2e-cache-" + GenVersion);
 var cached = File.Exists(Path.Combine(cache, "ok"));
 if (!cached && Directory.Exists(cache)) Directory.Delete(cache, true);
@@ -37,6 +39,7 @@ var sw = Stopwatch.StartNew();
 // nada do E2E toca o settings.json / log.txt reais do usuário
 Settings.FilePath = Path.Combine(work, "settings.json");
 FileLog.FilePath = Path.Combine(work, "log.txt");
+Secret.KeyFile = Path.Combine(work, "secret.key");
 
 await EnsureRar();
 
@@ -66,12 +69,12 @@ for (var i = 0; i < cases.Length; i++)
     void Put(string rel, int size) { var p = Path.Combine(g, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); var b = new byte[size]; rnd.NextBytes(b); File.WriteAllBytes(p, b); }
     void PutBytes(string rel, byte[] b) { var p = Path.Combine(g, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); File.WriteAllBytes(p, b); }
     Put("EBOOT.BIN", 1_200_000);
-    PutBytes(@"sce_sys\param.sfo", Sfo(("TITLE", $"Jogo Teste {i + 1}"), ("TITLE_ID", $"PPSA0{i + 1:0000}")));
-    PutBytes(@"sce_sys\param.json", Encoding.UTF8.GetBytes($"{{\"titleId\":\"PPSA0{i + 1:0000}\"}}"));
-    PutBytes(@"sce_sys\icon0.png", Png(1000 + i));
-    Put(@"data\big.bin", 22_000_000);
-    Put(@"data\sub pasta\ação çõ.dat", 777_777);
-    Put(@"data\vazio.bin", 0);
+    PutBytes("sce_sys/param.sfo", Sfo(("TITLE", $"Jogo Teste {i + 1}"), ("TITLE_ID", $"PPSA0{i + 1:0000}")));
+    PutBytes("sce_sys/param.json", Encoding.UTF8.GetBytes($"{{\"titleId\":\"PPSA0{i + 1:0000}\"}}"));
+    PutBytes("sce_sys/icon0.png", Png(1000 + i));
+    Put("data/big.bin", 22_000_000);
+    Put("data/sub pasta/ação çõ.dat", 777_777);
+    Put("data/vazio.bin", 0);
 
     var outDir = Directory.CreateDirectory(Path.Combine(archives, c.archive)).FullName;
     var srcTop = Path.Combine(src, c.archive);
@@ -88,7 +91,7 @@ for (var i = 0; i < cases.Length; i++)
         case 6:
             // dec: troca EBOOT.BIN, sobrescreve um arquivo com tamanho diferente e adiciona um novo.
             var dec = Path.Combine(srcTop, "dec");
-            foreach (var (rel, size) in new[] { ("EBOOT.BIN", 900_000), (@"data\sub pasta\ação çõ.dat", 12_345), (@"sce_module\libnovo.prx", 50_000) })
+            foreach (var (rel, size) in new[] { ("EBOOT.BIN", 900_000), ("data/sub pasta/ação çõ.dat", 12_345), ("sce_module/libnovo.prx", 50_000) })
             {
                 var p = Path.Combine(dec, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); var b = new byte[size]; rnd.NextBytes(b); File.WriteAllBytes(p, b);
             }
@@ -312,12 +315,12 @@ var g7Name = Path.GetFileName(gameDirs["G7.rar"]);
 var g7Remote = Path.Combine(appeRoot, "mnt", "ext1", "homebrew", g7Name);
 byte[] Local7(string rel) => File.ReadAllBytes(Path.Combine(gameDirs["G7.rar"], rel));
 void Remote7(string rel, byte[] b) { var p = Path.Combine(g7Remote, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); File.WriteAllBytes(p, b); }
-var g7BigLocal = Local7(@"data\big.bin");
-Remote7(@"data\big.bin", g7BigLocal[..(g7BigLocal.Length / 2)]);
+var g7BigLocal = Local7("data/big.bin");
+Remote7("data/big.bin", g7BigLocal[..(g7BigLocal.Length / 2)]);
 var otherVersion = new byte[Local7("EBOOT.BIN").Length / 2]; new Random(7).NextBytes(otherVersion);
 Remote7("EBOOT.BIN", otherVersion);
-var bigger = new byte[Local7(@"sce_sys\icon0.png").Length * 2]; new Random(8).NextBytes(bigger);
-Remote7(@"sce_sys\icon0.png", bigger);
+var bigger = new byte[Local7("sce_sys/icon0.png").Length * 2]; new Random(8).NextBytes(bigger);
+Remote7("sce_sys/icon0.png", bigger);
 var qAppe = Path.Combine(work, "queue-appe.json");
 File.WriteAllText(qAppe, System.Text.Json.JsonSerializer.Serialize(new
 {
@@ -356,7 +359,7 @@ var logOk = fileLog.Contains($"APPE {RemoteDir}/{g7Name}/data/big.bin → 226") 
 
 // ---------- imagem .exfat (ShadowMount+): servidor COM APPE, destino ImageDir ≠ RemoteDir ----------
 var exRoot = Dir("ftproot-exfat");
-var (ftp3, port3, ftp3Log) = StartFtp(exRoot, appe: true);
+var (ftp3, port3, ftp3Log) = StartFtp(exRoot, appe: true, mbps: 10); // 10 MB/s: dá tempo de pausar o IMG1 (40 MB) no meio
 var inEx = Dir("input-exfat"); var img1Drop = Path.Combine(Dir("dropped-exfat"), "IMG1.exfat");
 File.Copy(img1, img1Drop);
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(inEx, Path.GetFileName(f)));
@@ -458,9 +461,9 @@ ftp3.Kill(true);
 
 // ---------- Transferir agora: passa na frente do que está enviando; o preemptado volta para a fila e continua com APPE ----------
 var agRoot = Dir("ftproot-agora");
-var (ftp4, port4, ftp4Log) = StartFtp(agRoot, appe: true);
+var (ftp4, port4, ftp4Log) = StartFtp(agRoot, appe: true, mbps: 10); // 10 MB/s: ImgA (80 MB) ainda enviando quando o IMG2 fica pronto
 var inAg = Dir("input-agora"); var dropAg = Dir("dropped-agora");
-var agA = Path.Combine(inAg, "ImgA.exfat"); // 80 MB (~2 s a 40 MB/s): dá tempo de B ficar pronto e de pegar A no meio
+var agA = Path.Combine(inAg, "ImgA.exfat"); // 80 MB (~8 s a 10 MB/s): dá tempo de B ficar pronto e de pegar A no meio
 var agABytes = new byte[80_000_000]; new Random(3001).NextBytes(agABytes); File.WriteAllBytes(agA, agABytes);
 foreach (var f in Directory.GetFiles(Path.Combine(archives, "IMG2.rar"))) File.Copy(f, Path.Combine(dropAg, Path.GetFileName(f)));
 var sAg = new Settings { Host = "127.0.0.1", Port = port4, User = "ps5", Password = "ps5pass", RemoteDir = RemoteDir, ImageDir = "/data/homebrew", Connections = 4, DeleteOriginal = false, InputFolder = inAg };
@@ -524,7 +527,7 @@ var completeBefore = Directory.GetFiles(g5Src, "*", SearchOption.AllDirectories)
     .Where(r => new FileInfo(Path.Combine(reRemote, r)) is { Exists: true } fi && fi.Length == new FileInfo(Path.Combine(g5Src, r)).Length && fi.Length > 0).ToList();
 var learned = sRe.KnownPasswords.LastOrDefault() == "senha123"
     && System.Text.Json.JsonSerializer.Deserialize<Settings>(File.ReadAllText(Settings.FilePath))!.KnownPasswords.Contains("senha123");
-var queueHidesPw = !File.ReadAllText(qRe).Contains("senha123"); // DPAPI, não texto puro
+var queueHidesPw = !File.ReadAllText(qRe).Contains("senha123"); // cifrada (DPAPI / AES-GCM), não texto puro
 // Salvar atômico: um .tmp pela metade (queda no meio da gravação) não estraga a fila
 File.WriteAllText(qRe + ".tmp", "{\"Dropped\":[\"meio escr");
 // app reaberto: nada foi adicionado de novo e sem senhas conhecidas: só a senha lembrada da fila pode abrir
@@ -547,7 +550,7 @@ extraRows.Add($"| Já no PS5, servidor com APPE e SELF (ftpsrv novo) | {appeLine
 extraRows.Add($"| Jogo já instalado no PS5 | {(instOk ? "✅ avisou \"Jogo já instalado…\" sem enviar; \"Tentar de novo\" reenviou por cima e conferiu" : $"❌ FALHA: avisou={warnedInst} ({jInst?.Stage} {jInst?.Detail})")} |");
 extraRows.Add($"| Log persistente (log.txt) | {(logOk ? "✅ comando e resposta de STOR/APPE/SIZE gravados" : "❌ FALHA: faltam linhas de STOR/APPE/SIZE em " + FileLog.FilePath)} |");
 extraRows.Add($"| Fechar e reabrir o app no meio do envio (G6) | {reLine} |");
-extraRows.Add($"| Senha aprendida e lembrada (G6) | {(pwOkRe ? "✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (DPAPI na fila), sem diálogo" : $"❌ FALHA: diálogo antes {askedA}x (esperado 2), aprendida={learned}, diálogo ao reabrir {askedB}x (esperado 0), fila sem texto puro={queueHidesPw}")} |");
+extraRows.Add($"| Senha aprendida e lembrada (G6) | {(pwOkRe ? "✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (cifrada na fila), sem diálogo" : $"❌ FALHA: diálogo antes {askedA}x (esperado 2), aprendida={learned}, diálogo ao reabrir {askedB}x (esperado 0), fila sem texto puro={queueHidesPw}")} |");
 extraRows.Add($"| Salvar atômico | {(atomicOk ? "✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos" : "❌ FALHA")} |");
 extraRows.Add($"| Pausar/retomar no meio do stream (G5) | {(pauseResult.StartsWith("❌") ? pauseResult : "✅ " + pauseResult + "; hash confere")} |");
 extraRows.Add($"| Remover da fila (G6) | {removeResult} |");
@@ -576,10 +579,10 @@ ftp.Kill(true);
 var sb = new StringBuilder();
 sb.AppendLine("# Relatório E2E — Ferry");
 sb.AppendLine();
-sb.AppendLine($"- Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+sb.AppendLine($"- Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss} · {(OperatingSystem.IsWindows() ? "Windows" : "Linux")}");
 sb.AppendLine($"- Resultado geral: **{(allOk ? "PASSOU" : "FALHOU")}**  ({sw.Elapsed.TotalSeconds:0}s)");
 sb.AppendLine($"- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; upload limitado a 40 MB/s por conexão) em 127.0.0.1:{port}, destino `{RemoteDir}`, {settings.Connections} conexões, apagar original = sim");
-sb.AppendLine($"- Ferramentas: 7-Zip {FileVersionInfo.GetVersionInfo(sevenZip).ProductVersion} (embutido no app), Rar.exe {FileVersionInfo.GetVersionInfo(rar).ProductVersion} (só para gerar os testes)");
+sb.AppendLine($"- Ferramentas: 7-Zip {ToolVersion(sevenZip)} ({(OperatingSystem.IsWindows() ? "embutido no app" : "do sistema")}), RAR {ToolVersion(rar)} (só para gerar os testes)");
 sb.AppendLine($"- Jogo falso: 6 arquivos (~24 MB, incompressíveis) dentro de 2 pastas casca; volumes de 5 MB");
 sb.AppendLine();
 sb.AppendLine("| Formato | Volumes | Esperou volume faltante | Estado final | SHA-256 iguais | Senha | Capa e título | param.json/sfo renomeados depois do último envio | Originais apagados | Resultado |");
@@ -620,13 +623,37 @@ static byte[] Sfo(params (string key, string value)[] kv)
             .. idx.ToArray(), .. keys.ToArray(), .. data.ToArray()];
 }
 
-// icon0.png de verdade (ruído 64x64), determinístico
+// icon0.png de verdade (ruído 64x64 RGBA), determinístico
 static byte[] Png(int seed)
 {
-    var px = new byte[64 * 64 * 4]; new Random(seed).NextBytes(px);
-    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
-    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(System.Windows.Media.Imaging.BitmapSource.Create(64, 64, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, px, 64 * 4)));
-    using var ms = new MemoryStream(); enc.Save(ms); return ms.ToArray();
+    const int W = 64;
+    var rnd = new Random(seed);
+    var raw = new byte[W * (1 + W * 4)]; // cada linha: filtro 0 + pixels
+    for (var y = 0; y < W; y++) rnd.NextBytes(raw.AsSpan(y * (1 + W * 4) + 1, W * 4));
+    using var z = new MemoryStream();
+    using (var zs = new System.IO.Compression.ZLibStream(z, System.IO.Compression.CompressionLevel.Optimal, true)) zs.Write(raw);
+    using var png = new MemoryStream();
+    png.Write([0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10]);
+    void Chunk(string type, byte[] data)
+    {
+        byte[] Be(uint v) => [(byte)(v >> 24), (byte)(v >> 16), (byte)(v >> 8), (byte)v];
+        var td = Encoding.ASCII.GetBytes(type).Concat(data).ToArray();
+        png.Write(Be((uint)data.Length)); png.Write(td); png.Write(Be(Crc32.HashToUInt32(td)));
+    }
+    Chunk("IHDR", [0, 0, 0, W, 0, 0, 0, W, 8, 6, 0, 0, 0]);
+    Chunk("IDAT", z.ToArray());
+    Chunk("IEND", []);
+    return png.ToArray();
+}
+
+// "7-Zip 23.01", "RAR 6.24": 1ª linha que o programa imprime sem argumentos
+static string ToolVersion(string exe)
+{
+    if (OperatingSystem.IsWindows()) return FileVersionInfo.GetVersionInfo(exe).ProductVersion ?? "?";
+    using var p = Process.Start(new ProcessStartInfo(exe) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false })!;
+    var line = p.StandardOutput.ReadToEnd().Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l != "") ?? "?";
+    p.WaitForExit();
+    return System.Text.RegularExpressions.Regex.Match(line, @"\d+\.\d+").Value is { Length: > 0 } v ? v : line;
 }
 
 static int SameFiles(string expected, string remote) => Directory.GetFiles(expected, "*", SearchOption.AllDirectories)
@@ -644,10 +671,11 @@ static async Task<bool> RunUntil(Engine e, Func<Job, bool> done, TimeSpan timeou
     return ok;
 }
 
-(Process, int, List<string>) StartFtp(string ftpRootDir, bool appe)
+// mbps: limite de upload por conexão. Os casos que precisam pegar o envio no meio usam menos, para não depender da máquina.
+(Process, int, List<string>) StartFtp(string ftpRootDir, bool appe, int mbps = 40)
 {
     var p = FreePort();
-    var proc = Process.Start(new ProcessStartInfo("python", $"\"{Path.Combine(root, "e2e", "ftpserver.py")}\" {p} \"{ftpRootDir}\" {(appe ? "appe" : "noappe")}")
+    var proc = Process.Start(new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3", $"\"{Path.Combine(root, "e2e", "ftpserver.py")}\" {p} \"{ftpRootDir}\" {(appe ? "appe" : "noappe")} {mbps}")
         { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true })!;
     var log = new List<string>();
     proc.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (log) log.Add(e.Data); }; proc.BeginErrorReadLine();
@@ -666,6 +694,7 @@ static void Run(string exe, string cwd, params string[] args)
 {
     var psi = new ProcessStartInfo(exe) { WorkingDirectory = cwd, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
     foreach (var a in args) psi.ArgumentList.Add(a);
+    if (!OperatingSystem.IsWindows()) psi.Environment["LC_ALL"] = "C.UTF-8"; // sem locale o rar grava "ação" quebrado no arquivo
     using var p = Process.Start(psi)!;
     var o = p.StandardOutput.ReadToEndAsync(); var e = p.StandardError.ReadToEnd();
     p.WaitForExit();
@@ -675,11 +704,14 @@ static void Run(string exe, string cwd, params string[] args)
 async Task EnsureRar()
 {
     if (File.Exists(rar)) return;
-    // Rar.exe oficial, extraído do instalador do rarlab.com. Só para gerar os arquivos de teste.
+    // RAR oficial do rarlab.com (Windows: Rar.exe do instalador; Linux: rar do rarlinux). Só para gerar os arquivos de teste.
     // 6.24 = última versão que ainda cria RAR4 com nomes antigos (-ma4 -vn).
-    var setup = Path.Combine(work, "winrar-x64-624.exe");
-    using (var http = new HttpClient()) await File.WriteAllBytesAsync(setup, await http.GetByteArrayAsync("https://www.rarlab.com/rar/winrar-x64-624.exe"));
-    Run(sevenZip, work, "e", setup, "Rar.exe", "-o" + tools, "-y");
+    var win = OperatingSystem.IsWindows();
+    var setup = Path.Combine(work, win ? "winrar-x64-624.exe" : "rarlinux-x64-624.tar.gz");
+    using (var http = new HttpClient()) await File.WriteAllBytesAsync(setup, await http.GetByteArrayAsync("https://www.rarlab.com/rar/" + Path.GetFileName(setup)));
+    if (win) { Run(sevenZip, work, "e", setup, "Rar.exe", "-o" + tools, "-y"); return; }
+    Directory.CreateDirectory(tools);
+    Run("tar", work, "-xzf", setup, "-C", tools, "--strip-components=1", "rar/rar");
 }
 
 // Zip dividido estilo PKWARE/Info-ZIP (.z01, .z02 … + .zip), método "store". O 7-Zip só cria .zip.001.

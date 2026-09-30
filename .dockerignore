@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+dist*/
+.git/
+.github/
+docs/
+e2e/
+app/tools/
+*.md

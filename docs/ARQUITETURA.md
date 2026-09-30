@@ -1,15 +1,31 @@
 # Arquitetura
 
-WPF (.NET 10), publicado como `.exe` único. Quatro arquivos de lógica, uma janela.
+.NET 10. A lógica fica em `core/` (sem interface) e tem duas caras: o app Windows (WPF, `.exe` único) e o servidor web self-hosted (Docker ou binário Linux).
 
 | Arquivo | Papel |
 |---|---|
-| `app/Engine.cs` | Fila: varre entradas, agrupa partes, decide quando começar, processa um jogo por vez, salva a fila |
-| `app/Archives.cs` | 7-Zip: agrupar volumes, listar, testar senha, abrir o stream `7z x -so`, achar a pasta do jogo e o `dec` (ou a imagem `.exfat`) |
-| `app/Ftp.cs` | FTP: estado remoto (`SIZE`), envio em streaming com conexões paralelas, verificação |
-| `app/Job.cs` | Um item da fila (estado, progresso, velocidade, ETA) |
-| `app/MainWindow.xaml(.cs)` | Interface |
-| `app/Settings.cs` | Configurações em `%LOCALAPPDATA%\Ferry\settings.json` |
+| `core/Engine.cs` | Fila: varre entradas, agrupa partes, decide quando começar, processa um jogo por vez, salva a fila |
+| `core/Archives.cs` | 7-Zip: agrupar volumes, listar, testar senha, abrir o stream `7z x -so`, achar a pasta do jogo e o `dec` (ou a imagem `.exfat`) |
+| `core/Ftp.cs` | FTP: estado remoto (`SIZE`), envio em streaming com conexões paralelas, verificação |
+| `core/Job.cs` | Um item da fila (estado, progresso, velocidade, ETA) |
+| `core/Settings.cs` | Configurações em `settings.json` na pasta de dados (`%LOCALAPPDATA%\Ferry`, ou `FERRY_DATA`) |
+| `core/Secret.cs` | Senha do jogo guardada na fila: DPAPI no Windows, AES-GCM com `secret.key` (600) fora dele |
+| `core/Discovery.cs` | Busca do PS5 na rede (/24 de cada interface, portas 2121 e 1337) |
+| `app/MainWindow.xaml(.cs)` | Interface Windows; `App.xaml.cs` extrai o `7z.exe` embutido e passa o caminho ao core |
+| `web/Program.cs` | Servidor web: API, cookie de login, configurações campo a campo, SSE, interface embutida |
+| `web/Hub.cs` | Ponte Engine ↔ navegador: fotografia da fila, log, avisos, senha pedida ao navegador |
+| `web/Auth.cs` | Um usuário, criado na primeira abertura (`auth.json`, PBKDF2-SHA512); limite de tentativas |
+| `web/Uploads.cs` | Upload em blocos com retomada |
+| `web/ui/` | Interface web (HTML/CSS/JS puro), embutida no binário |
+
+## Self-hosted (web)
+
+- **7-Zip**: o core procura `7zz`/`7z` ao lado do programa e no PATH. Na imagem Docker é o `7zip` + `7zip-rar` do Ubuntu; no `.tar.gz` Linux vai o `7zzs` oficial (estático) ao lado do `ferry`.
+- **Progresso ao vivo**: `GET /api/events` (SSE). A cada 250 ms o servidor monta a fotografia da fila (`Hub.Snapshot`) e só manda se mudou; manda também as linhas novas do log e os avisos. Comandos (pausar, retomar, transferir agora…) vão por `POST`.
+- **Senha do arquivo**: o `askPassword` da Engine vira um pedido pendente (`TaskCompletionSource`) que aparece na fotografia; o navegador abre o diálogo e responde em `POST /api/jobs/{id}/password`. Pausar, cancelar ou remover o jogo encerra o pedido.
+- **Login**: cookie `HttpOnly`/`SameSite=Strict`; as chaves do cookie ficam em `/data/keys`, então o login sobrevive a reiniciar o container. Toda a API (fora `/api/auth/*`) exige login.
+- **Upload**: `POST /api/uploads` (nome, tamanho, data) devolve um id estável e o byte onde continuar; `PUT /api/uploads/{id}?offset=N` acrescenta um bloco (offset diferente do servidor → `409` com o offset certo). O parcial fica em `<pasta>/.ferry-upload/` — a Engine só olha a raiz da pasta — e só ganha o nome final inteiro, então um `.exfat` pela metade nunca entra na fila.
+- **Reiniciar**: o que foi enviado e conferido fica em `queue.json` (`Done`); ao reabrir, o jogo com as partes ainda na pasta volta como "Concluído" em vez de entrar na fila de novo. Adicionar os arquivos de novo (arrastar, seletor, upload) tira essa marca.
 
 ## Fluxo de um jogo
 
@@ -74,4 +90,4 @@ Regex por nome de arquivo (`Archives.Group`):
 - `BindingOperations.EnableCollectionSynchronization` deixa a fila ser alterada de threads de fundo.
 - Visual (Fase 2, "Ferry"): tokens e estilos em `App.xaml`; fonte Geist embutida (`app/fonts`, `pack://application:,,,/Ferry;component/fonts/#Geist`), números tabulares na janela toda. A barra de progresso é a "travessia" do logo (cais nas pontas, seta na ponta do progresso); `OnProgress` anima o valor até o novo em 350 ms, e a cor muda por estado com `ColorAnimation` nos `DataTrigger`. O ícone (`Ferry.ico`) usa a mesma geometria 16×16 de `LogoPosts`/`LogoArrow`.
 - **Transferir agora** (`Engine.SendNow`): move o jogo para o topo e o que estava enviando para logo atrás, este volta a `NaFila` e tem o `Cts` cancelado. O `RunAsync` pega o primeiro `NaFila` da lista; o interrompido depois só envia o que falta (mesma retomada da pausa).
-- Fila persistida em `%LOCALAPPDATA%\Ferry\queue.json` (arquivos adicionados e itens removidos).
+- Fila persistida em `queue.json` na pasta de dados (arquivos adicionados, itens removidos, senhas cifradas, envios começados e jogos concluídos).
