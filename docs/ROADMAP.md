@@ -75,10 +75,11 @@ Estado: Fases 1, 1.5 e 2 concluídas. **Próxima: Fase 3 (self-hosted no Docker)
   - toast do Windows → notificação no navegador (e o webhook da Fase 5);
   - `%LOCALAPPDATA%\Ferry` → volume `/data` (`settings.json`, `queue.json`, `log.txt`);
   - `7z.exe`/`7z.dll` → `7zz` do Linux dentro da imagem;
-  - "arrastar e soltar" e o seletor de arquivo → pasta monitorada no volume `/games`, mais upload pelo navegador (a decidir).
+  - "arrastar e soltar" e o seletor de arquivo → os dois caminhos: pasta monitorada no volume `/games` e upload pelo navegador (arrastar para a página).
 - **Rede**: a varredura da sub-rede para achar o PS5 precisa de `network_mode: host`, senão só enxerga a rede interna do Docker.
 - **Entrega**: `Dockerfile` + `docker-compose.yml` de exemplo, imagem publicada no GHCR pelo CI por tag.
-- **A decidir**: manter o app Windows junto ou só a versão web; senha/login na interface web.
+- **Windows e web juntos**: o app WPF continua existindo e usa a mesma biblioteca do núcleo; as duas versões saem em cada release.
+- **Login**: a interface web pede usuário e senha (definidos na primeira abertura), com sessão por cookie.
 - **E2E**: sobe o container, abre a interface com Playwright e repete os cenários de envio contra o servidor FTP falso.
 
 ## Fase 4 — Inglês
