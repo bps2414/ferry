@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- só para o NotifyIcon (toast); sem os usings globais para não conflitar com os nomes do WPF -->
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PS5Sender</AssemblyName>
@@ -17,6 +19,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
     <PackageReference Include="FluentFTP" Version="53.*" />
     <EmbeddedResource Include="tools\7z.exe" LogicalName="7z.exe" />
     <EmbeddedResource Include="tools\7z.dll" LogicalName="7z.dll" />

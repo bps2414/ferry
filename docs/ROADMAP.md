@@ -27,6 +27,12 @@ Decidido em 2026-09-30. Ordem: lógica → UI/marca → payload.
   - salvar atômico;
   - capa/título (jogos falsos ganham `param.sfo` + `icon0.png`).
 - **Releases**: apagar a release `v1.0.0` estável antiga.
+- **Acrescentado em uso real (PPSA11386)**:
+  - log persistente em `log.txt`;
+  - APPE só em parcial começado pelo app;
+  - SIZE conferido após cada envio, com `SELF` desligado;
+  - publicação atômica de `param.json`/`param.sfo`;
+  - aviso de jogo já instalado (ver `FTP-PS5.md`).
 
 ## Fase 2 — Marca e interface: **Ferry**
 

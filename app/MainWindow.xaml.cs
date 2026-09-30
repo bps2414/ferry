@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.IO;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -13,15 +16,28 @@ public partial class MainWindow : Window
     readonly Settings _settings = Settings.Load();
     readonly Engine _engine;
     readonly CancellationTokenSource _stop = new();
+    readonly System.Windows.Forms.NotifyIcon _tray = new();
+    bool _loading; // preenchendo os campos por código: não conta como edição do usuário
+    (string Ip, int Port)? _found; // PS5 achado na varredura, aguardando "Usar este"
 
     public MainWindow()
     {
         InitializeComponent();
         SettingsPanel.DataContext = _settings;
         PwBox.Password = _settings.Password;
+        LoadFields();
         foreach (ComboBoxItem i in Preset.Items) if ((string)i.Tag == _settings.RemoteDir) Preset.SelectedItem = i;
 
+        // toast do Windows via balão da bandeja
+        _tray.Icon = (Environment.ProcessPath is { } exe ? System.Drawing.Icon.ExtractAssociatedIcon(exe) : null) ?? System.Drawing.SystemIcons.Application;
+        _tray.Visible = true;
+
         _engine = new Engine(_settings, Log, AskPassword);
+        _engine.Done = job => Dispatcher.BeginInvoke(() =>
+        {
+            if (job.Stage == Stage.Verificado) Toast("Envio concluído", $"{(job.Title != "" ? job.Title : job.Name)} concluído");
+            else Toast("Erro no envio", $"Erro em {job.Name}: {Short(job.Detail)}");
+        });
         BindingOperations.EnableCollectionSynchronization(_engine.Jobs, _engine.Lock);
         JobList.ItemsSource = _engine.Jobs;
         _engine.Restore();
@@ -34,8 +50,26 @@ public partial class MainWindow : Window
         UpdateStatusCard();
 
         Task.Run(() => _engine.RunAsync(_stop.Token));
-        Loaded += async (_, _) => await TestConnection(silent: true);
-        Closing += (_, _) => { _stop.Cancel(); try { _settings.Save(); } catch { } };
+        Loaded += async (_, _) => { if (!await TestConnection(silent: true)) await Discover(silent: true); };
+        Closing += (_, _) => { _stop.Cancel(); try { _settings.Save(); } catch { } _tray.Visible = false; _tray.Dispose(); };
+    }
+
+    // só avisa com a janela sem foco; chamar na thread da UI
+    void Toast(string title, string text)
+    {
+        if (!IsActive) _tray.ShowBalloonTip(5000, title, text, System.Windows.Forms.ToolTipIcon.Info);
+    }
+
+    static string Short(string s)
+    {
+        var line = s.Split('\n')[0].Trim();
+        return line.Length > 120 ? line[..120] + "…" : line;
+    }
+
+    void Persist()
+    {
+        try { _settings.Save(); }
+        catch (Exception ex) { Log("Falha ao salvar as configurações: " + ex.Message); }
     }
 
     void RefreshSummary()
@@ -70,7 +104,73 @@ public partial class MainWindow : Window
         QueuePage.Visibility = NavQueue.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = NavSettings.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         LogPage.Visibility = NavLog.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        if (NavSettings.IsChecked == true) LoadPasswords(); // o Engine pode ter acrescentado senhas
     }
+
+    void LoadPasswords()
+    {
+        _loading = true;
+        PwList.Text = string.Join(Environment.NewLine, _settings.KnownPasswords);
+        _loading = false;
+    }
+
+    // campos que não usam binding (validam antes de gravar)
+    void LoadFields()
+    {
+        _loading = true;
+        HostBox.Text = _settings.Host;
+        PortBox.Text = _settings.Port.ToString();
+        FolderBox.Text = _settings.InputFolder;
+        _loading = false;
+        Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null);
+    }
+
+    void Validate(TextBox box, TextBlock hint, string? error)
+    {
+        hint.Text = error ?? "";
+        hint.Visibility = error == null ? Visibility.Collapsed : Visibility.Visible;
+        if (error == null) box.ClearValue(Control.BorderBrushProperty);
+        else box.BorderBrush = (Brush)FindResource("Red");
+    }
+
+    void OnHostChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var t = HostBox.Text;
+        var error = t.Length == 0 || t.Any(char.IsWhiteSpace) ? "Informe o IP ou o nome do PS5, sem espaços." : null;
+        Validate(HostBox, HostHint, error);
+        if (error != null || t == _settings.Host) return;
+        _settings.Host = t; Persist(); UpdateStatusCard();
+    }
+
+    void OnPortChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var ok = int.TryParse(PortBox.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535;
+        Validate(PortBox, PortHint, ok ? null : "A porta é um número de 1 a 65535.");
+        if (!ok || port == _settings.Port) return;
+        _settings.Port = port; Persist(); UpdateStatusCard();
+    }
+
+    void OnFolderChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var t = FolderBox.Text;
+        var ok = t.Length == 0 || Directory.Exists(t);
+        Validate(FolderBox, FolderHint, ok ? null : "Essa pasta não existe.");
+        if (!ok || t == _settings.InputFolder) return;
+        _settings.InputFolder = t; Persist();
+    }
+
+    void OnPwListChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        _settings.KnownPasswords = [.. PwList.Text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0)];
+        Persist();
+    }
+
+    // campos com binding (usuário, destino, conexões, apagar originais)
+    void OnSourceUpdated(object s, DataTransferEventArgs e) => Persist();
 
     void UpdateStatusCard()
     {
@@ -78,7 +178,7 @@ public partial class MainWindow : Window
         StatusDest.Text = _settings.RemoteDir;
     }
 
-    async Task TestConnection(bool silent)
+    async Task<bool> TestConnection(bool silent)
     {
         UpdateStatusCard();
         SideTestBtn.IsEnabled = TestBtn.IsEnabled = false;
@@ -90,24 +190,109 @@ public partial class MainWindow : Window
             StatusTitle.Text = "PS5 online"; StatusDot.Fill = (Brush)FindResource("Green");
             TestResult.Text = msg; TestResult.Foreground = (Brush)FindResource("Green");
             Log("Teste de conexão: " + msg);
+            return true;
         }
         catch (Exception ex)
         {
             StatusTitle.Text = "PS5 offline"; StatusDot.Fill = (Brush)FindResource("Red");
             TestResult.Text = "Falhou: " + ex.Message; TestResult.Foreground = (Brush)FindResource("Red");
             Log("Teste de conexão falhou: " + ex.Message);
+            return false;
         }
-        SideTestBtn.IsEnabled = TestBtn.IsEnabled = true;
+        finally { SideTestBtn.IsEnabled = TestBtn.IsEnabled = true; }
     }
 
-    void Log(string msg) => Dispatcher.BeginInvoke(() =>
+    // Varre a /24 de cada interface IPv4 ativa procurando FTP do PS5 (2121 ftpsrv, 1337 etaHEN).
+    static async Task<(string Ip, int Port)?> FindPs5()
     {
-        LogBox.AppendText($"{DateTime.Now:HH:mm:ss}  {msg}\n");
-        LogBox.ScrollToEnd();
-    });
+        var mine = new HashSet<string>();
+        var prefixes = new HashSet<string>();
+        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            foreach (var a in nic.GetIPProperties().UnicastAddresses)
+            {
+                if (a.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                var ip = a.Address.ToString();
+                mine.Add(ip);
+                prefixes.Add(ip[..ip.LastIndexOf('.')]);
+            }
+        }
+        var targets = new List<(string Ip, int Port)>();
+        foreach (var p in prefixes)
+            for (var i = 1; i < 255; i++)
+                if (!mine.Contains($"{p}.{i}")) { targets.Add(($"{p}.{i}", 2121)); targets.Add(($"{p}.{i}", 1337)); }
+
+        (string Ip, int Port)? found = null;
+        using var stop = new CancellationTokenSource();
+        try
+        {
+            await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 128, CancellationToken = stop.Token }, async (t, ct) =>
+            {
+                try
+                {
+                    using var c = new TcpClient();
+                    using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    limit.CancelAfter(400);
+                    await c.ConnectAsync(t.Ip, t.Port, limit.Token);
+                    found ??= t;
+                    stop.Cancel();
+                }
+                catch { } // fechada, sem resposta ou cancelada
+            });
+        }
+        catch (OperationCanceledException) { }
+        return found;
+    }
+
+    // Só oferece o que achou (FoundBar); nunca troca o IP sozinho.
+    async Task Discover(bool silent)
+    {
+        FindBtn.IsEnabled = false;
+        if (!silent) { TestResult.Text = "Procurando o PS5 na rede…"; TestResult.Foreground = (Brush)FindResource("Muted"); }
+        var r = await Task.Run(FindPs5);
+        FindBtn.IsEnabled = true;
+        if (r is { } f && !(f.Ip == _settings.Host && f.Port == _settings.Port))
+        {
+            _found = f;
+            FoundText.Text = $"Achei um PS5 em {f.Ip}:{f.Port}.";
+            FoundBar.Visibility = Visibility.Visible;
+            Log($"PS5 encontrado na rede: {f.Ip}:{f.Port}");
+            if (!silent) TestResult.Text = $"Encontrado {f.Ip}:{f.Port}. Clique em \"Usar este\" na barra lateral.";
+        }
+        else
+        {
+            Log(r is null ? "Nenhum PS5 encontrado na rede" : "PS5 encontrado, mas é o IP já configurado");
+            if (!silent) TestResult.Text = r is null ? "Nenhum PS5 encontrado na rede." : "Um servidor FTP responde no IP e na porta já configurados.";
+        }
+    }
+
+    async void OnFind(object s, RoutedEventArgs e) => await Discover(silent: false);
+
+    async void OnUseFound(object s, RoutedEventArgs e)
+    {
+        if (_found is not { } f) return;
+        FoundBar.Visibility = Visibility.Collapsed;
+        _settings.Host = f.Ip; _settings.Port = f.Port; Persist();
+        LoadFields();
+        await TestConnection(silent: false);
+    }
+
+    void OnDismissFound(object s, RoutedEventArgs e) => FoundBar.Visibility = Visibility.Collapsed;
+
+    void Log(string msg)
+    {
+        FileLog.Write(msg);
+        Dispatcher.BeginInvoke(() =>
+        {
+            LogBox.AppendText($"{DateTime.Now:HH:mm:ss}  {msg}\n");
+            LogBox.ScrollToEnd();
+        });
+    }
 
     Task<string?> AskPassword(Job job) => Dispatcher.InvokeAsync(() =>
     {
+        Toast("Senha necessária", $"\"{job.Name}\" precisa de senha.");
         var wrong = job.ArchivePassword != null;
         var box = new PasswordBox { Margin = new Thickness(0, 12, 0, 18) };
         var ok = new Button { Content = "Extrair", IsDefault = true, MinWidth = 110, Style = (Style)FindResource("AccentButtonStyle") };
@@ -185,26 +370,23 @@ public partial class MainWindow : Window
         Log($"{d.FileNames.Length} arquivo(s) selecionado(s)");
     }
 
-    void OnPwChanged(object s, RoutedEventArgs e) => _settings.Password = PwBox.Password;
+    void OnPwChanged(object s, RoutedEventArgs e)
+    {
+        if (_settings.Password == PwBox.Password) return;
+        _settings.Password = PwBox.Password; Persist();
+    }
 
     void Rebind() { SettingsPanel.DataContext = null; SettingsPanel.DataContext = _settings; }
 
     void OnPreset(object s, SelectionChangedEventArgs e)
     {
-        if (Preset.SelectedItem is ComboBoxItem { Tag: string path } && _settings.RemoteDir != path) { _settings.RemoteDir = path; Rebind(); }
+        if (Preset.SelectedItem is ComboBoxItem { Tag: string path } && _settings.RemoteDir != path) { _settings.RemoteDir = path; Rebind(); Persist(); UpdateStatusCard(); }
     }
 
     void OnPickFolder(object s, RoutedEventArgs e)
     {
         var d = new OpenFolderDialog { Title = "Pasta monitorada" };
-        if (d.ShowDialog() == true) { _settings.InputFolder = d.FolderName; Rebind(); }
-    }
-
-    async void OnSave(object s, RoutedEventArgs e)
-    {
-        _settings.Save();
-        Log("Configurações salvas");
-        await TestConnection(silent: false);
+        if (d.ShowDialog() == true) FolderBox.Text = d.FolderName;
     }
 
     async void OnTest(object s, RoutedEventArgs e) => await TestConnection(silent: false);

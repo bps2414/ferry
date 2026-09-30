@@ -19,7 +19,7 @@ Gera `e2e_report.md` na raiz e sai com código 0 (passou) ou 1 (falhou). Na 1ª 
 
 ## Casos
 
-Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ps5sender-e2e-cache-v1`; mude `GenVersion` ao alterar o gerador).
+Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquivo vazio) dentro de 2 pastas casca, em volumes de 5 MB. São determinísticos e ficam em cache (`%TEMP%\ps5sender-e2e-cache-v2`; cada um tem `param.sfo` real, `param.json` e `icon0.png` de verdade; mude `GenVersion` ao alterar o gerador).
 
 | Caso | Formato |
 |---|---|
@@ -28,14 +28,26 @@ Cada jogo falso tem 6 arquivos (~24 MB incompressíveis, nome com acento, arquiv
 | G3 | `.part1.rar…` (RAR5) |
 | G4 | `.rar` + `.r00…` (RAR4, nomes antigos) |
 | G5 | `.7z.001…` |
-| G6 | `.7z.001…` com senha e cabeçalhos criptografados, adicionado por arrastar-soltar; 1ª senha digitada errada |
+| G6 | `.7z.001…` com senha e cabeçalhos criptografados, adicionado por arrastar-soltar; abre com a 2ª senha conhecida, sem diálogo |
 | G7 | `.rar` único com `PPSA…-app0` + `dec` (o `dec` vem antes no arquivo) |
 
 Para cada caso: todas as partes menos a última → confere que fica “Aguardando partes”; a última chega escrita devagar (simula download) → confere SHA-256 de **cada** arquivo recebido, ausência de arquivos extras, originais apagados.
 
 ## Fases extras (rodada completa)
 
-- **Já no PS5, sem APPE**: `EBOOT.BIN` completo não é extraído nem reenviado; `big.bin` pela metade é reenviado inteiro com `STOR`.
-- **Já no PS5, com APPE**: segundo servidor com `APPE`; só a metade que faltava é enviada.
+Em todos os casos, o E2E também confere capa/título (`param.sfo` + `icon0.png`) e "faltando <volume>" (rar e zip dividido). Confere ainda a publicação atômica: pela ordem do log do servidor, o `RNTO` de `param.json`/`param.sfo` vem depois do último `STOR`/`APPE` do jogo.
+
+- **Já no PS5, sem APPE**: `EBOOT.BIN` completo não é extraído nem reenviado; `big.bin` pela metade, não começado pelo app, é reenviado inteiro com `STOR`.
+- **Já no PS5, com APPE e SELF** (imita o ftpsrv novo, cujo `SIZE` de eboot.bin mente com o `SELF` ligado):
+  - `big.bin` pela metade registrado na fila: só a metade que faltava vai com `APPE`;
+  - `EBOOT.BIN` menor e de outra versão: `STOR` inteiro;
+  - `icon0.png` maior no PS5: fica do tamanho certo.
+- **Jogo já instalado**: avisa sem enviar; "Tentar de novo" reenvia por cima.
+- **Log persistente**: `log.txt` tem comando e resposta de STOR/APPE/SIZE.
+- **Senha aprendida e lembrada** (G6, na fase fechar/reabrir):
+  - diálogo com a 1ª senha errada;
+  - a certa entra nas senhas conhecidas;
+  - ao reabrir sem senhas conhecidas, abre com a senha da fila (DPAPI), sem diálogo.
+- **Salvar atômico**: um `queue.json.tmp` pela metade não atrapalha reabrir.
 - **Fechar e reabrir**: para o engine no meio do envio, cria outro com a mesma `queue.json`; a fila volta sozinha e nada completo é reenviado.
 - **Pausar/retomar** no meio do stream; **remover da fila** e re-adicionar; **testar conexão** com senha certa e errada.

@@ -13,6 +13,8 @@ public class Job : INotifyPropertyChanged
     public List<string> Parts { get; set; } = [];
     public string? ArchivePassword { get; set; }
     public CancellationTokenSource? Cts { get; set; }
+    public bool Installed { get; set; } // destino já tinha o jogo publicado (param.json/sfo com nome final)
+    public bool Force { get; set; }     // usuário mandou reenviar por cima do jogo instalado
 
     Stage _stage;
     public Stage Stage
@@ -47,6 +49,10 @@ public class Job : INotifyPropertyChanged
     string _detail = ""; public string Detail { get => _detail; set { _detail = value; Changed(); } }
     string _stats = ""; public string Stats { get => _stats; set { _stats = value; Changed(); } }
     string _file = ""; public string CurrentFile { get => _file; set { _file = value; Changed(); } }
+    // do sce_sys/param.sfo e icon0.png de dentro do arquivo ("" / null = não deu para ler)
+    string _title = ""; public string Title { get => _title; set { _title = value; Changed(); } }
+    string _titleId = ""; public string TitleId { get => _titleId; set { _titleId = value; Changed(); } }
+    byte[]? _icon; public byte[]? Icon { get => _icon; set { _icon = value; Changed(); } }
     public double Rate { get; private set; } // bytes/s, lido pelo resumo da janela
 
     // Chamado de várias threads e a cada poucos KB: atualiza a UI no máximo 4x/s (senão o dispatcher do WPF afoga).

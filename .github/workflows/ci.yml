@@ -13,20 +13,21 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      # versões que rodam em Node 24
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - run: pip install pyftpdlib
 
       # Rar.exe (só para gerar os arquivos de teste) é baixado do rarlab.com pelo E2E
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: e2e/tools
           key: rar-6.24
@@ -41,7 +42,7 @@ jobs:
       - name: Publicar exe
         run: dotnet publish app -c Release -o dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: PS5Sender
           path: dist/PS5Sender.exe

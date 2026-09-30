@@ -13,9 +13,18 @@ public class ArchiveGroup
     public SortedDictionary<int, string> Vols = []; // volumes numerados
     public int FirstIndex = 1;                     // .r00 começa em 0
     public bool PlainIsMain;                       // .z01+.zip e .r00+.rar abrem pelo arquivo sem número
+    public Func<int, string>? VolName;             // nome do volume N (do padrão do 1º volume visto)
 
     public IEnumerable<string> Parts => Plain is null ? Vols.Values : Vols.Values.Append(Plain);
     public string? Main => PlainIsMain || Vols.Count == 0 ? Plain : Vols.GetValueOrDefault(FirstIndex);
+
+    /// Nomes que faltam pela numeração (buracos e o arquivo principal). O último volume só o 7z percebe.
+    public List<string> Missing()
+    {
+        var miss = Vols.Count == 0 ? [] : Enumerable.Range(FirstIndex, Vols.Keys.Max() - FirstIndex + 1).Where(i => !Vols.ContainsKey(i)).Select(VolName!).ToList();
+        if (PlainIsMain && Plain is null) miss.Add(Path.GetFileName(Key));
+        return miss;
+    }
 
     public bool CompleteByName
     {
@@ -65,6 +74,8 @@ public static class Archives
                 var idx = int.Parse(m.Groups["i"].Value);
                 var g = Get(dir, m.Groups["n"].Value, ext);
                 g.Vols[idx] = f; g.FirstIndex = first; g.PlainIsMain |= plainIsMain;
+                var gi = m.Groups["i"];
+                g.VolName ??= n => fn[..gi.Index] + n.ToString("D" + gi.Length) + fn[(gi.Index + gi.Length)..];
                 matched = true; break;
             }
             if (matched) continue;
@@ -100,8 +111,8 @@ public static class Archives
         return Process.Start(psi)!;
     }
 
-    /// <summary>Lista o conteúdo (7z l -slt). Entries só vêm preenchidas quando Ok.</summary>
-    public static async Task<(ListResult result, List<Entry> entries)> ListAsync(string main, string? pw)
+    /// <summary>Lista o conteúdo (7z l -slt). Entries só vêm preenchidas quando Ok; missing = volumes que o 7z diz faltar.</summary>
+    public static async Task<(ListResult result, List<Entry> entries, string[] missing)> ListAsync(string main, string? pw)
     {
         using var p = Start("l", "-slt", "-sccUTF-8", Pw(pw), main);
         var outTask = p.StandardOutput.ReadToEndAsync();
@@ -109,8 +120,9 @@ public static class Archives
         var output = await outTask;
         var all = output + err;
         await p.WaitForExitAsync();
-        if (all.Contains("Wrong password") || all.Contains("Can not open encrypted archive")) return (ListResult.NeedPassword, []);
-        if (p.ExitCode != 0 || Regex.IsMatch(all, "Unexpected end|Missing volume|Headers Error|Can not open|ERROR", RegexOptions.IgnoreCase)) return (ListResult.Incomplete, []);
+        if (all.Contains("Wrong password") || all.Contains("Can not open encrypted archive")) return (ListResult.NeedPassword, [], []);
+        if (p.ExitCode != 0 || Regex.IsMatch(all, "Unexpected end|Missing volume|Headers Error|Can not open|ERROR", RegexOptions.IgnoreCase))
+            return (ListResult.Incomplete, [], [.. Regex.Matches(all, @"Missing volume : (.+?)\r?$", RegexOptions.Multiline).Select(m => m.Groups[1].Value).Distinct()]);
 
         // Depois de "----------" vem um bloco "Chave = valor" por item, separados por linha em branco.
         var entries = new List<Entry>();
@@ -122,7 +134,43 @@ public static class Archives
             var isDir = kv.GetValueOrDefault("Folder") == "+" || kv.GetValueOrDefault("Attributes", "").StartsWith('D');
             entries.Add(new(path.Replace('\\', '/'), isDir ? 0 : long.Parse(kv.GetValueOrDefault("Size") is { Length: > 0 } s ? s : "0"), isDir, kv.GetValueOrDefault("Encrypted") == "+"));
         }
-        return (ListResult.Ok, entries);
+        return (ListResult.Ok, entries, []);
+    }
+
+    /// <summary>Extrai itens pequenos para a memória (mesmo "7z x -so" do envio). null = não deu.</summary>
+    public static async Task<byte[][]?> ReadSmallAsync(string main, string? pw, List<Entry> items)
+    {
+        var list = Path.Combine(Path.GetTempPath(), $"ps5sender-{Guid.NewGuid():N}.txt");
+        try
+        {
+            File.WriteAllLines(list, items.Select(e => e.Path.Replace('/', '\\')));
+            using var p = OpenStream(main, pw, list);
+            _ = p.StandardError.ReadToEndAsync();
+            var s = p.StandardOutput.BaseStream;
+            // o 7z entrega na ordem do arquivo, que é a ordem de items (vêm da listagem)
+            var res = new byte[items.Count][];
+            for (var i = 0; i < items.Count; i++) { res[i] = new byte[items[i].Size]; await s.ReadExactlyAsync(res[i]); }
+            await p.WaitForExitAsync();
+            return p.ExitCode == 0 ? res : null;
+        }
+        catch { return null; }
+        finally { try { File.Delete(list); } catch { } }
+    }
+
+    /// <summary>TITLE e TITLE_ID de um param.sfo (formato PSF). ("", "") se não der para ler.</summary>
+    public static (string title, string titleId) ParseSfo(byte[] b)
+    {
+        try
+        {
+            if (b.Length < 20 || Encoding.ASCII.GetString(b, 0, 4) != "\0PSF") return ("", "");
+            int keys = BitConverter.ToInt32(b, 8), data = BitConverter.ToInt32(b, 12), n = BitConverter.ToInt32(b, 16);
+            string Z(int o) => Encoding.UTF8.GetString(b, o, Array.IndexOf(b, (byte)0, o) - o);
+            var kv = Enumerable.Range(0, n).Select(k => 20 + 16 * k).ToDictionary(
+                e => Z(keys + BitConverter.ToUInt16(b, e)),
+                e => Encoding.UTF8.GetString(b, data + BitConverter.ToInt32(b, e + 12), BitConverter.ToInt32(b, e + 4)).TrimEnd('\0'));
+            return (kv.GetValueOrDefault("TITLE", ""), kv.GetValueOrDefault("TITLE_ID", ""));
+        }
+        catch { return ("", ""); }
     }
 
     /// <summary>Testa a senha só no primeiro arquivo criptografado (barato), para não mandar lixo ao FTP.</summary>

@@ -6,7 +6,7 @@ namespace PS5Sender;
 
 public static class Ftp
 {
-    const int SmallFile = 4 << 20; // até 4 MB: buffer em RAM e envio em paralelo; acima: stream direto
+    public const int SmallFile = 4 << 20; // até 4 MB: buffer em RAM e envio em paralelo; acima: stream direto
 
     static AsyncFtpClient Client(Settings s)
     {
@@ -15,6 +15,19 @@ public static class Ftp
         c.Config.DataConnectionType = FtpDataConnectionType.PASV; // ftpsrv não tem EPSV
         c.Encoding = System.Text.Encoding.UTF8; // sem FEAT o FluentFTP cairia em ASCII e trocaria acentos por "?"
         c.Config.TransferChunkSize = 1 << 20;
+        return c;
+    }
+
+    /// <summary>
+    /// Conecta e desliga o "SELF transfer mode" do ftpsrv novo (ps5-payload-dev): ligado por padrão, faz o SIZE
+    /// de um SELF (eboot.bin, .sprx) devolver o tamanho do ELF de dentro, não o do arquivo. É um liga/desliga.
+    /// </summary>
+    static async Task<AsyncFtpClient> Open(Settings s, CancellationToken ct)
+    {
+        var c = Client(s);
+        await c.Connect(ct);
+        if ((await c.Execute("SELF", ct)).Message.Contains("enabled")) await c.Execute("SELF", ct); // estava desligado: volta
+        await c.Execute("TYPE I", ct); // SIZE em modo ASCII é recusado por vários servidores
         return c;
     }
 
@@ -28,59 +41,59 @@ public static class Ftp
     }
 
     /// <summary>
-    /// O que já está no PS5: tamanho remoto de cada item (-1 = não existe / fora do jogo) e se o servidor aceita APPE.
+    /// Tamanho remoto de cada caminho (-1 = não existe / null no array) e se o servidor aceita APPE.
     /// Usa SIZE arquivo a arquivo: o LIST do ftpsrv ignora caminhos começando com "-" e não lista recursivo.
     /// </summary>
-    public static async Task<(long[] have, bool append, string probe)> RemoteStateAsync(Settings s, List<Entry> entries, string?[] targets, string remoteDir, CancellationToken ct, bool noAppend = false)
+    public static async Task<(long[] have, bool append, string probe)> RemoteStateAsync(Settings s, string?[] paths, CancellationToken ct, bool noAppend = false)
     {
-        await using var c = Client(s);
-        await c.Connect(ct);
-        // ftpsrv responde 502 (não implementado); servidor com APPE reclama só da falta de argumento (501).
+        await using var c = await Open(s, ct);
+        // ftpsrv antigo responde 502 (não implementado); servidor com APPE reclama só da falta de argumento (501).
         var reply = await c.Execute("APPE", ct);
         var append = !noAppend && reply.Code == "501";
         var probe = $"APPE sem argumento → {reply.Code} {reply.Message}".Trim();
-        var have = new long[entries.Count];
-        await c.Execute("TYPE I", ct); // SIZE em modo ASCII é recusado por vários servidores
-        for (var i = 0; i < entries.Count; i++)
-        {
-            have[i] = -1;
-            if (targets[i] is not { } r) continue;
-            // SIZE direto: sem FEAT o FluentFTP não sabe que o servidor tem SIZE e o GetFileSize devolve -1
-            var sz = await c.Execute("SIZE " + remoteDir + "/" + r, ct);
-            if (sz.Code == "213" && long.TryParse(sz.Message.Trim(), out var size)) have[i] = size;
-        }
+        var have = new long[paths.Length];
+        for (var i = 0; i < paths.Length; i++)
+            have[i] = paths[i] is { } p ? await Size(c, p, ct) : -1;
         return (have, append, probe);
+    }
+
+    // SIZE direto: sem FEAT o FluentFTP não sabe que o servidor tem SIZE e o GetFileSize devolve -1
+    static async Task<long> Size(AsyncFtpClient c, string path, CancellationToken ct)
+    {
+        var r = await c.Execute("SIZE " + path, ct);
+        FileLog.Write($"SIZE {path} → {r.Code} {r.Message}");
+        return r.Code == "213" && long.TryParse(r.Message.Trim(), out var n) ? n : -1;
     }
 
     /// <summary>
     /// Lê a saída do "7z x -so" com SÓ os itens em need (na ordem do arquivo) e manda cada um direto para o FTP.
-    /// Nada é gravado em disco. Arquivo parcial: continua com APPE se o servidor aceitar, senão reenvia inteiro.
+    /// Nada é gravado em disco. Parcial com have[i] &gt; 0: continua com APPE (se append), senão reenvia inteiro.
+    /// Depois de cada arquivo confere o SIZE; lenient(i) = divergência vira aviso no log em vez de erro.
+    /// started(i) é chamado antes de mandar um arquivo grande (é o que pode ficar parcial e ser continuado).
     /// </summary>
-    public static async Task StreamAsync(Settings s, Stream src, List<Entry> entries, string?[] targets, long[] have, bool append,
-        List<int> need, string remoteDir, Action<long, long> progress, Action<string> currentFile, CancellationToken ct)
+    public static async Task StreamAsync(Settings s, Stream src, List<Entry> entries, string?[] paths, long[] have, bool append,
+        List<int> need, Action<long, long> progress, Action<string> currentFile, Action<int> started, Func<int, bool> lenient, Action<string> log, CancellationToken ct)
     {
-        var total = entries.Where((e, i) => targets[i] != null).Sum(e => e.Size);
-        long done = entries.Where((e, i) => targets[i] != null && have[i] == e.Size).Sum(e => e.Size);
+        var total = entries.Where((e, i) => paths[i] != null).Sum(e => e.Size);
+        long done = entries.Where((e, i) => paths[i] != null && have[i] == e.Size).Sum(e => e.Size);
         void Add(long n) => progress(Interlocked.Add(ref done, n), total);
         Add(0);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var tk = cts.Token;
-        await using var main = Client(s);
-        await main.Connect(tk);
-        foreach (var d in need.Select(i => remoteDir + "/" + targets[i]).Select(p => p[..p.LastIndexOf('/')]).Append(remoteDir).Distinct())
+        await using var main = await Open(s, tk);
+        foreach (var d in need.Select(i => paths[i]!).Select(p => p[..p.LastIndexOf('/')]).Distinct())
             await main.CreateDirectory(d, true, tk);
 
         var workers = Math.Max(1, s.Connections - 1); // + a conexão "main" = s.Connections no total
-        var ch = Channel.CreateBounded<(string path, byte[] data, bool append)>(workers * 2);
+        var ch = Channel.CreateBounded<(int i, byte[] data, bool append)>(workers * 2);
         var pool = Enumerable.Range(0, workers).Select(async _ =>
         {
             try
             {
-                await using var c = Client(s);
-                await c.Connect(tk);
-                await foreach (var (path, data, app) in ch.Reader.ReadAllAsync(tk))
-                    await Put(c, new Slice(new MemoryStream(data), data.Length, Add), path, app, tk);
+                await using var c = await Open(s, tk);
+                await foreach (var (i, data, app) in ch.Reader.ReadAllAsync(tk))
+                    await Put(c, new Slice(new MemoryStream(data), data.Length, Add), paths[i]!, app, entries[i].Size, lenient(i), log, tk);
             }
             catch { cts.Cancel(); throw; }
         }).ToList();
@@ -95,9 +108,8 @@ public static class Ftp
 
             foreach (var i in need)
             {
-                var (e, rel) = (entries[i], targets[i]!);
-                var path = remoteDir + "/" + rel;
-                currentFile(rel);
+                var (e, path) = (entries[i], paths[i]!);
+                currentFile(path);
                 var off = append && have[i] > 0 && have[i] < e.Size ? have[i] : 0;
                 if (off > 0) { await Skip(off); Add(off); }
                 var len = e.Size - off;
@@ -105,9 +117,9 @@ public static class Ftp
                 {
                     var data = new byte[len];
                     await src.ReadExactlyAsync(data, tk);
-                    await ch.Writer.WriteAsync((path, data, off > 0), tk);
+                    await ch.Writer.WriteAsync((i, data, off > 0), tk);
                 }
-                else await Put(main, new Slice(src, len, Add), path, off > 0, tk);
+                else { started(i); await Put(main, new Slice(src, len, Add), path, off > 0, e.Size, lenient(i), log, tk); }
             }
             if (await src.ReadAsync(buf, tk) > 0) throw new Exception("Saída do 7-Zip maior que a listagem");
             ch.Writer.Complete();
@@ -121,21 +133,43 @@ public static class Ftp
         catch (EndOfStreamException) { throw new Exception("Saída do 7-Zip terminou antes do esperado"); }
     }
 
-    static async Task Put(AsyncFtpClient c, Stream data, string path, bool append, CancellationToken ct)
+    static async Task Put(AsyncFtpClient c, Stream data, string path, bool append, long expected, bool lenient, Action<string> log, CancellationToken ct)
     {
+        var cmd = append ? "APPE" : "STOR";
         // Stream de baixo nível: só TYPE + PASV + STOR/APPE. O UploadStream checa existência com NLST,
         // que o ftpsrv do PS5 não implementa (502 Command not recognized).
         try
         {
-            await using var s = append ? await c.OpenAppend(path, FtpDataType.Binary, false, ct) : await c.OpenWrite(path, FtpDataType.Binary, false, ct);
-            await data.CopyToAsync(s, 1 << 20, ct);
+            await using (var s = append ? await c.OpenAppend(path, FtpDataType.Binary, false, ct) : await c.OpenWrite(path, FtpDataType.Binary, false, ct))
+                await data.CopyToAsync(s, 1 << 20, ct);
+            var reply = await c.GetReply(ct); // resposta final (226/4xx/5xx): o Dispose do stream não lê
+            FileLog.Write($"{cmd} {path} → {reply.Code} {reply.Message}");
+            if (!reply.Success) throw new Exception($"{reply.Code} {reply.Message}");
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
+            FileLog.Write($"{cmd} {path} → falhou: {Flatten(e)}");
             // stream do 7z acabou antes: o erro real é do 7z (a Engine mostra o stderr dele)
             if (e.GetBaseException() is EndOfStreamException) throw new Exception("Saída do 7-Zip terminou antes do esperado", e);
-            throw new Exception($"Falha ao enviar {path} ({(append ? "APPE" : "STOR")}): {Flatten(e)}", e);
+            throw new Exception($"Falha ao enviar {path} ({cmd}): {Flatten(e)}", e);
         }
+        // O servidor pode responder 226 e o arquivo não mudar (arquivo aberto pelo jogo/loader, overlay de backport).
+        var got = await Size(c, path, ct);
+        if (got == expected) return;
+        var msg = $"{path}: esperado {expected} bytes, no PS5 {got}";
+        if (lenient) { log("Aviso (backport do loader?) " + msg); return; }
+        throw new Exception($"o PS5 não deixou sobrescrever {path} — o jogo/loader está usando? (esperado {expected} bytes, no PS5 {got})");
+    }
+
+    /// <summary>RNFR/RNTO. Apaga o destino antes (nem todo servidor renomeia por cima).</summary>
+    public static async Task RenameAsync(Settings s, string from, string to, CancellationToken ct)
+    {
+        await using var c = await Open(s, ct);
+        if (await Size(c, to, ct) >= 0) FileLog.Write($"DELE {to} → {(await c.Execute("DELE " + to, ct)).Code}");
+        var r1 = await c.Execute("RNFR " + from, ct);
+        var r2 = r1.Success ? await c.Execute("RNTO " + to, ct) : r1;
+        FileLog.Write($"RNFR {from} → {r1.Code}; RNTO {to} → {r2.Code} {r2.Message}");
+        if (!r2.Success) throw new Exception($"Não renomeou {from} para {to}: {r2.Code} {r2.Message}");
     }
 
     /// <summary>Mensagens da exceção e de todas as internas ("See InnerException" não ajuda ninguém).</summary>
@@ -145,14 +179,6 @@ public static class Ftp
         for (Exception? x = e; x != null; x = x.InnerException)
             if (!x.Message.Contains("See InnerException") && !msgs.Contains(x.Message)) msgs.Add(x.Message);
         return string.Join(" → ", msgs);
-    }
-
-    /// <summary>Confere o tamanho remoto de cada arquivo do jogo.</summary>
-    public static async Task VerifyAsync(Settings s, List<Entry> entries, string?[] targets, string remoteDir, CancellationToken ct)
-    {
-        var (have, _, _) = await RemoteStateAsync(s, entries, targets, remoteDir, ct);
-        var bad = entries.Where((e, i) => targets[i] != null && have[i] != e.Size).Select(e => e.Path).ToList();
-        if (bad.Count > 0) throw new Exception($"Tamanho remoto divergente em {bad.Count} arquivo(s): " + string.Join(", ", bad.Take(5)));
     }
 
     /// <summary>Janela de leitura de exatamente len bytes sobre outro stream, contando o que foi lido.</summary>

@@ -25,7 +25,7 @@ string Dir(string name) => Directory.CreateDirectory(Path.Combine(work, name)).F
 var input = Dir("input"); var dropped = Dir("dropped"); var ftpRoot = Dir("ftproot");
 // Jogos falsos e arquivos compactados são determinísticos: ficam em cache entre rodadas.
 // Mude GenVersion quando mexer no gerador.
-const string GenVersion = "v1";
+const string GenVersion = "v2";
 var cache = Path.Combine(Path.GetTempPath(), "ps5sender-e2e-cache-" + GenVersion);
 var cached = File.Exists(Path.Combine(cache, "ok"));
 if (!cached && Directory.Exists(cache)) Directory.Delete(cache, true);
@@ -34,6 +34,9 @@ var archives = Directory.CreateDirectory(Path.Combine(cache, "archives")).FullNa
 const string RemoteDir = "/mnt/ext1/homebrew";
 const long Vol = 5_000_000;
 var sw = Stopwatch.StartNew();
+// nada do E2E toca o settings.json / log.txt reais do usuário
+Settings.FilePath = Path.Combine(work, "settings.json");
+FileLog.FilePath = Path.Combine(work, "log.txt");
 
 await EnsureRar();
 
@@ -61,9 +64,11 @@ for (var i = 0; i < cases.Length; i++)
     if (cached) continue;
     var rnd = new Random(1000 + i); // determinístico: repetível
     void Put(string rel, int size) { var p = Path.Combine(g, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); var b = new byte[size]; rnd.NextBytes(b); File.WriteAllBytes(p, b); }
+    void PutBytes(string rel, byte[] b) { var p = Path.Combine(g, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); File.WriteAllBytes(p, b); }
     Put("EBOOT.BIN", 1_200_000);
-    Put(@"sce_sys\param.sfo", 4_096);
-    Put(@"sce_sys\icon0.png", 150_000);
+    PutBytes(@"sce_sys\param.sfo", Sfo(("TITLE", $"Jogo Teste {i + 1}"), ("TITLE_ID", $"PPSA0{i + 1:0000}")));
+    PutBytes(@"sce_sys\param.json", Encoding.UTF8.GetBytes($"{{\"titleId\":\"PPSA0{i + 1:0000}\"}}"));
+    PutBytes(@"sce_sys\icon0.png", Png(1000 + i));
     Put(@"data\big.bin", 22_000_000);
     Put(@"data\sub pasta\ação çõ.dat", 777_777);
     Put(@"data\vazio.bin", 0);
@@ -108,7 +113,8 @@ if (!full) cases = cases.Where(c => only.Contains(Path.GetFileNameWithoutExtensi
 // Principal imita o ftpsrv do PS5: sem APPE (parcial precisa ser reenviado inteiro).
 var (ftp, port, ftpLog) = StartFtp(ftpRoot, appe: false);
 
-var settings = new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "ps5pass", InputFolder = input, RemoteDir = RemoteDir, Connections = 4, DeleteOriginal = true };
+var settings = new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "ps5pass", InputFolder = input, RemoteDir = RemoteDir, Connections = 4, DeleteOriginal = true,
+    KnownPasswords = ["nao-e-esta", "senha123"] }; // G6 abre com a 2ª, sem diálogo
 var testMsg = await Ftp.TestAsync(settings);
 var badLogin = "";
 try { await Ftp.TestAsync(new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "errada", RemoteDir = RemoteDir }); badLogin = "aceitou senha errada (FALHA)"; }
@@ -153,7 +159,7 @@ for (var t0 = DateTime.UtcNow; DateTime.UtcNow - t0 < TimeSpan.FromSeconds(15); 
 {
     bool settled;
     lock (engine.Lock)
-        settled = cases.Where(c => partCount[c.archive] > 1).All(c => engine.Jobs.Any(j => j.Name == Path.GetFileNameWithoutExtension(c.archive) && j.Detail.Contains("altam")));
+        settled = cases.Where(c => partCount[c.archive] > 1).All(c => engine.Jobs.Any(j => j.Name == Path.GetFileNameWithoutExtension(c.archive) && (j.Detail.Contains("altam") || j.Detail.Contains("faltando"))));
     if (settled) break;
 }
 await Task.Delay(1000); // margem: nenhum deve sair de "aguardando" sozinho
@@ -176,9 +182,14 @@ foreach (var c in cases)
 {
     var name = Path.GetFileNameWithoutExtension(c.archive);
     Job? j; lock (engine.Lock) j = engine.Jobs.FirstOrDefault(x => x.Name == name);
+    // rar e zip dividido: o 7z diz qual volume falta e o card mostra "faltando <volume>"
+    var held = Path.GetFileName(heldBack[c.archive])[(name.Length + 1)..];
+    var namesMissing = name is "G2" or "G3" or "G4";
     waited[c.archive] = partCount[c.archive] == 1
         ? j == null ? "ok" : $"FALHA ({j.Stage})"
-        : j?.Stage == Stage.AguardandoPartes ? "ok" : $"FALHA ({j?.Stage.ToString() ?? "sem card"})";
+        : j?.Stage != Stage.AguardandoPartes ? $"FALHA ({j?.Stage.ToString() ?? "sem card"})"
+        : namesMissing && j.Detail != "faltando " + held ? $"FALHA (detalhe \"{j.Detail}\", esperado \"faltando {held}\")"
+        : namesMissing ? $"ok (\"{j.Detail}\")" : "ok";
 }
 
 // Fase 2: chega o último volume, escrito devagar (como um download em andamento): 5 pedaços a cada 500 ms.
@@ -226,7 +237,17 @@ await run;
 
 // ---------- verificação ----------
 var rows = new List<string>();
-var allOk = waited.Values.All(v => v == "ok") && testMsg.StartsWith("Conectado") && badLogin.StartsWith("rejeitou");
+var allOk = waited.Values.All(v => v.StartsWith("ok")) && testMsg.StartsWith("Conectado") && badLogin.StartsWith("rejeitou");
+// o log do pyftpdlib no Windows usa "\" nos caminhos
+List<string> Lines(List<string> log, string cmd, string pathPart) { lock (log) return log.Where(l => l.Contains(cmd + " ") && l.Replace('\\', '/').Contains(pathPart)).ToList(); }
+// Publicação atômica: param.json/param.sfo só ganham o nome final (RNTO) depois do último STOR/APPE do jogo.
+string PublishOrder(List<string> log, string game)
+{
+    List<string> all; lock (log) all = [.. log.Select(l => l.Replace('\\', '/'))];
+    var lastPut = all.FindLastIndex(l => (l.Contains("STOR ") || l.Contains("APPE ")) && l.Contains("/" + game + "/"));
+    var renames = new[] { "param.json", "param.sfo" }.Select(f => all.FindIndex(l => l.Contains("RNTO ") && l.Contains("/" + game + "/sce_sys/" + f))).ToList();
+    return renames.All(r => r > lastPut && lastPut >= 0) ? "ok" : $"FALHA (último STOR/APPE na linha {lastPut}, RNTO param.json/sfo nas linhas {string.Join("/", renames)})";
+}
 foreach (var c in cases)
 {
     var name = Path.GetFileNameWithoutExtension(c.archive);
@@ -241,15 +262,17 @@ foreach (var c in cases)
     });
     var extra = Directory.Exists(remoteGame) ? Directory.GetFiles(remoteGame, "*", SearchOption.AllDirectories).Length - files.Length : -1;
     var origDeleted = !Directory.GetFiles(c.dropIn ? dropped : input).Any(f => Path.GetFileName(f).StartsWith(name + "."));
-    var pwOk = c.pw == null ? passwordAsked.Contains(name) ? "pediu sem precisar" : "n/a" : passwordAsked.Count(n => n == name) == 2 ? "pedida 2x (1ª errada)" : $"pedida {passwordAsked.Count(n => n == name)}x (esperado 2)";
-    var ok = j?.Stage == Stage.Verificado && okHashes == files.Length && extra == 0 && origDeleted && waited[c.archive] == "ok" && pwOk is "n/a" or "pedida 2x (1ª errada)";
+    var pwOk = passwordAsked.Contains(name) ? $"diálogo aberto {passwordAsked.Count(n => n == name)}x (esperado 0)" : c.pw == null ? "n/a" : "senha conhecida, sem diálogo";
+    var gi = Array.IndexOf(cases, c) + 1;
+    var coverOk = j != null && j.Title == $"Jogo Teste {gi}" && j.TitleId == $"PPSA0{gi:0000}" && j.Icon is { } icon && icon.SequenceEqual(File.ReadAllBytes(Path.Combine(g, "sce_sys", "icon0.png")));
+    var cover = coverOk ? $"{j!.TitleId} · {j.Title} · capa ok" : $"FALHA (\"{j?.Title}\" / \"{j?.TitleId}\" / capa {j?.Icon?.Length ?? 0} bytes)";
+    var order = PublishOrder(ftpLog, Path.GetFileName(g));
+    var ok = j?.Stage == Stage.Verificado && okHashes == files.Length && extra == 0 && origDeleted && waited[c.archive].StartsWith("ok") && !pwOk.StartsWith("diálogo") && coverOk && order == "ok";
     allOk &= ok;
-    rows.Add($"| {c.format} | {partCount[c.archive]} (`{Path.GetFileName(heldBack[c.archive])}` chegou por último) | {waited[c.archive]} | {j?.StageText ?? "—"} | {okHashes}/{files.Length}{(extra != 0 ? $" (extras: {extra})" : "")} | {pwOk} | {(origDeleted ? "sim" : "não")} | {(ok ? "✅ OK" : "❌ FALHA" + (j?.Detail is { Length: > 0 } d ? ": " + d : ""))} |");
+    rows.Add($"| {c.format} | {partCount[c.archive]} (`{Path.GetFileName(heldBack[c.archive])}` chegou por último) | {waited[c.archive]} | {j?.StageText ?? "—"} | {okHashes}/{files.Length}{(extra != 0 ? $" (extras: {extra})" : "")} | {pwOk} | {cover} | {order} | {(origDeleted ? "sim" : "não")} | {(ok ? "✅ OK" : "❌ FALHA" + (j?.Detail is { Length: > 0 } d ? ": " + d : ""))} |");
 }
 // pyftpdlib registra "STOR/APPE <caminho> completed=1 bytes=N".
 static long Bytes(IEnumerable<string> lines) => lines.Sum(l => long.Parse(System.Text.RegularExpressions.Regex.Match(l, @"bytes=(\d+)").Groups[1].Value));
-// o log do pyftpdlib no Windows usa "\" nos caminhos
-List<string> Lines(List<string> log, string cmd, string pathPart) { lock (log) return log.Where(l => l.Contains(cmd + " ") && l.Replace('\\', '/').Contains(pathPart)).ToList(); }
 var g1Name = Path.GetFileName(gameDirs["G1.zip"]);
 
 // ---------- fases extras (só na rodada completa) ----------
@@ -263,36 +286,73 @@ var resumeOk = Lines(ftpLog, "APPE", g1Name).Count == 0 && bigStor.Count == 1 &&
     && Sha(g1Remote) == Sha(Path.Combine(gameDirs["G1.zip"], "data", "big.bin"));
 var resumeLine = $"big.bin STOR {bigStor.Count}x ({Bytes(bigStor)} bytes), EBOOT.BIN STOR {ebootStor}x";
 
-// ---------- servidor COM APPE: parcial continua de onde parou ----------
+// ---------- servidor COM APPE (ftpsrv novo, com SELF ligado por padrão) ----------
+// big.bin pela metade, começado por ESTE app (registrado na fila) → continua com APPE.
+// EBOOT.BIN menor e diferente (outra versão, não é nosso) → STOR inteiro. icon0.png maior → STOR, fica do tamanho certo.
 var appeRoot = Dir("ftproot-appe");
 var (ftp2, port2, ftp2Log) = StartFtp(appeRoot, appe: true);
 var inAppe = Dir("input-appe");
 File.Copy(Path.Combine(archives, "G7.rar", "G7.rar"), Path.Combine(inAppe, "G7.rar"));
 var g7Name = Path.GetFileName(gameDirs["G7.rar"]);
-var g7Big = Path.Combine(appeRoot, "mnt", "ext1", "homebrew", g7Name, "data", "big.bin");
-Directory.CreateDirectory(Path.GetDirectoryName(g7Big)!);
-var g7BigLocal = File.ReadAllBytes(Path.Combine(gameDirs["G7.rar"], "data", "big.bin"));
-File.WriteAllBytes(g7Big, g7BigLocal[..(g7BigLocal.Length / 2)]);
+var g7Remote = Path.Combine(appeRoot, "mnt", "ext1", "homebrew", g7Name);
+byte[] Local7(string rel) => File.ReadAllBytes(Path.Combine(gameDirs["G7.rar"], rel));
+void Remote7(string rel, byte[] b) { var p = Path.Combine(g7Remote, rel); Directory.CreateDirectory(Path.GetDirectoryName(p)!); File.WriteAllBytes(p, b); }
+var g7BigLocal = Local7(@"data\big.bin");
+Remote7(@"data\big.bin", g7BigLocal[..(g7BigLocal.Length / 2)]);
+var otherVersion = new byte[Local7("EBOOT.BIN").Length / 2]; new Random(7).NextBytes(otherVersion);
+Remote7("EBOOT.BIN", otherVersion);
+var bigger = new byte[Local7(@"sce_sys\icon0.png").Length * 2]; new Random(8).NextBytes(bigger);
+Remote7(@"sce_sys\icon0.png", bigger);
+var qAppe = Path.Combine(work, "queue-appe.json");
+File.WriteAllText(qAppe, System.Text.Json.JsonSerializer.Serialize(new
+{
+    Dropped = Array.Empty<string>(), Removed = Array.Empty<string>(), Passwords = new Dictionary<string, string>(),
+    Started = new Dictionary<string, Dictionary<string, long>> { [Path.Combine(inAppe, "G7.rar")] = new() { [$"{RemoteDir}/{g7Name}/data/big.bin"] = g7BigLocal.Length } },
+}));
 var sAppe = new Settings { Host = "127.0.0.1", Port = port2, User = "ps5", Password = "ps5pass", InputFolder = inAppe, RemoteDir = RemoteDir, Connections = 4 };
-var eAppe = new Engine(sAppe, m => Console.WriteLine("[appe] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-appe.json") };
+var eAppe = new Engine(sAppe, m => Console.WriteLine("[appe] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = qAppe };
+eAppe.Restore();
 await RunUntil(eAppe, j => j.Name == "G7" && j.Stage is Stage.Verificado or Stage.Erro, TimeSpan.FromMinutes(2));
 var appeBytes = Bytes(Lines(ftp2Log, "APPE", g7Name + "/data/big.bin"));
-var appeSame = SameFiles(gameDirs["G7.rar"], Path.Combine(appeRoot, "mnt", "ext1", "homebrew", g7Name));
-var appeOk = appeBytes == g7BigLocal.Length - g7BigLocal.Length / 2 && appeSame == Directory.GetFiles(gameDirs["G7.rar"], "*", SearchOption.AllDirectories).Length;
+var ebootStor7 = Lines(ftp2Log, "STOR", g7Name + "/EBOOT.BIN");
+var g7Files = Directory.GetFiles(gameDirs["G7.rar"], "*", SearchOption.AllDirectories).Length;
+var appeSame = SameFiles(gameDirs["G7.rar"], g7Remote);
+var leftovers = Directory.GetFiles(g7Remote, "*" + Engine.PartSuffix, SearchOption.AllDirectories).Length;
+var order7 = PublishOrder(ftp2Log, g7Name);
+var appeOk = appeBytes == g7BigLocal.Length - g7BigLocal.Length / 2 && Lines(ftp2Log, "APPE", g7Name + "/EBOOT.BIN").Count == 0
+    && Bytes(ebootStor7) == Local7("EBOOT.BIN").Length && appeSame == g7Files && leftovers == 0 && order7 == "ok";
+var appeLine = appeOk
+    ? $"✅ big.bin nosso pela metade: só a metade que faltava (APPE, {appeBytes} bytes); EBOOT.BIN menor de outra versão: STOR inteiro; icon0.png maior: ficou do tamanho certo; SELF desligado (SIZE real); {appeSame}/{g7Files} hashes; param.json/sfo renomeados só depois do último envio"
+    : $"❌ FALHA: APPE big.bin {appeBytes} bytes, EBOOT.BIN STOR {Bytes(ebootStor7)} bytes, {appeSame}/{g7Files} iguais, sobras {leftovers}, ordem {order7}";
+
+// Jogo já publicado no PS5: avisa em vez de mandar por cima; "Tentar de novo" = reenviar mesmo assim.
+var eInst = new Engine(sAppe, m => Console.WriteLine("[inst] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-inst.json") };
+await RunUntil(eInst, j => j.Name == "G7" && j.Stage is Stage.Verificado or Stage.Erro, TimeSpan.FromMinutes(1));
+Job? jInst; lock (eInst.Lock) jInst = eInst.Jobs.FirstOrDefault(j => j.Name == "G7");
+var warnedInst = jInst is { Stage: Stage.Erro, Installed: true } && jInst.Detail.StartsWith("Jogo já instalado");
+if (jInst != null) eInst.Retry(jInst);
+var instOk = warnedInst && await RunUntil(eInst, j => j.Name == "G7" && j.Stage == Stage.Verificado, TimeSpan.FromMinutes(1)) && SameFiles(gameDirs["G7.rar"], g7Remote) == g7Files;
 ftp2.Kill(true);
 
-// ---------- fechar e reabrir o app no meio do envio ----------
+// Log persistente: comando e resposta de cada STOR/APPE e SIZE
+var fileLog = File.Exists(FileLog.FilePath) ? File.ReadAllText(FileLog.FilePath) : "";
+var logOk = fileLog.Contains($"APPE {RemoteDir}/{g7Name}/data/big.bin → 226") && fileLog.Contains($"STOR {RemoteDir}/{g7Name}/EBOOT.BIN → 226")
+    && fileLog.Contains($"SIZE {RemoteDir}/{g7Name}/EBOOT.BIN → 213 {Local7("EBOOT.BIN").Length}");
+
+// ---------- fechar e reabrir o app no meio do envio (G6: senha aprendida no diálogo e lembrada ao reabrir) ----------
 var inRe = Dir("reabrir");
-foreach (var f in Directory.GetFiles(Path.Combine(archives, "G5.7z"))) File.Copy(f, Path.Combine(inRe, Path.GetFileName(f)));
+foreach (var f in Directory.GetFiles(Path.Combine(archives, "G6.7z"))) File.Copy(f, Path.Combine(inRe, Path.GetFileName(f)));
 var sRe = new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/reabrir", Connections = 4, DeleteOriginal = true };
 var qRe = Path.Combine(work, "queue-reabrir.json");
-var eA = new Engine(sRe, m => Console.WriteLine("[A] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = qRe };
+var askedA = 0; var askedB = 0;
+// 1ª digitada errada: o app tem que perceber e pedir de novo
+var eA = new Engine(sRe, m => Console.WriteLine("[A] " + m), _ => Task.FromResult<string?>(++askedA == 1 ? "senha-errada" : "senha123")) { StableSeconds = 2, QueueFile = qRe };
 eA.AddFiles(Directory.GetFiles(inRe)); // como o seletor de arquivos
 using var stopA = new CancellationTokenSource();
 var runA = Task.Run(() => eA.RunAsync(stopA.Token));
 Job? jA = null;
 var tA = DateTime.UtcNow.AddMinutes(1);
-var g5SrcDir = gameDirs["G5.7z"];
+var g5SrcDir = gameDirs["G6.7z"];
 var g5ReRemote = Path.Combine(ftpRoot, "reabrir", Path.GetFileName(g5SrcDir));
 bool AnyComplete() => Directory.Exists(g5ReRemote) && Directory.GetFiles(g5SrcDir, "*", SearchOption.AllDirectories)
     .Any(f => new FileInfo(f).Length > 0 && new FileInfo(Path.Combine(g5ReRemote, Path.GetRelativePath(g5SrcDir, f))) is { Exists: true } r && r.Length == new FileInfo(f).Length);
@@ -302,23 +362,37 @@ var closedAt = jA?.Progress ?? 0;
 if (jA != null) eA.Pause(jA); // fechar o app = matar o envio em andamento
 stopA.Cancel(); await runA;
 await Task.Delay(1500); // servidor termina de gravar o que já estava em trânsito
-var g5Src = gameDirs["G5.7z"];
+var g5Src = gameDirs["G6.7z"];
 var reRemote = Path.Combine(ftpRoot, "reabrir", Path.GetFileName(g5Src));
 var completeBefore = Directory.GetFiles(g5Src, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(g5Src, f).Replace('\\', '/'))
     .Where(r => new FileInfo(Path.Combine(reRemote, r)) is { Exists: true } fi && fi.Length == new FileInfo(Path.Combine(g5Src, r)).Length && fi.Length > 0).ToList();
-var eB = new Engine(sRe, m => Console.WriteLine("[B] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = qRe };
-eB.Restore(); // app reaberto: nada foi adicionado de novo
-var restored = await RunUntil(eB, j => j.Name == "G5" && j.Stage is Stage.Verificado or Stage.Erro, TimeSpan.FromMinutes(2));
+var learned = sRe.KnownPasswords.LastOrDefault() == "senha123"
+    && System.Text.Json.JsonSerializer.Deserialize<Settings>(File.ReadAllText(Settings.FilePath))!.KnownPasswords.Contains("senha123");
+var queueHidesPw = !File.ReadAllText(qRe).Contains("senha123"); // DPAPI, não texto puro
+// Salvar atômico: um .tmp pela metade (queda no meio da gravação) não estraga a fila
+File.WriteAllText(qRe + ".tmp", "{\"Dropped\":[\"meio escr");
+// app reaberto: nada foi adicionado de novo e sem senhas conhecidas: só a senha lembrada da fila pode abrir
+var sRe2 = new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/reabrir", Connections = 4, DeleteOriginal = true };
+var eB = new Engine(sRe2, m => Console.WriteLine("[B] " + m), _ => { askedB++; return Task.FromResult<string?>(null); }) { StableSeconds = 2, QueueFile = qRe };
+eB.Restore();
+var restored = await RunUntil(eB, j => j.Name == "G6" && j.Stage is Stage.Verificado or Stage.Erro, TimeSpan.FromMinutes(2));
 var resent = completeBefore.Count(r => Lines(ftpLog, "STOR", "/reabrir/" + Path.GetFileName(g5Src) + "/" + r).Count > 1);
 var reSame = SameFiles(g5Src, reRemote);
 var reOk = jA != null && restored && completeBefore.Count > 0 && resent == 0 && reSame == Directory.GetFiles(g5Src, "*", SearchOption.AllDirectories).Length;
 var reLine = reOk
     ? $"✅ fechou em {closedAt:0}% com {completeBefore.Count} arquivo(s) completos no PS5; ao reabrir a fila voltou sozinha, nenhum deles foi extraído/reenviado; hash confere"
     : $"❌ fechou={jA != null} ({closedAt:0}%), completos antes={completeBefore.Count}, fila restaurada={restored}, reenviados={resent}, hash {reSame}";
-allOk &= resumeOk && appeOk && reOk && !pauseResult.StartsWith("❌") && !removeResult.StartsWith("❌");
-extraRows.Add($"| Já no PS5, servidor sem APPE (igual ftpsrv) | {(resumeOk ? "✅ EBOOT.BIN completo nem foi extraído/reenviado; big.bin pela metade foi reenviado inteiro (STOR); hash confere" : "❌ FALHA: " + resumeLine)} |");
-extraRows.Add($"| Já no PS5, servidor com APPE | {(appeOk ? "✅ big.bin pela metade: enviou só a metade que faltava (APPE); jogo+dec com hash conferido" : $"❌ FALHA: APPE {appeBytes} bytes, {appeSame} arquivos iguais")} |");
-extraRows.Add($"| Fechar e reabrir o app no meio do envio | {reLine} |");
+var pwOkRe = askedA == 2 && learned && askedB == 0 && queueHidesPw;
+var atomicOk = restored && !File.Exists(qRe + ".tmp") && !File.Exists(Settings.FilePath + ".tmp")
+    && System.Text.Json.JsonDocument.Parse(File.ReadAllText(qRe)) != null;
+allOk &= resumeOk && appeOk && instOk && logOk && reOk && pwOkRe && atomicOk && !pauseResult.StartsWith("❌") && !removeResult.StartsWith("❌");
+extraRows.Add($"| Já no PS5, servidor sem APPE (igual ftpsrv antigo) | {(resumeOk ? "✅ EBOOT.BIN completo nem foi extraído/reenviado; big.bin pela metade (não começado por este app) foi reenviado inteiro (STOR); hash confere" : "❌ FALHA: " + resumeLine)} |");
+extraRows.Add($"| Já no PS5, servidor com APPE e SELF (ftpsrv novo) | {appeLine} |");
+extraRows.Add($"| Jogo já instalado no PS5 | {(instOk ? "✅ avisou \"Jogo já instalado…\" sem enviar; \"Tentar de novo\" reenviou por cima e conferiu" : $"❌ FALHA: avisou={warnedInst} ({jInst?.Stage} {jInst?.Detail})")} |");
+extraRows.Add($"| Log persistente (log.txt) | {(logOk ? "✅ comando e resposta de STOR/APPE/SIZE gravados" : "❌ FALHA: faltam linhas de STOR/APPE/SIZE em " + FileLog.FilePath)} |");
+extraRows.Add($"| Fechar e reabrir o app no meio do envio (G6) | {reLine} |");
+extraRows.Add($"| Senha aprendida e lembrada (G6) | {(pwOkRe ? "✅ diálogo 2x (1ª errada), senha entrou no fim das senhas conhecidas; ao reabrir sem senhas conhecidas abriu com a senha lembrada (DPAPI na fila), sem diálogo" : $"❌ FALHA: diálogo antes {askedA}x (esperado 2), aprendida={learned}, diálogo ao reabrir {askedB}x (esperado 0), fila sem texto puro={queueHidesPw}")} |");
+extraRows.Add($"| Salvar atômico | {(atomicOk ? "✅ .tmp pela metade na fila não impediu reabrir; settings.json e queue.json sem sobra de .tmp e válidos" : "❌ FALHA")} |");
 extraRows.Add($"| Pausar/retomar no meio do stream (G5) | {(pauseResult.StartsWith("❌") ? pauseResult : "✅ " + pauseResult + "; hash confere")} |");
 extraRows.Add($"| Remover da fila (G6) | {removeResult} |");
 }
@@ -333,8 +407,8 @@ sb.AppendLine($"- Servidor: pyftpdlib (imitando o ftpsrv: só os comandos dele; 
 sb.AppendLine($"- Ferramentas: 7-Zip {FileVersionInfo.GetVersionInfo(sevenZip).ProductVersion} (embutido no app), Rar.exe {FileVersionInfo.GetVersionInfo(rar).ProductVersion} (só para gerar os testes)");
 sb.AppendLine($"- Jogo falso: 6 arquivos (~24 MB, incompressíveis) dentro de 2 pastas casca; volumes de 5 MB");
 sb.AppendLine();
-sb.AppendLine("| Formato | Volumes | Esperou volume faltante | Estado final | SHA-256 iguais | Senha | Originais apagados | Resultado |");
-sb.AppendLine("|---|---|---|---|---|---|---|---|");
+sb.AppendLine("| Formato | Volumes | Esperou volume faltante | Estado final | SHA-256 iguais | Senha | Capa e título | param.json/sfo renomeados depois do último envio | Originais apagados | Resultado |");
+sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
 rows.ForEach(r => sb.AppendLine(r));
 sb.AppendLine();
 sb.AppendLine("| Verificação extra | Resultado |");
@@ -354,6 +428,31 @@ return allOk ? 0 : 1;
 
 // ---------- helpers ----------
 static string Sha(string f) { using var s = File.OpenRead(f); return Convert.ToHexString(SHA256.HashData(s)); }
+
+// param.sfo (PSF) com strings UTF-8
+static byte[] Sfo(params (string key, string value)[] kv)
+{
+    using MemoryStream idx = new(), keys = new(), data = new();
+    foreach (var (k, v) in kv)
+    {
+        var vb = Encoding.UTF8.GetBytes(v + "\0"); var max = (vb.Length + 3) / 4 * 4;
+        idx.Write([.. BitConverter.GetBytes((ushort)keys.Length), .. BitConverter.GetBytes((ushort)0x0204), .. BitConverter.GetBytes(vb.Length), .. BitConverter.GetBytes(max), .. BitConverter.GetBytes((int)data.Length)]);
+        keys.Write(Encoding.ASCII.GetBytes(k + "\0")); data.Write(vb); data.Write(new byte[max - vb.Length]);
+    }
+    while (keys.Length % 4 != 0) keys.WriteByte(0);
+    var keyStart = 20 + (int)idx.Length;
+    return [.. "\0PSF"u8, .. BitConverter.GetBytes(0x101), .. BitConverter.GetBytes(keyStart), .. BitConverter.GetBytes(keyStart + (int)keys.Length), .. BitConverter.GetBytes(kv.Length),
+            .. idx.ToArray(), .. keys.ToArray(), .. data.ToArray()];
+}
+
+// icon0.png de verdade (ruído 64x64), determinístico
+static byte[] Png(int seed)
+{
+    var px = new byte[64 * 64 * 4]; new Random(seed).NextBytes(px);
+    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(System.Windows.Media.Imaging.BitmapSource.Create(64, 64, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, px, 64 * 4)));
+    using var ms = new MemoryStream(); enc.Save(ms); return ms.ToArray();
+}
 
 static int SameFiles(string expected, string remote) => Directory.GetFiles(expected, "*", SearchOption.AllDirectories)
     .Count(f => Path.Combine(remote, Path.GetRelativePath(expected, f)) is var r && File.Exists(r) && Sha(f) == Sha(r));
