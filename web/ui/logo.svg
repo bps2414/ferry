@@ -1,1 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#E9EDF3" d="M2,3 h2 v10 h-2 Z M12,3 h2 v10 h-2 Z"/><path fill="#6F97FF" d="M5,7 H7.6 L6,5.4 L7.4,4 L11.4,8 L7.4,12 L6,10.6 L7.6,9 H5 Z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <radialGradient id="badgeBg" cx="30%" cy="25%" r="90%">
+      <stop offset="0%" stop-color="#162032"/>
+      <stop offset="50%" stop-color="#0A0F1A"/>
+      <stop offset="100%" stop-color="#04060A"/>
+    </radialGradient>
+    <linearGradient id="ps5PlateGrad" x1="45" y1="35" x2="205" y2="225" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="45%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <linearGradient id="plateEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#64748B" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="ledCrease" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00F5FF"/>
+      <stop offset="30%" stop-color="#00D2FF"/>
+      <stop offset="70%" stop-color="#0066FF"/>
+      <stop offset="100%" stop-color="#003893"/>
+    </linearGradient>
+    <linearGradient id="bladeBeam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00F5FF" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#00F5FF" stop-opacity="0.8"/>
+      <stop offset="80%" stop-color="#0080FF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00F5FF"/>
+    </linearGradient>
+    <filter id="psGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="plateShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#000000" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#badgeBg)" stroke="#1F2A3F" stroke-width="2"/>
+  <rect x="10" y="10" width="236" height="236" rx="56" fill="none" stroke="#38BDF8" stroke-width="1" stroke-opacity="0.15"/>
+  <circle cx="134" cy="128" r="80" fill="#0062D2" opacity="0.32" filter="blur(32px)"/>
+  <ellipse cx="142" cy="112" rx="52" ry="42" fill="#00F0FF" opacity="0.22" filter="blur(22px)"/>
+  <path d="M 81 40 L 81 216" stroke="url(#ledCrease)" stroke-width="6" stroke-linecap="round" filter="url(#psGlow)"/>
+
+  <g filter="url(#plateShadow)">
+    <path d="M 52 46 C 58 42, 70 42, 74 46 C 76 48, 76 52, 76 58 L 76 198 C 76 204, 76 208, 74 210 C 70 214, 58 214, 52 210 C 48 206, 46 198, 46 186 C 45 156, 45 100, 46 70 C 46 58, 48 50, 52 46 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
+    <path d="M 88 46 L 182 46 C 192 46, 198 52, 192 62 L 168 96 C 165 100, 159 102, 152 102 L 88 102 C 86 102, 86 46, 88 46 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
+    <path d="M 88 124 L 150 124 C 158 124, 163 129, 158 137 L 142 162 C 139 166, 134 168, 128 168 L 88 168 C 86 168, 86 124, 88 124 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
+  </g>
+
+  <path d="M 96 74 L 168 74" stroke="url(#bladeBeam)" stroke-width="3" stroke-linecap="round" filter="url(#psGlow)"/>
+  <path d="M 96 146 L 134 146" stroke="url(#bladeBeam)" stroke-width="2.5" stroke-linecap="round" filter="url(#psGlow)"/>
+  <polygon points="185,84 196,84 189,93 178,93" fill="#00F5FF" filter="url(#psGlow)"/>
+  <circle cx="204" cy="74" r="3.5" fill="#00F5FF" filter="url(#psGlow)"/>
+  <circle cx="218" cy="74" r="2.2" fill="#00D2FF" opacity="0.8" filter="url(#psGlow)"/>
+  <circle cx="228" cy="74" r="1.5" fill="#00F5FF" opacity="0.5"/>
+  <polygon points="152,152 161,152 156,159 147,159" fill="#00F5FF" filter="url(#psGlow)"/>
+  <circle cx="170" cy="146" r="3" fill="#00F5FF" filter="url(#psGlow)"/>
+  <circle cx="182" cy="146" r="2" fill="#00D2FF" opacity="0.7"/>
+</svg>

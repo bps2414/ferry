@@ -1,10 +1,24 @@
-<img src="docs/logo.png" width="56" alt=""> 
+<div align="center">
 
-# Ferry
+  <img src="docs/logo_animated.gif" width="132" alt="Ferry Logo">
 
-**English** · [Português (BR)](README.pt-BR.md) · [Español](README.es.md)
+  <h1>Ferry</h1>
 
-send games to your PS5
+  <p><b>Direct, zero-disk game pipeline for PS5</b></p>
+
+  <p>
+    <b>English</b> · <a href="README.pt-BR.md">Português (BR)</a> · <a href="README.es.md">Español</a>
+  </p>
+
+  <p>
+    <a href="https://github.com/bps2414/ferry/actions/workflows/ci.yml"><img src="https://github.com/bps2414/ferry/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="../../releases"><img src="https://img.shields.io/github/v/release/bps2414/ferry?color=6F97FF&label=release" alt="Release"></a>
+    <a href="../../releases"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-162032" alt="Platforms"></a>
+  </p>
+
+</div>
+
+<br>
 
 ![Ferry queue](docs/screenshots/fila.png)
 

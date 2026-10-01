@@ -1,12 +1,24 @@
-<img src="docs/logo.png" width="56" alt=""> 
+<div align="center">
 
-# Ferry
+  <img src="docs/logo_animated.gif" width="132" alt="Ferry Logo">
 
-Ferry funciona como app portátil Windows o servidor web en Linux/Docker. Ambas interfaces ofrecen portugués (Brasil) e inglés. En **Settings → Language**, elige **Automatic**, **Português (Brasil)** o **English**. Automático sigue el idioma de Windows en la app nativa (portugués → pt-BR; los demás → inglés); en la web usa el primer idioma compatible del navegador, con inglés como alternativa. Ambas usan `Settings.Language` en `settings.json`; elecciones explícitas persisten al reiniciar. Cambiar idioma conserva campos editados, transferencias y diálogos de contraseña abiertos. En Windows, minimizar oculta en la bandeja; doble clic u **Open Ferry** restaura la ventana. **Exit** o **X** cierra la app.
+  <h1>Ferry</h1>
 
-[English](README.md) · [Português (BR)](README.pt-BR.md) · **Español**
+  <p><b>Envío directo de juegos a PS5 — sin escribir en disco</b></p>
 
-envío de juegos a la PS5
+  <p>
+    <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (BR)</a> · <b>Español</b>
+  </p>
+
+  <p>
+    <a href="https://github.com/bps2414/ferry/actions/workflows/ci.yml"><img src="https://github.com/bps2414/ferry/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="../../releases"><img src="https://img.shields.io/github/v/release/bps2414/ferry?color=6F97FF&label=release" alt="Release"></a>
+    <a href="../../releases"><img src="https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux%20%7C%20Docker-162032" alt="Plataformas"></a>
+  </p>
+
+</div>
+
+<br>
 
 ![Cola de Ferry](docs/screenshots/fila.png)
 
@@ -19,6 +31,8 @@ Ferry toma juegos comprimidos (`.zip`, `.rar`, `.7z`, incluso divididos en parte
 - Interfaz oscura con cola, progreso, velocidad y tiempo restante
 - Pausa, reanuda, cierra y vuelve a abrir sin perder lo que ya se envió
 - Webhook para Discord, ntfy o JSON genérico: finalización, errores y solicitudes de contraseña; configurable en web y Windows. [Configuración](docs/es/WEBHOOK.md).
+
+Ferry funciona como app portátil Windows o servidor web en Linux/Docker. Ambas interfaces ofrecen portugués (Brasil) e inglés. En **Settings → Language**, elige **Automatic**, **Português (Brasil)** o **English**. Automático sigue el idioma de Windows en la app nativa (portugués → pt-BR; los demás → inglés); en la web usa el primer idioma compatible del navegador, con inglés como alternativa. Ambas usan \Settings.Language\ en \settings.json\; elecciones explícitas persisten al reiniciar. Cambiar idioma conserva campos editados, transferencias y diálogos de contraseña abiertos. En Windows, minimizar oculta en la bandeja; doble clic u **Open Ferry** restaura la ventana. **Exit** o **X** cierra la app.
 
 > Hecho para tus propios homebrew/backups en una consola desbloqueada. Úsalo bajo tu propio riesgo.
 
