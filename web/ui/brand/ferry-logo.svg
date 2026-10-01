@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 679 256" role="img" aria-labelledby="title" color="#E9EDF3">
+<title id="title">Ferry</title>
+
+<defs>
+  <linearGradient id="ferry-pearl" x1="68" y1="48" x2="152" y2="208" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF"/><stop offset=".5" stop-color="#EEF2F8"/><stop offset="1" stop-color="#CDD8E8"/>
+  </linearGradient>
+  <linearGradient id="ferry-blue" x1="155" y1="85" x2="72" y2="205" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#83B4FF"/><stop offset=".42" stop-color="#527FE8"/><stop offset="1" stop-color="#2852AC"/>
+  </linearGradient>
+  <linearGradient id="ferry-badge" x1="32" y1="8" x2="230" y2="248" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#1A2535"/><stop offset=".55" stop-color="#101824"/><stop offset="1" stop-color="#0A0D12"/>
+  </linearGradient>
+  <linearGradient id="ferry-shine">
+    <stop stop-color="#80DFFF" stop-opacity="0"/><stop offset=".47" stop-color="#C7F4FF" stop-opacity=".1"/>
+    <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".72"/><stop offset="1" stop-color="#50E6FF" stop-opacity="0"/>
+  </linearGradient>
+  <clipPath id="ferry-silhouette"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z"/><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z"/><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z"/><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z"/><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z"/></clipPath>
+</defs><g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="url(#ferry-blue)"/></g>
+<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="url(#ferry-blue)"/></g>
+<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-edges" opacity="1" fill="none" stroke="#C3DDFF" stroke-opacity=".38" stroke-width=".85"><path d="M108 89 H156 M96 149 H129"/></g><g transform="translate(278 43) scale(1.13)"><g class="brand-wordmark" transform="translate(0 0)" opacity="1"><path d="M13 12 H80 L66 26 H33 V55 H72 L58 69 H33 V114 H13 ZM125.416 115.704Q114.056 115.704 105.678 110.805Q97.3 105.906 92.756 96.96Q88.212 88.014 88.212 76.086Q88.212 64.158 92.756 55.212Q97.3 46.266 105.607 41.367Q113.914 36.468 124.99 36.468Q135.782 36.468 143.876 41.296Q151.97 46.124 156.443 55.212Q160.916 64.3 160.916 77.08V81.198H107.098Q107.524 91.138 112.494 96.179Q117.464 101.22 125.558 101.22Q137.912 101.22 141.32 90.712L159.922 91.848Q156.798 102.924 147.639 109.314Q138.48 115.704 125.416 115.704ZM107.098 68.986H142.172Q141.462 59.756 136.847 55.283Q132.232 50.81 124.99 50.81Q117.606 50.81 112.92 55.496Q108.234 60.182 107.098 68.986ZM172.702 114V38.172H189.742L190.168 52.94Q192.44 45.272 196.842 41.722Q201.244 38.172 208.344 38.172H215.302V53.792H208.202Q199.54 53.792 195.209 57.697Q190.878 61.602 190.878 70.264V114ZM226.946 114V38.172H243.986L244.412 52.94Q246.684 45.272 251.086 41.722Q255.488 38.172 262.588 38.172H269.546V53.792H262.446Q253.784 53.792 249.453 57.697Q245.122 61.602 245.122 70.264V114ZM282.894 135.3V121.242H292.55Q296.242 121.242 298.017 120.106Q299.792 118.97 300.786 116.272L302.916 111.018H297.662L270.54 38.172H289.426L308.454 93.978L326.63 38.172H345.516L315.838 121.952Q313.282 129.052 308.667 132.176Q304.052 135.3 295.816 135.3Z" fill="currentColor"/></g></g>
+</svg>

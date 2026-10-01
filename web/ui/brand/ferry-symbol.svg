@@ -16,8 +16,10 @@
     <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".72"/><stop offset="1" stop-color="#50E6FF" stop-opacity="0"/>
   </linearGradient>
   <clipPath id="ferry-silhouette"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z"/><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z"/><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z"/><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z"/><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z"/></clipPath>
-</defs><rect x="8" y="8" width="240" height="240" rx="57" fill="url(#ferry-badge)"/>
-<rect x="8.75" y="8.75" width="238.5" height="238.5" rx="56.25" fill="none" stroke="#8AA6CF" stroke-opacity=".13" stroke-width="1.5"/>
-<path d="M68 56 Q68 48 76 48 H192 L156 88 H108 V116 H160 L130 150 H108 V186 L68 210 Z" fill="#F2F5FA"/>
-<path d="M108 88 H156 L130 114 H108 Z M108 150 H130 L108 172 Z" fill="#6F97FF"/>
+</defs><g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="url(#ferry-blue)"/></g>
+<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="url(#ferry-blue)"/></g>
+<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="url(#ferry-pearl)"/></g>
+<g class="ribbon-edges" opacity="1" fill="none" stroke="#C3DDFF" stroke-opacity=".38" stroke-width=".85"><path d="M108 89 H156 M96 149 H129"/></g>
 </svg>

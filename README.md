@@ -1,8 +1,6 @@
 <div align="center">
 
-  <img src="docs/logo_animated.gif" width="132" alt="Ferry Logo">
-
-  <h1>Ferry</h1>
+  <img src="docs/brand/ferry-logo-animated.gif" width="340" alt="Ferry">
 
   <p><b>Direct, zero-disk game pipeline for PS5</b></p>
 

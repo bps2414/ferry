@@ -7,67 +7,13 @@
 <title>Ferry</title>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="brand/brand.css">
 <script src="i18n.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <radialGradient id="badgeBg" cx="30%" cy="25%" r="90%">
-      <stop offset="0%" stop-color="#162032"/>
-      <stop offset="50%" stop-color="#0A0F1A"/>
-      <stop offset="100%" stop-color="#04060A"/>
-    </radialGradient>
-    <linearGradient id="ps5PlateGrad" x1="45" y1="35" x2="205" y2="225" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="45%" stop-color="#F1F5F9"/>
-      <stop offset="100%" stop-color="#CBD5E1"/>
-    </linearGradient>
-    <linearGradient id="plateEdge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#64748B" stop-opacity="0.3"/>
-    </linearGradient>
-    <linearGradient id="ledCrease" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#00F5FF"/>
-      <stop offset="30%" stop-color="#00D2FF"/>
-      <stop offset="70%" stop-color="#0066FF"/>
-      <stop offset="100%" stop-color="#003893"/>
-    </linearGradient>
-    <linearGradient id="bladeBeam" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#00F5FF" stop-opacity="0"/>
-      <stop offset="30%" stop-color="#00F5FF" stop-opacity="0.8"/>
-      <stop offset="80%" stop-color="#0080FF" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#00F5FF"/>
-    </linearGradient>
-    <filter id="psGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur1"/>
-      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur2"/>
-      <feMerge>
-        <feMergeNode in="blur2"/>
-        <feMergeNode in="blur1"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <symbol id="logo" viewBox="0 0 256 256">
-    <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#badgeBg)" stroke="#1F2A3F" stroke-width="2"/>
-    <rect x="10" y="10" width="236" height="236" rx="56" fill="none" stroke="#38BDF8" stroke-width="1" stroke-opacity="0.15"/>
-    <circle cx="134" cy="128" r="80" fill="#0062D2" opacity="0.32" filter="blur(32px)"/>
-    <ellipse cx="142" cy="112" rx="52" ry="42" fill="#00F0FF" opacity="0.22" filter="blur(22px)"/>
-    <path d="M 81 40 L 81 216" stroke="url(#ledCrease)" stroke-width="6" stroke-linecap="round" filter="url(#psGlow)"/>
-    <g>
-      <path d="M 52 46 C 58 42, 70 42, 74 46 C 76 48, 76 52, 76 58 L 76 198 C 76 204, 76 208, 74 210 C 70 214, 58 214, 52 210 C 48 206, 46 198, 46 186 C 45 156, 45 100, 46 70 C 46 58, 48 50, 52 46 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
-      <path d="M 88 46 L 182 46 C 192 46, 198 52, 192 62 L 168 96 C 165 100, 159 102, 152 102 L 88 102 C 86 102, 86 46, 88 46 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
-      <path d="M 88 124 L 150 124 C 158 124, 163 129, 158 137 L 142 162 C 139 166, 134 168, 128 168 L 88 168 C 86 168, 86 124, 88 124 Z" fill="url(#ps5PlateGrad)" stroke="url(#plateEdge)" stroke-width="1"/>
-    </g>
-    <path d="M 96 74 L 168 74" stroke="url(#bladeBeam)" stroke-width="3" stroke-linecap="round" filter="url(#psGlow)"/>
-    <path d="M 96 146 L 134 146" stroke="url(#bladeBeam)" stroke-width="2.5" stroke-linecap="round" filter="url(#psGlow)"/>
-    <polygon points="185,84 196,84 189,93 178,93" fill="#00F5FF" filter="url(#psGlow)"/>
-    <circle cx="204" cy="74" r="3.5" fill="#00F5FF" filter="url(#psGlow)"/>
-    <polygon points="152,152 161,152 156,159 147,159" fill="#00F5FF" filter="url(#psGlow)"/>
-    <circle cx="170" cy="146" r="3" fill="#00F5FF" filter="url(#psGlow)"/>
-  </symbol>
   <symbol id="i-pause" viewBox="0 0 16 16"><path d="M5 3.5v9M11 3.5v9" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
   <symbol id="i-play" viewBox="0 0 16 16"><path d="M4.5 3 13 8l-8.5 5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
   <symbol id="i-retry" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
@@ -79,7 +25,31 @@
 <!-- entrar / criar o usuário na primeira abertura -->
 <main id="auth" class="auth" hidden>
   <form id="authForm" class="auth-card" novalidate>
-    <div class="brand"><svg class="logo"><use href="#logo"/></svg><div><b>Ferry</b><small><span data-i18n="ui.tagline">envio de jogos para PS5</span></small></div></div>
+    <div class="brand"><!-- ferry-brand-auth:start --><svg class="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+<defs>
+  <linearGradient id="ferry-auth-pearl" x1="68" y1="48" x2="152" y2="208" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF"/><stop offset=".5" stop-color="#EEF2F8"/><stop offset="1" stop-color="#CDD8E8"/>
+  </linearGradient>
+  <linearGradient id="ferry-auth-blue" x1="155" y1="85" x2="72" y2="205" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#83B4FF"/><stop offset=".42" stop-color="#527FE8"/><stop offset="1" stop-color="#2852AC"/>
+  </linearGradient>
+  <linearGradient id="ferry-auth-badge" x1="32" y1="8" x2="230" y2="248" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#1A2535"/><stop offset=".55" stop-color="#101824"/><stop offset="1" stop-color="#0A0D12"/>
+  </linearGradient>
+  <linearGradient id="ferry-auth-shine">
+    <stop stop-color="#80DFFF" stop-opacity="0"/><stop offset=".47" stop-color="#C7F4FF" stop-opacity=".1"/>
+    <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".72"/><stop offset="1" stop-color="#50E6FF" stop-opacity="0"/>
+  </linearGradient>
+  <clipPath id="ferry-auth-silhouette"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z"/><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z"/><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z"/><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z"/><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z"/></clipPath>
+</defs><rect x="8" y="8" width="240" height="240" rx="57" fill="url(#ferry-auth-badge)"/>
+<rect x="8.75" y="8.75" width="238.5" height="238.5" rx="56.25" fill="none" stroke="#8AA6CF" stroke-opacity=".13" stroke-width="1.5"/><g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="url(#ferry-auth-pearl)"/></g>
+<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="url(#ferry-auth-blue)"/></g>
+<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="url(#ferry-auth-pearl)"/></g>
+<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="url(#ferry-auth-blue)"/></g>
+<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="url(#ferry-auth-pearl)"/></g>
+<g class="ribbon-edges" opacity="1" fill="none" stroke="#C3DDFF" stroke-opacity=".38" stroke-width=".85"><path d="M108 89 H156 M96 149 H129"/></g><path class="ribbon-filament" d="M80 202 V86 Q80 68 100 68 H184 L126 126 H151 L95 178" fill="none" stroke="#78D9FF" stroke-width="2" stroke-linecap="round" stroke-dasharray="420" stroke-dashoffset="420" opacity="0"/>
+<g clip-path="url(#ferry-auth-silhouette)"><g class="ribbon-shine" opacity="0" transform="translate(-200 0)"><path d="M0 30 H66 L166 224 H100 Z" fill="url(#ferry-auth-shine)"/></g></g>
+</svg><div class="brand-copy"><img class="brand-wordmark" src="brand/ferry-wordmark.svg" alt="Ferry" width="354" height="148"><small><span data-i18n="ui.tagline">envio de jogos para PS5</span></small></div><!-- ferry-brand-auth:end --></div>
     <h1 id="authTitle"><span data-i18n="ui.login">Entrar</span></h1>
     <p id="authHint" class="muted"></p>
     <label class="field"><span><span data-i18n="ui.user">Usuário</span></span><input id="authUser" name="username" autocomplete="username" required></label>
@@ -91,7 +61,31 @@
 
 <div id="shell" class="shell" hidden>
   <aside class="side">
-    <div class="brand"><svg class="logo"><use href="#logo"/></svg><div><b>Ferry</b><small><span data-i18n="ui.tagline">envio de jogos para PS5</span></small></div></div>
+    <div class="brand"><!-- ferry-brand-shell:start --><svg class="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+<defs>
+  <linearGradient id="ferry-shell-pearl" x1="68" y1="48" x2="152" y2="208" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF"/><stop offset=".5" stop-color="#EEF2F8"/><stop offset="1" stop-color="#CDD8E8"/>
+  </linearGradient>
+  <linearGradient id="ferry-shell-blue" x1="155" y1="85" x2="72" y2="205" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#83B4FF"/><stop offset=".42" stop-color="#527FE8"/><stop offset="1" stop-color="#2852AC"/>
+  </linearGradient>
+  <linearGradient id="ferry-shell-badge" x1="32" y1="8" x2="230" y2="248" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#1A2535"/><stop offset=".55" stop-color="#101824"/><stop offset="1" stop-color="#0A0D12"/>
+  </linearGradient>
+  <linearGradient id="ferry-shell-shine">
+    <stop stop-color="#80DFFF" stop-opacity="0"/><stop offset=".47" stop-color="#C7F4FF" stop-opacity=".1"/>
+    <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".72"/><stop offset="1" stop-color="#50E6FF" stop-opacity="0"/>
+  </linearGradient>
+  <clipPath id="ferry-shell-silhouette"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z"/><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z"/><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z"/><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z"/><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z"/></clipPath>
+</defs><rect x="8" y="8" width="240" height="240" rx="57" fill="url(#ferry-shell-badge)"/>
+<rect x="8.75" y="8.75" width="238.5" height="238.5" rx="56.25" fill="none" stroke="#8AA6CF" stroke-opacity=".13" stroke-width="1.5"/><g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="url(#ferry-shell-pearl)"/></g>
+<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="url(#ferry-shell-blue)"/></g>
+<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="url(#ferry-shell-pearl)"/></g>
+<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="url(#ferry-shell-blue)"/></g>
+<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="url(#ferry-shell-pearl)"/></g>
+<g class="ribbon-edges" opacity="1" fill="none" stroke="#C3DDFF" stroke-opacity=".38" stroke-width=".85"><path d="M108 89 H156 M96 149 H129"/></g><path class="ribbon-filament" d="M80 202 V86 Q80 68 100 68 H184 L126 126 H151 L95 178" fill="none" stroke="#78D9FF" stroke-width="2" stroke-linecap="round" stroke-dasharray="420" stroke-dashoffset="420" opacity="0"/>
+<g clip-path="url(#ferry-shell-silhouette)"><g class="ribbon-shine" opacity="0" transform="translate(-200 0)"><path d="M0 30 H66 L166 224 H100 Z" fill="url(#ferry-shell-shine)"/></g></g>
+</svg><div class="brand-copy"><img class="brand-wordmark" src="brand/ferry-wordmark.svg" alt="Ferry" width="354" height="148"><small><span data-i18n="ui.tagline">envio de jogos para PS5</span></small></div><!-- ferry-brand-shell:end --></div>
     <nav>
       <button class="nav on" data-page="queue"><span data-i18n="ui.queue">Fila</span><span id="badge" class="badge" hidden></span></button>
       <button class="nav" data-page="settings"><span data-i18n="ui.settings">Configurações</span></button>

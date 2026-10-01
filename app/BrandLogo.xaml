@@ -1,0 +1,70 @@
+<UserControl x:Class="Ferry.BrandLogo"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="Ferry" Focusable="False" IsTabStop="False"
+             Loaded="OnLoaded" Unloaded="OnUnloaded" MouseEnter="OnMouseEnter">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="BrandGeometry.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <LinearGradientBrush x:Key="Pearl" MappingMode="Absolute" StartPoint="68,48" EndPoint="152,208">
+                <GradientStop Color="#FFFFFF"/><GradientStop Color="#EEF2F8" Offset="0.5"/><GradientStop Color="#CDD8E8" Offset="1"/>
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="RibbonBlue" MappingMode="Absolute" StartPoint="155,85" EndPoint="72,205">
+                <GradientStop Color="#83B4FF"/><GradientStop Color="#527FE8" Offset="0.42"/><GradientStop Color="#2852AC" Offset="1"/>
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="Badge" MappingMode="Absolute" StartPoint="32,8" EndPoint="230,248">
+                <GradientStop Color="#1A2535"/><GradientStop Color="#101824" Offset="0.55"/><GradientStop Color="#0A0D12" Offset="1"/>
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ShineBrush">
+                <GradientStop Color="#0080DFFF"/><GradientStop Color="#1AC7F4FF" Offset="0.47"/>
+                <GradientStop Color="#B8FFFFFF" Offset="0.6"/><GradientStop Color="#0050E6FF" Offset="1"/>
+            </LinearGradientBrush>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="Transparent">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="40"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Viewbox Grid.Column="0" Stretch="Uniform">
+            <Canvas Width="256" Height="256">
+                <Rectangle Canvas.Left="8" Canvas.Top="8" Width="240" Height="240" RadiusX="57" RadiusY="57" Fill="{StaticResource Badge}"/>
+                <Rectangle Canvas.Left="8.75" Canvas.Top="8.75" Width="238.5" Height="238.5" RadiusX="56.25" RadiusY="56.25" Stroke="#218AA6CF" StrokeThickness="1.5"/>
+                <Canvas x:Name="StemGroup" Width="256" Height="256">
+                    <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="StemScale" CenterX="128" CenterY="128"/><RotateTransform x:Name="StemRotation" CenterX="128" CenterY="128"/><TranslateTransform x:Name="StemOffset"/></TransformGroup></Canvas.RenderTransform>
+                    <Path Data="{StaticResource FerryStem}" Fill="{StaticResource Pearl}"/>
+                </Canvas>
+                <Canvas x:Name="FoldGroup" Width="256" Height="256">
+                    <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="FoldScale" CenterX="128" CenterY="128"/><RotateTransform x:Name="FoldRotation" CenterX="128" CenterY="128"/><TranslateTransform x:Name="FoldOffset"/></TransformGroup></Canvas.RenderTransform>
+                    <Path Data="{StaticResource FerryFold}" Fill="{StaticResource RibbonBlue}"/>
+                </Canvas>
+                <Canvas x:Name="CrownGroup" Width="256" Height="256">
+                    <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="CrownScale" CenterX="128" CenterY="128"/><RotateTransform x:Name="CrownRotation" CenterX="128" CenterY="128"/><TranslateTransform x:Name="CrownOffset"/></TransformGroup></Canvas.RenderTransform>
+                    <Path Data="{StaticResource FerryCrown}" Fill="{StaticResource Pearl}"/>
+                </Canvas>
+                <Canvas x:Name="ReturnGroup" Width="256" Height="256">
+                    <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="ReturnScale" CenterX="128" CenterY="128"/><RotateTransform x:Name="ReturnRotation" CenterX="128" CenterY="128"/><TranslateTransform x:Name="ReturnOffset"/></TransformGroup></Canvas.RenderTransform>
+                    <Path Data="{StaticResource FerryReturn}" Fill="{StaticResource RibbonBlue}"/>
+                </Canvas>
+                <Canvas x:Name="MiddleGroup" Width="256" Height="256">
+                    <Canvas.RenderTransform><TransformGroup><ScaleTransform x:Name="MiddleScale" CenterX="128" CenterY="128"/><RotateTransform x:Name="MiddleRotation" CenterX="128" CenterY="128"/><TranslateTransform x:Name="MiddleOffset"/></TransformGroup></Canvas.RenderTransform>
+                    <Path Data="{StaticResource FerryMiddle}" Fill="{StaticResource Pearl}"/>
+                </Canvas>
+                <Path x:Name="Edges" Data="M108 89 H156 M96 149 H129" Stroke="#61C3DDFF" StrokeThickness="0.85"/>
+                <Path x:Name="Filament" Data="{StaticResource FerryFilament}" Stroke="#78D9FF" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeDashArray="210" StrokeDashOffset="210" Opacity="0"/>
+                <Canvas Clip="{StaticResource FerrySilhouette}">
+                    <Canvas x:Name="Shine" Opacity="0">
+                        <Canvas.RenderTransform><TranslateTransform x:Name="ShineOffset" X="-200"/></Canvas.RenderTransform>
+                        <Path Data="M0 30 H66 L166 224 H100 Z" Fill="{StaticResource ShineBrush}"/>
+                    </Canvas>
+                </Canvas>
+            </Canvas>
+        </Viewbox>
+        <Viewbox Grid.Column="2" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <Canvas x:Name="Wordmark" Width="354" Height="148">
+                <Canvas.RenderTransform><TranslateTransform x:Name="WordmarkOffset"/></Canvas.RenderTransform>
+                <Canvas.Clip><RectangleGeometry Rect="0,0,354,148"><RectangleGeometry.Transform><ScaleTransform x:Name="WordmarkReveal"/></RectangleGeometry.Transform></RectangleGeometry></Canvas.Clip>
+                <Path Data="{StaticResource FerryWordmark}" Fill="#E9EDF3"/>
+            </Canvas>
+        </Viewbox>
+    </Grid>
+</UserControl>

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Ferry;assembly=Ferry.Core"
         xmlns:text="clr-namespace:Ferry"
+        xmlns:brand="clr-namespace:Ferry"
         Title="{text:Loc app.title}" Width="1120" Height="740" MinWidth="1000" MinHeight="560" Icon="Ferry.ico"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
         FontFamily="{StaticResource Sans}" FontSize="14" Typography.NumeralAlignment="Tabular"
@@ -17,18 +18,10 @@
         <!-- ============ BARRA LATERAL ============ -->
         <Border Background="{StaticResource Side}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
             <DockPanel Margin="20,22,20,20">
-                <!-- marca: símbolo "Travessia" + Ferry -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                    <Viewbox Width="32" Height="32" VerticalAlignment="Center">
-                        <Canvas Width="16" Height="16">
-                            <Path Data="{StaticResource LogoPosts}" Fill="{StaticResource Text}"/>
-                            <Path Data="{StaticResource LogoArrow}" Fill="{StaticResource Accent}"/>
-                        </Canvas>
-                    </Viewbox>
-                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="{text:Loc app.title}" FontSize="22" FontWeight="SemiBold" LineHeight="22" LineStackingStrategy="BlockLineHeight"/>
-                        <TextBlock Text="{text:Loc ui.tagline}" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,3,0,0"/>
-                    </StackPanel>
+                <!-- marca vetorial: a mesma fita e os mesmos contornos do SVG -->
+                <StackPanel DockPanel.Dock="Top">
+                    <brand:BrandLogo Width="140" Height="40" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{text:Loc ui.tagline}" FontSize="11" Foreground="{StaticResource Muted}" Margin="52,0,0,0"/>
                 </StackPanel>
 
                 <!-- status do PS5: texto, sem cartão -->

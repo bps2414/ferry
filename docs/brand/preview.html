@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ferry — Fita dobrada</title>
+  <link rel="icon" href="../../web/ui/logo.svg" type="image/svg+xml">
+  <style>
+    @font-face { font-family: Geist; src: url(../../app/fonts/Geist-Regular.ttf); font-weight: 400; }
+    @font-face { font-family: Geist; src: url(../../app/fonts/Geist-SemiBold.ttf); font-weight: 600; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #E9EDF3; background: #0A0D12; font-family: Geist, sans-serif; }
+    main { max-width: 1180px; padding: 38px 40px 60px; margin: auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid #242F3E; }
+    header p { margin: 0; color: #9AADCA; font-size: 13px; letter-spacing: .1em; }
+    header span { color: #8490A2; font-size: 13px; }
+    .stage { min-height: 370px; display: grid; place-items: center; position: relative; padding: 50px 0 26px; }
+    .stage img { display: block; width: min(720px, 100%); height: auto; }
+    .controls { display: flex; justify-content: center; gap: 12px; }
+    button { background: #141D2A; color: #E9EDF3; border: 1px solid #354458; border-radius: 6px; padding: 11px 16px; font: inherit; font-size: 13px; cursor: pointer; }
+    button:hover { border-color: #7EAAFF; background: #1B293D; }
+    button:focus-visible { outline: 2px solid #9DB8FF; outline-offset: 4px; }
+    .details { margin-top: 58px; display: grid; grid-template-columns: 230px 1fr; gap: 64px; border-top: 1px solid #242F3E; padding-top: 32px; }
+    .icon { width: 174px; height: 174px; }
+    h1 { font-size: 22px; font-weight: 600; margin: 0 0 10px; }
+    .description { max-width: 520px; color: #A9B3C2; font-size: 14px; line-height: 1.65; margin: 0; }
+    .sizes { display: flex; align-items: end; gap: 24px; margin-top: 26px; }
+    figure { margin: 0; display: grid; justify-items: center; gap: 10px; }
+    figcaption { font-size: 11px; color: #8490A2; }
+    .variants { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 45px; }
+    .variants div { padding: 26px; border-radius: 10px; background: #101824; }
+    .variants .light { background: #EFF2F7; }
+    .variants img { width: 100%; height: 90px; object-fit: contain; }
+    footer { margin-top: 30px; color: #8490A2; font-size: 12px; }
+    @media (max-width: 650px) {
+      main { padding: 26px 20px; }
+      header span { display: none; }
+      .stage { min-height: 250px; }
+      .details { grid-template-columns: 1fr; gap: 28px; margin-top: 40px; }
+      .sizes { gap: 16px; flex-wrap: wrap; }
+      .variants { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header><p>FERRY / IDENTIDADE</p><span>Fita dobrada · SVG</span></header>
+    <div class="stage"><img id="motion" src="../../web/ui/brand/ferry-logo-animated.svg" alt="Ferry — símbolo de fita dobrada e nome"></div>
+    <div class="controls"><button id="replay" type="button">Repetir animação</button><button id="static" type="button">Ver marca estática</button></div>
+    <div class="details">
+      <img class="icon" src="../../web/ui/brand/ferry-icon.svg" alt="Ícone do Ferry">
+      <div>
+        <h1>Uma fita em movimento.</h1>
+        <p class="description">As faces claras formam o F. As dobras azuis revelam o caminho da fita. Na abertura, um fio de luz dá lugar às peças, que se acomodam até formar a marca.</p>
+        <div class="sizes">
+          <figure><img src="../../web/ui/brand/ferry-icon-small.svg" width="16" height="16" alt=""><figcaption>16 px</figcaption></figure>
+          <figure><img src="../../web/ui/brand/ferry-icon-small.svg" width="24" height="24" alt=""><figcaption>24 px</figcaption></figure>
+          <figure><img src="../../web/ui/brand/ferry-icon-small.svg" width="32" height="32" alt=""><figcaption>32 px</figcaption></figure>
+          <figure><img src="../../web/ui/brand/ferry-icon.svg" width="48" height="48" alt=""><figcaption>48 px</figcaption></figure>
+          <figure><img src="../../web/ui/brand/ferry-icon.svg" width="64" height="64" alt=""><figcaption>64 px</figcaption></figure>
+        </div>
+      </div>
+    </div>
+    <div class="variants">
+      <div><img src="../../web/ui/brand/ferry-logo-mono.svg" alt="Logo monocromático claro"></div>
+      <div class="light"><img src="../../web/ui/brand/ferry-logo-light.svg" alt="Logo para fundo claro"></div>
+    </div>
+    <footer>2,6 segundos de formação. A marca fica estática ao final. A preferência por movimento reduzido é respeitada.</footer>
+  </main>
+  <script>
+    const motion = document.querySelector("#motion");
+    let replay = 0;
+    document.querySelector("#replay").addEventListener("click", () => { motion.src = `../../web/ui/brand/ferry-logo-animated.svg?replay=${++replay}`; });
+    document.querySelector("#static").addEventListener("click", () => { motion.src = "../../web/ui/brand/ferry-logo.svg"; });
+  </script>
+</body>
+</html>

@@ -27,6 +27,15 @@ async function api(method, url, body) {
 
 // ---------- entrar ----------
 let setupMode = false;
+let brandIntroduced = false;
+function introduceBrand(container) {
+  if (brandIntroduced) return;
+  const brand = container.querySelector(".brand");
+  if (!brand || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  brandIntroduced = true;
+  brand.classList.add("brand-enter");
+  setTimeout(() => brand.classList.remove("brand-enter"), 2600);
+}
 async function boot() {
   await loadTranslations();
   const st = await api("GET", "/api/auth/state");
@@ -40,6 +49,7 @@ function showAuth(setup = setupMode) {
   events?.close(); events = null;
   $("#shell").hidden = true;
   $("#auth").hidden = false;
+  introduceBrand($("#auth"));
   $("#authTitle").textContent = t(setup ? "ui.createAccess" : "ui.login");
   $("#authHint").textContent = setup ? t("ui.setupHint") : "";
   $("#authBtn").textContent = t(setup ? "ui.createSignIn" : "ui.login");
@@ -67,6 +77,7 @@ let settings = {};
 async function start(user) {
   $("#auth").hidden = true;
   $("#shell").hidden = false;
+  introduceBrand($("#shell"));
   $("#whoami").textContent = user;
   settings = await api("GET", "/api/settings");
   setLanguage(settings.language || "auto");

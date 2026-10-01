@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title" color="#E9EDF3">
+<title id="title">Ferry</title>
+
+<g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="currentColor"/></g>
+<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="currentColor"/></g>
+<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="currentColor"/></g>
+<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="currentColor"/></g>
+<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="currentColor"/></g>
+</svg>

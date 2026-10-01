@@ -69,9 +69,9 @@ textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 
 .brand { display: flex; gap: 14px; align-items: center; }
-.brand .logo { width: 40px; height: 40px; border-radius: 9px; transition: transform 0.25s ease, filter 0.25s ease; }
-.brand:hover .logo { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.45)); }
-.brand b { display: block; font-size: 22px; font-weight: 600; line-height: 1; }
+.brand .logo { width: 40px; height: 40px; flex: 0 0 auto; overflow: visible; }
+.brand-copy { min-width: 0; }
+.brand .brand-wordmark { display: block; width: 88px; height: auto; }
 .brand small { display: block; font-size: 11px; margin-top: 4px; }
 
 /* ---------- entrar ---------- */
