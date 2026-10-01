@@ -2,6 +2,8 @@
 
 **English** · [Português (BR)](../PKG-PS5.md) · [Español](../es/PKG-PS5.md)
 
+> **2026-10-01 revision:** the user reported that FTP PKG upload followed by local-path DPI installation does not solve their use case. Removal is planned; the code still implements the behavior below. USB or PKG Manager streaming is the proposed replacement. See the [research and replacement plan (Portuguese)](../plans/next/remover-pkg-ftp-e-adotar-pkg-manager.md). No console installation was verified in this research; the old instructions do not establish compatibility.
+
 Research for Phase 6 of the [roadmap](ROADMAP.md). Status as of **2026-09-30**. The scene moves fast; check the sources before implementing. What I couldn't confirm is marked **to confirm**.
 
 

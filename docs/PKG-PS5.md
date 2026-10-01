@@ -2,6 +2,8 @@
 
 [English](en/PKG-PS5.md) · **Português (BR)** · [Español](es/PKG-PS5.md)
 
+> **Revisão de 01/10/2026:** o usuário reportou que o fluxo PKG por FTP + DPI por caminho local não resolve seu cenário. Sua remoção está planejada; o código ainda mantém o comportamento abaixo. Para novos PKGs, a proposta é USB ou streaming pelo PKG Manager. Veja a [pesquisa e o plano de substituição](plans/next/remover-pkg-ftp-e-adotar-pkg-manager.md). Instalação no console não foi validada nesta pesquisa; as instruções antigas não são confirmação de compatibilidade.
+
 Pesquisa para a Fase 6 do [roadmap](ROADMAP.md). Situação em **30/09/2026**. A cena muda rápido; confira as fontes antes de implementar. O que não consegui confirmar está marcado como **a confirmar**.
 
 

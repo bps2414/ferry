@@ -1,5 +1,7 @@
 # Próxima fase sem payload — diagnóstico de serviços e destinos
 
+> **Revisão obrigatória antes de implementar (01/10/2026):** a [nova proposta PKG](remover-pkg-ftp-e-adotar-pkg-manager.md) planeja retirar o upload FTP de PKG e o DPI por caminho local. Os requisitos de destino PKG interno, teste DPI e campos relacionados neste plano ficaram pendentes de revisão. Diagnóstico FTP de dumps/imagens continua aplicável; este documento não deve ser executado integralmente com as premissas antigas.
+
 Data: **2026-09-30**. Estado: **proposta documentada, não implementada**. Base pesquisada: `ec0ebbb`. Evidências e ranking: [cenário PS5](../../PESQUISA-CENARIO-PS5-2026-09.md). [Contrato desta rodada após integração](../completed/produto-ux-proxima-fase.md), mantido pelo Maestro; este plano não o modifica. O contrato foi concluído pelo Maestro após integração e validação local; o diagnóstico abaixo continua somente proposto.
 
 ## Problema e resultado esperado

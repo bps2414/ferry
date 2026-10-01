@@ -2,6 +2,8 @@
 
 [English](en/ROADMAP.md) · **Português (BR)** · [Español](es/ROADMAP.md)
 
+> **Reavaliação em 01/10/2026:** a próxima proposta passa a ser [retirar PKG por FTP + DPI por caminho local e adotar USB/PKG Manager](plans/next/remover-pkg-ftp-e-adotar-pkg-manager.md), após o usuário reportar que o método atual não resolve seu cenário. Ainda não implementada. O diagnóstico da Fase 6.1 abaixo precisa ser revisto para excluir essa premissa; o restante registra o planejamento de 30/09.
+
 Reavaliado em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → diagnóstico de serviços e destinos. RAR progressivo passa a prova técnica futura; payload fica fora da próxima fase.
 
 Estado: Fases 1, 1.5, 2 e 3 concluídas (a 3 saiu na release `v1.3.0-beta.1`). **Fases 5, 5.1 e 6 implementadas. A fase 6 cobre PKG solto e um PKG por ZIP/RAR/7z; instalação real ainda exige validação no PS5. Próxima fase proposta: 6.1, diagnóstico sem payload, ainda não implementada. Publicação depende da CI.** Pesquisa primária e ranking em [PESQUISA-CENARIO-PS5-2026-09.md](PESQUISA-CENARIO-PS5-2026-09.md); contrato futuro em [proxima-fase-sem-payload.md](plans/next/proxima-fase-sem-payload.md). A rodada de UX Windows foi integrada e validada localmente: [opções de energia da sessão](UX-PRODUTO.md) e [resultados](RELATORIO-PRODUTO-2026-09.md).

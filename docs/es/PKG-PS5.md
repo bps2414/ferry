@@ -2,6 +2,8 @@
 
 [English](../en/PKG-PS5.md) · [Português (BR)](../PKG-PS5.md) · **Español**
 
+> **Revisión del 01/10/2026:** el usuario informó que enviar PKG por FTP y solicitar su instalación mediante DPI con ruta local no resuelve su caso. Su retirada está planificada; el código todavía mantiene el comportamiento descrito abajo. La propuesta es USB o streaming con PKG Manager. Consulta la [investigación y el plan de sustitución (portugués)](../plans/next/remover-pkg-ftp-e-adotar-pkg-manager.md). Esta investigación no verificó instalaciones en la consola; las instrucciones antiguas no confirman compatibilidad.
+
 Investigación para la Fase 6 del [roadmap](ROADMAP.md). Situación a **30/09/2026**. La escena cambia rápido; revisa las fuentes antes de implementar. Lo que no pude confirmar está marcado como **por confirmar**.
 
 
