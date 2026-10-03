@@ -368,6 +368,20 @@ if (jInst != null) eInst.Retry(jInst);
 var instOk = warnedInst && await RunUntil(eInst, j => j.Name == "G7" && j.Stage == Stage.Verificado, TimeSpan.FromMinutes(1)) && SameFiles(gameDirs["G7.rar"], g7Remote) == g7Files;
 ftp2.Kill(true);
 
+// Pasta solta (sem 7-Zip): arrastar a pasta do jogo envia tudo com o nome da pasta
+var fdRoot = Dir("ftproot-folder");
+var (ftpF, portF, _) = StartFtp(fdRoot, appe: true);
+var fdSrc = gameDirs["G1.zip"]; var fdName = Path.GetFileName(fdSrc);
+var sFd = new Settings { Host = "127.0.0.1", Port = portF, User = "ps5", Password = "ps5pass", RemoteDir = RemoteDir, Connections = 4, InputFolder = Dir("input-folder") };
+var eFd = new Engine(sFd, m => Console.WriteLine("[folder] " + m), _ => Task.FromResult<string?>(null)) { StableSeconds = 2, QueueFile = Path.Combine(work, "queue-folder.json") };
+eFd.AddFiles([fdSrc]);
+var fdDone = await RunUntil(eFd, j => j.Name == fdName && j.Stage is Stage.Verificado or Stage.Erro, TimeSpan.FromMinutes(2));
+var fdRemote = Path.Combine(fdRoot, "mnt", "ext1", "homebrew", fdName);
+var fdFiles = Directory.GetFiles(fdSrc, "*", SearchOption.AllDirectories).Length;
+var fdSame = Directory.Exists(fdRemote) ? SameFiles(fdSrc, fdRemote) : 0;
+var fdOk = fdDone && fdFiles > 0 && fdSame == fdFiles && Directory.Exists(fdSrc);
+ftpF.Kill(true);
+
 // Log persistente: comando e resposta de cada STOR/APPE e SIZE
 var fileLog = File.Exists(FileLog.FilePath) ? File.ReadAllText(FileLog.FilePath) : "";
 var logOk = fileLog.Contains($"APPE {RemoteDir}/{g7Name}/data/big.bin → 226") && fileLog.Contains($"STOR {RemoteDir}/{g7Name}/EBOOT.BIN → 226")
@@ -585,6 +599,8 @@ allOk &= migOk;
 extraRows.Add($"| Migração de dados PS5Sender → Ferry | {(migOk ? "✅ settings.json, queue.json e log.txt copiados com o mesmo conteúdo; pasta antiga intacta; 2ª chamada não sobrescreveu o settings.json alterado" : $"❌ FALHA: copiou={migCopied}, antiga intacta={migKept}, sem sobrescrever={migNoOverwrite}")} |");
 var exfatOk = ex1Ok && ex2Ok && ex3Ok;
 allOk &= exfatOk && agOk;
+allOk &= fdOk;
+extraRows.Add($"| Pasta solta arrastada (sem 7-Zip) | {(fdOk ? $"✅ {fdSame}/{fdFiles} arquivos conferem; origem intacta" : $"❌ FALHA: {fdSame}/{fdFiles} iguais, concluído={fdDone}")} |");
 extraRows.Add($"| Imagem .exfat solta e dentro de .part1.rar (ShadowMount+) | {ex1Line} |");
 extraRows.Add($"| Imagem .exfat: reabrir com parcial nosso (APPE) e parcial de outra versão (STOR inteiro) | {ex2Line} |");
 extraRows.Add($"| Imagem .exfat já no PS5: aviso + Tentar de novo | {ex3Line} |");

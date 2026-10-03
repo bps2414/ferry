@@ -17,6 +17,7 @@ public partial class Engine
 
     static string FileStamp(string path)
     {
+        if (Directory.Exists(path)) return Archives.DirStamp(path);
         var file = new FileInfo(path);
         return file.Exists ? $"{file.Length}:{file.LastWriteTimeUtc.Ticks}" : "missing";
     }

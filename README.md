@@ -81,6 +81,7 @@ Optional: a **watched folder** — anything that lands in it is queued automatic
 | Split zip | `Game.z01`, `Game.z02`… + `Game.zip` |
 | New RAR | `Game.part1.rar` … `Game.partN.rar` |
 | Old RAR | `Game.rar` + `Game.r00`, `Game.r01`… |
+| Loose folder (already extracted) | Drag the game folder onto the window: sent straight from disk, no archive needed. Never deleted |
 | Password-protected | a dialog asks for the password (and tells you if it's wrong) |
 | ShadowMount+ image | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc`, loose or archived. Sent whole to the images folder (Settings) |
 | PKG / fPKG | Loose `.pkg` or one PKG inside ZIP/RAR/7z, including splits and passwords. FTP for manual installation in etaHEN; optional automatic DPI request |

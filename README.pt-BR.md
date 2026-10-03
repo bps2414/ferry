@@ -81,6 +81,7 @@ Opcional: uma **pasta monitorada** — tudo que cair nela entra na fila sozinho 
 | Zip dividido | `Jogo.z01`, `Jogo.z02`… + `Jogo.zip` |
 | RAR novo | `Jogo.part1.rar` … `Jogo.partN.rar` |
 | RAR antigo | `Jogo.rar` + `Jogo.r00`, `Jogo.r01`… |
+| Pasta solta (já extraída) | Arraste a pasta do jogo para a janela: é enviada direto do disco, sem compactar. Nunca é apagada |
 | Com senha | abre um diálogo pedindo a senha (avisa se estiver errada) |
 | Imagem do ShadowMount+ | `.exfat`, `.ffpkg`, `.ffpfs`, `.ffpfsc` solto ou compactado. Vai inteira para a pasta de imagens (Configurações) |
 | PKG / fPKG | `.pkg` solto ou um único PKG dentro de ZIP/RAR/7z, inclusive splits e senha. FTP para instalar manualmente no etaHEN; solicitação automática via DPI opcional |

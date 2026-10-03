@@ -52,6 +52,46 @@ public static class Archives
     // .exfat solto = imagem do ShadowMount+, enviada como está (sem 7-Zip)
     static readonly Regex PlainRe = new(@"^(.+)\.(zip|7z|rar|exfat|ffpkg|ffpfs|ffpfsc|pkg)$", RegexOptions.IgnoreCase);
     public static bool IsImage(string path) => new[] { ".exfat", ".ffpkg", ".ffpfs", ".ffpfsc" }.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase));
+    public static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
+    public static string DirStamp(string dir)
+    {
+        long n = 0, len = 0, t = 0;
+        foreach (var f in new DirectoryInfo(dir).EnumerateFiles("*", SearchOption.AllDirectories)) { n++; len += f.Length; t = Math.Max(t, f.LastWriteTimeUtc.Ticks); }
+        return $"{n}:{len}:{t}";
+    }
+    public static long SourceSize(string path) => Directory.Exists(path)
+        ? new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length) : new FileInfo(path).Length;
+    /// <summary>Arquivos da pasta (recursivo, ordem estável), caminhos relativos com "/".</summary>
+    public static List<Entry> FolderEntries(string dir) => [.. new DirectoryInfo(dir).EnumerateFiles("*", SearchOption.AllDirectories)
+        .Select(f => new Entry(System.IO.Path.GetRelativePath(dir, f.FullName).Replace('\\', '/'), f.Length, false, false))
+        .OrderBy(e => e.Path, StringComparer.Ordinal)];
+
+    /// <summary>Concatena arquivos do disco num stream só (mesmo contrato do stdout do 7z x -so).</summary>
+    public sealed class ConcatStream(IEnumerable<string> files) : Stream
+    {
+        readonly IEnumerator<string> _files = files.GetEnumerator();
+        FileStream? _cur;
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            while (true)
+            {
+                if (_cur == null) { if (!_files.MoveNext()) return 0; _cur = new(_files.Current, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 81920, true); }
+                var n = await _cur.ReadAsync(buffer, ct);
+                if (n > 0) return n;
+                await _cur.DisposeAsync(); _cur = null;
+            }
+        }
+        public override int Read(byte[] b, int o, int c) => ReadAsync(b.AsMemory(o, c)).AsTask().GetAwaiter().GetResult();
+        public override bool CanRead => true; public override bool CanSeek => false; public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long o, SeekOrigin s) => throw new NotSupportedException();
+        public override void SetLength(long v) => throw new NotSupportedException();
+        public override void Write(byte[] b, int o, int c) => throw new NotSupportedException();
+        protected override void Dispose(bool d) { if (d) _cur?.Dispose(); base.Dispose(d); }
+    }
+
     public static bool IsPackage(string path) => path.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase);
 
     public static Entry? PackagePlan(List<Entry> entries)
@@ -160,6 +200,7 @@ public static class Archives
         var list = Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
         try
         {
+            if (Directory.Exists(main)) return [.. items.Select(e => File.ReadAllBytes(System.IO.Path.Combine(main, Native(e.Path))))];
             File.WriteAllLines(list, items.Select(e => Native(e.Path)));
             using var p = OpenStream(main, pw, list);
             _ = p.StandardError.ReadToEndAsync();

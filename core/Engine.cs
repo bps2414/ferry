@@ -44,7 +44,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             var s = JsonSerializer.Deserialize<Saved>(File.ReadAllText(QueueFile))!;
             lock (_dropped)
             {
-                _dropped.UnionWith(s.Dropped.Where(File.Exists)); _removed.UnionWith(s.Removed);
+                _dropped.UnionWith(s.Dropped.Where(Archives.Exists)); _removed.UnionWith(s.Removed);
                 _passwords = new(s.Passwords ?? [], StringComparer.OrdinalIgnoreCase);
                 _started = new(s.Started ?? [], StringComparer.OrdinalIgnoreCase);
                 _done = new(s.Done ?? [], StringComparer.OrdinalIgnoreCase);
@@ -68,7 +68,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
 
     void SaveQueueRequired()
     {
-        lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(File.Exists)], [.. _removed], _passwords, _started, [.. _done], _packages)));
+        lock (_dropped) Settings.AtomicWrite(QueueFile, JsonSerializer.Serialize(new Saved([.. _dropped.Where(Archives.Exists)], [.. _removed], _passwords, _started, [.. _done], _packages)));
     }
 
     // jogo saiu da fila: esquece senha e envios começados
@@ -77,8 +77,8 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
     public void AddFiles(IEnumerable<string> paths)
     {
         Interlocked.Increment(ref _workRevision); // observable before discovery or cards, including a repeated source
-        var list = paths.Where(File.Exists).ToList();
-        var keys = Archives.Group(list).Keys.ToList();
+        var list = paths.Where(Archives.Exists).Select(p => p.TrimEnd('\\', '/')).ToList();
+        var keys = Archives.Group(list).Keys.Concat(list.Where(Directory.Exists)).ToList();
         lock (_dropped) { foreach (var p in list) _dropped.Add(p); foreach (var k in keys) { _removed.Remove(k); _done.Remove(k); } }
         // adicionar de novo um jogo concluído = enviar de novo: o card volta para a checagem de partes
         lock (Lock)
@@ -132,6 +132,8 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
         foreach (var dir in dropped.Select(Path.GetDirectoryName).Distinct().Where(Directory.Exists))
             foreach (var (k, g) in Archives.Group(Directory.GetFiles(dir!)))
                 if (g.Parts.Any(dropped.Contains)) groups[k] = g;
+        // pasta solta = um grupo só, enviado direto do disco (sem 7-Zip)
+        foreach (var d in dropped.Where(Directory.Exists)) groups[d] = new() { Key = d, Name = Path.GetFileName(d), Plain = d };
         return groups;
     }
 
@@ -173,7 +175,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             if (!_stable.TryGetValue(g.Key, out var st) || st.sig != sig) { _stable[g.Key] = (sig, DateTime.UtcNow); job.SetDetail(new("core.stabilizing")); continue; }
             if ((DateTime.UtcNow - st.since).TotalSeconds < StableSeconds) continue;
 
-            if (!Archives.IsImage(job.MainFile) && !Archives.IsPackage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
+            if (!Directory.Exists(job.MainFile) && !Archives.IsImage(job.MainFile) && !Archives.IsPackage(job.MainFile) && await Archives.ListAsync(job.MainFile, job.ArchivePassword) is (ListResult.Incomplete, _, var lost))
             {
                 job.SetDetail(lost.Length > 0 ? Missing(g, lost) : new("core.incompleteParts")); // .001: o 7z não diz qual
                 _stable[g.Key] = (sig, DateTime.UtcNow); // reavalia depois de outra janela
@@ -181,13 +183,13 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             }
             // Um volume pode ter chegado durante o 7z l: o 7z viu, mas a lista de partes não. Recomeça a janela.
             if (CurrentGroups().GetValueOrDefault(g.Key) is not { } fresh || Sig([.. fresh.Parts]) != sig) { _stable.Remove(g.Key); continue; }
-            job.SetDetail(new("core.partsSize", job.Parts.Count, new Message("core.size", job.Parts.Sum(p => new FileInfo(p).Length))));
+            job.SetDetail(new("core.partsSize", job.Parts.Count, new Message("core.size", job.Parts.Sum(Archives.SourceSize))));
             job.Stage = Stage.NaFila;
             JobLog(job, new("core.queued", job.Parts.Count));
         }
     }
 
-    static string Sig(List<string> parts) => string.Join("|", parts.Select(p => { var fi = new FileInfo(p); return $"{p}:{(fi.Exists ? fi.Length : -1)}:{(fi.Exists ? fi.LastWriteTimeUtc.Ticks : 0)}"; }));
+    static string Sig(List<string> parts) => string.Join("|", parts.Select(p => { if (Directory.Exists(p)) return $"{p}:{Archives.DirStamp(p)}"; var fi = new FileInfo(p); return $"{p}:{(fi.Exists ? fi.Length : -1)}:{(fi.Exists ? fi.LastWriteTimeUtc.Ticks : 0)}"; }));
 
     // Extrai e envia ao mesmo tempo: stdout do 7z vai direto para o FTP, nada é gravado em disco.
     // Antes, pergunta ao PS5 o que já existe e pede ao 7z só o que falta: pausar, fechar o app ou
@@ -202,8 +204,10 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             job.Stage = Stage.Extraindo; job.ResetRate();
             job.SetDetail(new("core.reading"));
             // .exfat solto: um item só, lido direto do disco
-            var loose = Archives.IsImage(job.MainFile) || Archives.IsPackage(job.MainFile);
-            var (res, entries, _) = loose ? (ListResult.Ok, [new(Path.GetFileName(job.MainFile), new FileInfo(job.MainFile).Length, false, false)], [])
+            var folder = Directory.Exists(job.MainFile);
+            var loose = !folder && (Archives.IsImage(job.MainFile) || Archives.IsPackage(job.MainFile));
+            var (res, entries, _) = folder ? (ListResult.Ok, Archives.FolderEntries(job.MainFile), [])
+                : loose ? (ListResult.Ok, [new(Path.GetFileName(job.MainFile), new FileInfo(job.MainFile).Length, false, false)], [])
                 : await Archives.ListAsync(job.MainFile, job.ArchivePassword);
             // senha lembrada → senhas conhecidas (em silêncio) → diálogo
             var known = new Queue<string>(settings.KnownPasswords.ToList());
@@ -234,7 +238,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             }
             ct.ThrowIfCancellationRequested();
 
-            if (Archives.PackagePlan(entries) is { } package)
+            if (!folder && Archives.PackagePlan(entries) is { } package)
             {
                 await ProcessPackageAsync(job, package, loose, ct);
                 return;
@@ -292,8 +296,8 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
 
                 listFile ??= Path.Combine(Path.GetTempPath(), $"ferry-{Guid.NewGuid():N}.txt");
                 File.WriteAllLines(listFile, need.Select(i => Archives.Native(entries[i].Path)));
-                using var p = loose ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
-                using var src = p?.StandardOutput.BaseStream ?? File.OpenRead(job.MainFile);
+                using var p = loose || folder ? null : Archives.OpenStream(job.MainFile, job.ArchivePassword, listFile);
+                using var src = p?.StandardOutput.BaseStream ?? (folder ? new Archives.ConcatStream(need.Select(i => Path.Combine(job.MainFile, Archives.Native(entries[i].Path)))) : File.OpenRead(job.MainFile));
                 using var reg = ct.Register(() => { try { p?.Kill(true); } catch { } });
                 var err = p?.StandardError.ReadToEndAsync();
                 Exception? fail = null;
@@ -344,7 +348,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             Done?.Invoke(job);
             if (settings.DeleteOriginal)
             {
-                foreach (var f in job.Parts) DeleteOriginalObserved(f);
+                foreach (var f in job.Parts.Where(File.Exists)) DeleteOriginalObserved(f); // pasta nunca é apagada
                 SaveQueue();
                 JobLog(job, new("core.originalsDeleted", job.Parts.Count));
             }
