@@ -190,13 +190,15 @@ public partial class MainWindow : Window
     void RefreshPower()
     {
         _powerSession.Tick();
+        _engine.HoldAutoClear = _powerSession.Armed;
         _renderingPower = true;
         ShutdownAfterBox.IsChecked = _powerSession.Armed;
         ShutdownAfterBox.IsEnabled = _powerSession.Armed || _powerSession.CanArm;
         KeepAwakeBox.IsChecked = _powerSession.KeepAwake;
         _renderingPower = false;
         SetText(PowerStatusText, _powerSession.StatusKey, _powerSession.RemainingSeconds);
-        CancelShutdownBtn.Visibility = _powerSession.Armed ? Visibility.Visible : Visibility.Collapsed;
+        SetText(BannerText, _powerSession.StatusKey, _powerSession.RemainingSeconds);
+        PowerBanner.Visibility = _powerSession.Armed ? Visibility.Visible : Visibility.Collapsed;
         if (_powerSession.RemainingSeconds != null && (!_countdownShown || !IsVisible)) RestoreWindow();
         _countdownShown = _powerSession.RemainingSeconds != null;
     }

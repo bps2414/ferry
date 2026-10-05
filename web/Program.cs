@@ -127,6 +127,9 @@ api.MapPut("/settings", (JsonElement body) =>
             case "deleteoriginal":
                 if (v.ValueKind is JsonValueKind.True or JsonValueKind.False) settings.DeleteOriginal = v.GetBoolean();
                 break;
+            case "autoclearfinished":
+                if (v.ValueKind is JsonValueKind.True or JsonValueKind.False) settings.AutoClearFinished = v.GetBoolean();
+                break;
             case "knownpasswords":
                 if (v.ValueKind == JsonValueKind.Array) settings.KnownPasswords = [.. v.EnumerateArray().Select(x => x.GetString()?.Trim() ?? "").Where(x => x.Length > 0)];
                 break;

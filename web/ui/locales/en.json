@@ -33,6 +33,7 @@
   "ui.watchHint": "Optional. Games arriving here automatically join the queue when all parts arrive. Browser uploads are also saved here (or in the data folder if unset).",
   "ui.transfer": "Transfer",
   "ui.connections": "Parallel connections",
+  "ui.autoClearFinished": "Automatically remove completed items from the queue",
   "ui.deleteOriginal": "Delete original parts after the transfer is verified",
   "ui.knownPasswords": "Known passwords",
   "ui.passwordsHint": "one per line, tried before asking",

@@ -33,6 +33,7 @@
   "ui.watchHint": "Opcional. Jogos que chegarem aqui entram na fila sozinhos, quando todas as partes chegarem. Os arquivos enviados pelo navegador também são gravados aqui (sem ela, na pasta de dados).",
   "ui.transfer": "Envio",
   "ui.connections": "Conexões paralelas",
+  "ui.autoClearFinished": "Remover concluídos da fila automaticamente",
   "ui.deleteOriginal": "Apagar as partes originais depois do envio conferido",
   "ui.knownPasswords": "Senhas conhecidas",
   "ui.passwordsHint": "uma por linha, testadas antes de perguntar",

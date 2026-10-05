@@ -110,6 +110,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
             while (!stop.IsCancellationRequested)
             {
                 try { await ScanAsync(); } catch (Exception e) { Emit(new("core.scanError", Localization.ExceptionMessage(e))); }
+                try { AutoClearTick(); } catch { }
                 await Task.Delay(1000, stop).ContinueWith(_ => { });
             }
         });
@@ -424,6 +425,24 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
         job.Cts?.Cancel();
         job.ResetRate();
         JobLog(job, new("core.cancelled"));
+    }
+
+    readonly Dictionary<Job, DateTime> _finishedSeen = [];
+    /// Quando bloqueado (ex.: desligamento armado, que cancela se a fila mudar), não limpa nada.
+    public bool HoldAutoClear { get; set; }
+    const int AutoClearSeconds = 8;
+
+    void AutoClearTick()
+    {
+        if (!settings.AutoClearFinished || HoldAutoClear) { _finishedSeen.Clear(); return; }
+        var now = DateTime.UtcNow;
+        bool Finished(Job j) => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada;
+        lock (Lock)
+        {
+            foreach (var j in Jobs.Where(Finished)) _finishedSeen.TryAdd(j, now);
+            foreach (var j in _finishedSeen.Keys.Where(j => !Jobs.Contains(j) || !Finished(j)).ToList()) _finishedSeen.Remove(j);
+        }
+        if (_finishedSeen.Values.Any(t => (now - t).TotalSeconds >= AutoClearSeconds)) ClearFinished();
     }
 
     public void ClearFinished()

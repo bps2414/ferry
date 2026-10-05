@@ -45,6 +45,7 @@
   "app.fileFilter": "Compactados, imagens ou PKG|*.zip;*.rar;*.7z;*.0*;*.z0*;*.z1*;*.r0*;*.r1*;*.exfat;*.pkg;*.ffpkg;*.ffpfs;*.ffpfsc|Todos os arquivos|*.*",
   "app.trayOpen": "Abrir Ferry",
   "app.trayExit": "Sair",
+  "app.power": "Energia",
   "app.shutdownAfter": "Desligar este PC ao terminar as transferências (nesta sessão)",
   "app.powerHint": "PKG enviado ou instalação solicitada indica fim da transferência; a instalação no PS5 não está comprovada. Adicionar ou remover trabalho cancela o desligamento.",
   "app.cancelShutdown": "Cancelar desligamento do PC",

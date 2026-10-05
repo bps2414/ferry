@@ -32,6 +32,8 @@ public class Settings
     public bool AutoInstallPackages { get; set; }
     public int Connections { get; set; } = 4;
     public bool DeleteOriginal { get; set; }
+    /// Tira da fila, sozinho, o que já concluiu (some alguns segundos depois de terminar).
+    public bool AutoClearFinished { get; set; }
     /// Senhas públicas (de sites) testadas antes de abrir o diálogo; a que funcionar no diálogo entra no fim.
     public List<string> KnownPasswords { get; set; } = [];
 

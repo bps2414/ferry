@@ -109,6 +109,7 @@ public static class Ftp
             async Task Skip(long n)
             {
                 if (src.CanSeek) { src.Seek(n, SeekOrigin.Current); return; } // .exfat solto: pula no disco
+                if (src is Archives.ConcatStream cs) { cs.SkipForward(n); return; } // pasta solta: idem, sem reler dezenas de GB
                 while (n > 0) { var k = await src.ReadAsync(buf.AsMemory(0, (int)Math.Min(buf.Length, n)), tk); if (k == 0) throw new EndOfStreamException(); n -= k; }
             }
 

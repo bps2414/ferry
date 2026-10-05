@@ -81,6 +81,17 @@ public static class Archives
                 await _cur.DisposeAsync(); _cur = null;
             }
         }
+        /// <summary>Pula n bytes do arquivo atual por seek (retomada via APPE não relê o que já está no PS5).</summary>
+        public void SkipForward(long n)
+        {
+            while (_cur == null || _cur.Position >= _cur.Length)
+            {
+                _cur?.Dispose(); _cur = null;
+                if (!_files.MoveNext()) throw new EndOfStreamException();
+                _cur = new(_files.Current, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 81920, true);
+            }
+            _cur.Seek(n, SeekOrigin.Current);
+        }
         public override int Read(byte[] b, int o, int c) => ReadAsync(b.AsMemory(o, c)).AsTask().GetAwaiter().GetResult();
         public override bool CanRead => true; public override bool CanSeek => false; public override bool CanWrite => false;
         public override long Length => throw new NotSupportedException();
