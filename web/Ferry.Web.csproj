@@ -7,7 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Ferry.Web</RootNamespace>
     <AssemblyName>ferry</AssemblyName>
-    <Version>1.6.1-beta.1</Version>
     <!-- sem depender do ICU do sistema; o formato de número pt-BR é montado à mão no Program -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- a interface vai dentro do binário: o Linux sem Docker é um arquivo só -->

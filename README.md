@@ -104,6 +104,7 @@ The app waits for **all parts** to arrive and for their size to **stop changing*
 - [PKG and fPKG on the PS5](docs/en/PKG-PS5.md) — DPI configuration, states and installation limits
 - [E2E tests](docs/en/TESTS.md) — how to run them and what is checked
 - [Roadmap](docs/en/ROADMAP.md)
+- [Changelog](CHANGELOG.md) — what changed in each version (Semantic Versioning)
 - [Latest E2E report](e2e_report.md) · [Web E2E (Docker)](e2e_report_web.md) (in Portuguese)
 
 ## Building

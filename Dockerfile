@@ -4,6 +4,7 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG TARGETARCH
 WORKDIR /src
+COPY Directory.Build.props ./
 COPY core/ core/
 COPY web/ web/
 COPY app/fonts/ app/fonts/

@@ -1,0 +1,6 @@
+<Project>
+  <!-- Única fonte da versão (SemVer, ver CHANGELOG.md). Mude com tools/release.ps1, não à mão. -->
+  <PropertyGroup>
+    <Version>1.6.1-beta.1</Version>
+  </PropertyGroup>
+</Project>

@@ -103,6 +103,7 @@ La app espera a que lleguen **todas las partes** y a que su tamaño **deje de ca
 - [PKG y fPKG en la PS5](docs/es/PKG-PS5.md) — configuración DPI, estados y límites de instalación
 - [Pruebas E2E](docs/es/PRUEBAS.md) — cómo ejecutarlas y qué se verifica
 - [Roadmap](docs/es/ROADMAP.md)
+- [Changelog](CHANGELOG.md) — qué cambió en cada versión (en inglés y portugués; Versionado Semántico)
 - [Último informe E2E](e2e_report.md) · [E2E web (Docker)](e2e_report_web.md) (en portugués)
 
 ## Compilar

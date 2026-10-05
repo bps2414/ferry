@@ -223,10 +223,24 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.list }}
 
+  # Tag v*: falha cedo se a versão não bate com Directory.Build.props ou se faltam notas nos CHANGELOGs
+  verify-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Versão e notas
+        run: |
+          set -eu
+          ver=${GITHUB_REF_NAME#v}
+          grep -q "<Version>$ver</Version>" Directory.Build.props || { echo "::error::a tag $GITHUB_REF_NAME não bate com a Version de Directory.Build.props (use tools/release.ps1)"; exit 1; }
+          bash tools/release-notes.sh "$ver" > /dev/null
+
   # Tag v*: junta o exe e os binários Linux na release (tag com "-" vira pré-release)
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, linux, docker]
+    needs: [verify-release, windows, linux, docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -243,10 +257,12 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           files="dist/Ferry.exe dist/Ferry-linux-x64.tar.gz dist/Ferry-linux-arm64.tar.gz"
+          # notas = seção da versão nos CHANGELOGs (inglês + português)
+          bash tools/release-notes.sh "$TAG" > notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" $files --clobber
           elif [[ "$TAG" == *-* ]]; then
-            gh release create "$TAG" $files --title "Ferry $TAG" --generate-notes --prerelease
+            gh release create "$TAG" $files --title "Ferry $TAG" --notes-file notes.md --prerelease
           else
-            gh release create "$TAG" $files --title "Ferry $TAG" --generate-notes
+            gh release create "$TAG" $files --title "Ferry $TAG" --notes-file notes.md
           fi
