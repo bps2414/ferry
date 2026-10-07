@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading.Channels;
 using FluentFTP;
+using FluentFTP.Exceptions;
 
 namespace Ferry;
 
@@ -27,10 +28,14 @@ public static class Ftp
     static async Task<AsyncFtpClient> Open(Settings s, CancellationToken ct)
     {
         var c = Client(s);
-        await c.Connect(ct);
-        if ((await c.Execute("SELF", ct)).Message.Contains("enabled")) await c.Execute("SELF", ct); // estava desligado: volta
-        await c.Execute("TYPE I", ct); // SIZE em modo ASCII é recusado por vários servidores
-        return c;
+        try
+        {
+            await c.Connect(ct);
+            if ((await c.Execute("SELF", ct)).Message.Contains("enabled")) await c.Execute("SELF", ct); // estava desligado: volta
+            await c.Execute("TYPE I", ct); // SIZE em modo ASCII é recusado por vários servidores
+            return c;
+        }
+        catch { c.Config.DisconnectWithQuit = false; await c.DisposeAsync(); throw; }
     }
 
     public static async Task<string> TestAsync(Settings s) => (await TestMessageAsync(s)).Render();
@@ -76,19 +81,27 @@ public static class Ftp
     /// started(i) é chamado antes de mandar um arquivo grande (é o que pode ficar parcial e ser continuado).
     /// </summary>
     public static async Task StreamAsync(Settings s, Stream src, List<Entry> entries, string?[] paths, long[] have, bool append,
-        List<int> need, Action<long, long> progress, Action<string> currentFile, Action<int> started, Func<int, bool> lenient, Action<string> log, CancellationToken ct, Action<Message>? messageLog = null)
+        List<int> need, Action<long, long> progress, Action<string> currentFile, Action<int> started, Func<int, bool> lenient, Action<string> log, CancellationToken ct, Action<Message>? messageLog = null, Action<long, long>? replayProgress = null)
     {
         void Emit(Message message) { if (messageLog != null) messageLog(message); else log(message.Render()); }
         var total = entries.Where((e, i) => paths[i] != null).Sum(e => e.Size);
-        long done = entries.Where((e, i) => paths[i] != null && have[i] == e.Size).Sum(e => e.Size);
+        long Offset(int i) => append && have[i] > 0 && have[i] < entries[i].Size ? have[i] : 0;
+        // Crédito imediato dos parciais confiáveis, antes de reler o arquivo compactado.
+        long done = entries.Select((e, i) => paths[i] == null ? 0 : have[i] == e.Size ? e.Size : Offset(i)).Sum();
         void Add(long n) => progress(Interlocked.Add(ref done, n), total);
         Add(0);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var tk = cts.Token;
-        await using var main = await Open(s, tk);
-        foreach (var d in need.Select(i => paths[i]!).Select(p => p[..p.LastIndexOf('/')]).Distinct())
-            await main.CreateDirectory(d, true, tk);
+        AsyncFtpClient? main = null;
+        async Task<AsyncFtpClient> Main()
+        {
+            if (main != null) return main;
+            main = await Open(s, tk);
+            foreach (var d in need.Select(i => paths[i]!).Select(p => p[..p.LastIndexOf('/')]).Distinct())
+                await main.CreateDirectory(d, true, tk);
+            return main;
+        }
 
         var workers = Math.Max(1, s.Connections - 1); // + a conexão "main" = s.Connections no total
         var ch = Channel.CreateBounded<(int i, byte[] data, bool append)>(workers * 2);
@@ -96,9 +109,13 @@ public static class Ftp
         {
             try
             {
-                await using var c = await Open(s, tk);
-                await foreach (var (i, data, app) in ch.Reader.ReadAllAsync(tk))
-                    await Put(c, new Slice(new MemoryStream(data), data.Length, Add), paths[i]!, app, entries[i].Size, lenient(i), Emit, tk);
+                while (await ch.Reader.WaitToReadAsync(tk))
+                {
+                    // Só conecta quando há trabalho; não deixa sessões ociosas durante a releitura de um RAR grande.
+                    await using var c = await Open(s, tk);
+                    while (ch.Reader.TryRead(out var item))
+                        await Put(c, new Slice(new MemoryStream(item.data), item.data.Length, Add), paths[item.i]!, item.append, entries[item.i].Size, lenient(item.i), Emit, tk);
+                }
             }
             catch { cts.Cancel(); throw; }
         }).ToList();
@@ -110,15 +127,30 @@ public static class Ftp
             {
                 if (src.CanSeek) { src.Seek(n, SeekOrigin.Current); return; } // .exfat solto: pula no disco
                 if (src is Archives.ConcatStream cs) { cs.SkipForward(n); return; } // pasta solta: idem, sem reler dezenas de GB
-                while (n > 0) { var k = await src.ReadAsync(buf.AsMemory(0, (int)Math.Min(buf.Length, n)), tk); if (k == 0) throw new EndOfStreamException(); n -= k; }
+                if (main != null) { await main.DisposeAsync(); main = null; }
+                var totalSkip = n;
+                var lastUpdate = System.Diagnostics.Stopwatch.StartNew();
+                replayProgress?.Invoke(0, totalSkip);
+                while (n > 0)
+                {
+                    var k = await src.ReadAsync(buf.AsMemory(0, (int)Math.Min(buf.Length, n)), tk);
+                    if (k == 0) throw new EndOfStreamException();
+                    n -= k;
+                    if (n == 0 || lastUpdate.ElapsedMilliseconds >= 250)
+                    {
+                        replayProgress?.Invoke(totalSkip - n, totalSkip);
+                        lastUpdate.Restart();
+                    }
+                }
             }
 
             foreach (var i in need)
             {
                 var (e, path) = (entries[i], paths[i]!);
                 currentFile(path);
-                var off = append && have[i] > 0 && have[i] < e.Size ? have[i] : 0;
-                if (off > 0) { await Skip(off); Add(off); }
+                var off = Offset(i);
+                if (off > 0) await Skip(off);
+                var c = await Main();
                 var len = e.Size - off;
                 if (len <= SmallFile)
                 {
@@ -126,7 +158,7 @@ public static class Ftp
                     await src.ReadExactlyAsync(data, tk);
                     await ch.Writer.WriteAsync((i, data, off > 0), tk);
                 }
-                else { started(i); await Put(main, new Slice(src, len, Add), path, off > 0, e.Size, lenient(i), Emit, tk); }
+                else { started(i); await Put(c, new Slice(src, len, Add), path, off > 0, e.Size, lenient(i), Emit, tk); }
             }
             if (await src.ReadAsync(buf, tk) > 0) throw new LocalizedException(new("core.archive.outputLong"));
             ch.Writer.Complete();
@@ -138,6 +170,13 @@ public static class Ftp
             throw;
         }
         catch (EndOfStreamException) { throw new LocalizedException(new("core.archive.outputShort")); }
+        finally
+        {
+            cts.Cancel();
+            ch.Writer.TryComplete();
+            try { await Task.WhenAll(pool); } catch { } // a falha principal já foi propagada acima
+            if (main != null) { main.Config.DisconnectWithQuit = false; await main.DisposeAsync(); }
+        }
     }
 
     static async Task Put(AsyncFtpClient c, Stream data, string path, bool append, long expected, bool lenient, Action<Message> log, CancellationToken ct)
@@ -151,10 +190,12 @@ public static class Ftp
                 await data.CopyToAsync(s, 1 << 20, ct);
             var reply = await c.GetReply(ct); // resposta final (226/4xx/5xx): o Dispose do stream não lê
             FileLog.Write($"{cmd} {path} → {reply.Code} {reply.Message}");
-            if (!reply.Success) throw new Exception($"{reply.Code} {reply.Message}");
+            if (!reply.Success) throw new FtpCommandException(reply);
         }
-        catch (Exception e) when (!ct.IsCancellationRequested)
+        catch (Exception e)
         {
+            c.Config.DisconnectWithQuit = false; // conexão quebrada/cancelada: não espera resposta a QUIT
+            if (ct.IsCancellationRequested) throw;
             FileLog.Write($"{cmd} {path} → falhou: {Flatten(e)}");
             // stream do 7z acabou antes: o erro real é do 7z (a Engine mostra o stderr dele)
             if (e.GetBaseException() is EndOfStreamException) throw new LocalizedException(new("core.archive.outputShort"), e);
@@ -166,6 +207,14 @@ public static class Ftp
         var msg = new Message("core.ftp.size", path, expected, got);
         if (lenient) { log(new("core.ftp.backportWarning", msg)); return; }
         throw new LocalizedException(new("core.ftp.overwriteFailed", path, expected, got));
+    }
+
+    internal static bool AppendUnsupported(Exception e)
+    {
+        if (e is not LocalizedException { MessageData.Key: "core.ftp.sendFailed" } failure || !Equals(failure.MessageData.Args[1], "APPE")) return false;
+        for (Exception? x = e; x != null; x = x.InnerException)
+            if (x is FtpCommandException { CompletionCode: "500" or "501" or "502" or "504" }) return true;
+        return false;
     }
 
     /// <summary>RNFR/RNTO. Apaga o destino antes (nem todo servidor renomeia por cima).</summary>

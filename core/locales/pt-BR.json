@@ -32,6 +32,7 @@
   "core.partsSize": "{0} parte(s) · {1}",
   "core.stabilizing": "Aguardando o tamanho dos arquivos estabilizar",
   "core.reading": "Lendo o conteúdo do arquivo…",
+  "core.resumeReading": "Preparando retomada: relendo {0} de {1} do arquivo…",
   "core.checking": "Conferindo o que já está no PS5…",
   "core.verifying": "Verificando no PS5…",
   "core.passwordMissing": "Senha não informada",

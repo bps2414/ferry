@@ -11,6 +11,8 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.2-beta.1] - 2026-10-07
+
 ### Added
 
 - Loose game folder: drag a game folder (no archive) and Ferry sends it straight from disk, resuming where it stopped.
@@ -25,6 +27,9 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ### Fixed
 
+- Connection drops during APPE no longer disable resume or restart partial files from zero. Only an explicit unsupported-command response triggers a full resend; permission errors preserve the partial file.
+- Archive resume shows rereading progress and immediately includes bytes already saved on the PS5. Existing bytes no longer inflate the transfer speed.
+- FTP workers close between retries and connect only when there is work, avoiding idle sessions during archive rereading.
 - Resuming a partial file from a loose folder no longer reads and discards tens of GB from disk before continuing. It used to look frozen at 0 MB/s with nothing in the log; now it seeks straight to the right offset.
 
 ## [1.6.0-beta.1] - 2026-09-30
@@ -144,7 +149,8 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 2. To release, pick the next number by the rules at the top and run `tools/release.ps1 -Version 1.7.0-beta.1`. It turns **Unreleased** into that version with today's date, updates `Directory.Build.props` and the links, commits and creates the tag `v1.7.0-beta.1`.
 3. `git push --follow-tags`. CI builds, tests and publishes the release with the notes from this file and from [CHANGELOG.pt-BR.md](CHANGELOG.pt-BR.md) (English first, then Portuguese). CI fails if the tag does not match `Directory.Build.props`, or if either changelog has no section for it.
 
-[Unreleased]: https://github.com/bps2414/ferry/compare/v1.6.0-beta.1...HEAD
+[Unreleased]: https://github.com/bps2414/ferry/compare/v1.6.2-beta.1...HEAD
+[1.6.2-beta.1]: https://github.com/bps2414/ferry/compare/v1.6.0-beta.1...v1.6.2-beta.1
 [1.6.0-beta.1]: https://github.com/bps2414/ferry/compare/v1.5.1-beta.1...v1.6.0-beta.1
 [1.5.1-beta.1]: https://github.com/bps2414/ferry/compare/v1.5.0-beta.3...v1.5.1-beta.1
 [1.5.0-beta.3]: https://github.com/bps2414/ferry/compare/v1.5.0-beta.2...v1.5.0-beta.3

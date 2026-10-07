@@ -46,6 +46,9 @@ jobs:
       - name: Contratos de webhook
         run: dotnet run --project e2e -- --webhook
 
+      - name: Recuperação FTP e retomada sem reiniciar parciais
+        run: dotnet run --project e2e -- --resume
+
       - name: Windows WPF (idioma e bandeja)
         run: dotnet run --project e2e/windows -c Release
 
@@ -96,6 +99,9 @@ jobs:
 
       - name: Contratos de webhook
         run: dotnet run --project e2e -- --webhook
+
+      - name: Recuperação FTP e retomada sem reiniciar parciais
+        run: dotnet run --project e2e -- --resume
 
       # rar do rarlinux 6.24 (só para gerar os arquivos de teste)
       - uses: actions/cache@v6

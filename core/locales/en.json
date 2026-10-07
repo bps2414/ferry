@@ -32,6 +32,7 @@
   "core.partsSize": "{0} part(s) · {1}",
   "core.stabilizing": "Waiting for file sizes to stabilize",
   "core.reading": "Reading archive contents…",
+  "core.resumeReading": "Preparing resume: rereading {0} of {1} from the archive…",
   "core.checking": "Checking what is already on the PS5…",
   "core.verifying": "Verifying on the PS5…",
   "core.passwordMissing": "Password not provided",

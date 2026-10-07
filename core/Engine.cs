@@ -307,10 +307,20 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
                     lock (_dropped) { if (!_started.TryGetValue(job.Key, out var d)) _started[job.Key] = d = []; d[paths[i]!] = entries[i].Size; }
                     SaveQueue();
                 }
+                void Replay(long read, long total)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (read < total)
+                    {
+                        if (job.Stage != Stage.Extraindo) job.Stage = Stage.Extraindo;
+                        job.SetDetail(new("core.resumeReading", Job.Size(read), Job.Size(total)));
+                    }
+                    else { job.Stage = Stage.Enviando; job.Detail = remote; }
+                }
                 try
                 {
                     await Ftp.StreamAsync(settings, src, entries, paths, have, append, need, job.Report,
-                        f => job.CurrentFile = f[(remote.Length + 1)..], Started, Lenient, m => log($"[{job.Name}] {m}"), ct, m => JobLog(job, m));
+                        f => job.CurrentFile = f[(remote.Length + 1)..], Started, Lenient, m => log($"[{job.Name}] {m}"), ct, m => JobLog(job, m), Replay);
                 }
                 catch (Exception e) { fail = e; try { p?.Kill(true); } catch { } }
                 if (p != null) await p.WaitForExitAsync();
@@ -318,7 +328,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
                 var sevenErr = p is { ExitCode: not 0 } ? (await err!).Trim() : "";
                 // Erro do lado do 7z (senha, CRC, volume ruim) aparece como stream curto + exit != 0.
                 if ((fail is null || fail is LocalizedException { MessageData.Key: "core.archive.outputShort" or "core.archive.outputLong" }) && sevenErr != "") throw new LocalizedException(new("core.archive.failed", sevenErr));
-                if (fail != null && append && !noAppend && fail is LocalizedException { MessageData.Key: "core.ftp.sendFailed" } ftpFailure && Equals(ftpFailure.MessageData.Args[1], "APPE"))
+                if (fail != null && append && !noAppend && Ftp.AppendUnsupported(fail))
                 {
                     JobLog(job, new("core.appeRejected", Localization.ExceptionMessage(fail)));
                     noAppend = true;
@@ -367,7 +377,10 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
     static bool Transient(Exception e)
     {
         for (Exception? x = e; x != null; x = x.InnerException)
+        {
             if (x is TimeoutException or System.Net.Sockets.SocketException || x is IOException and not EndOfStreamException) return true;
+            if (x is FluentFTP.Exceptions.FtpCommandException { CompletionCode: var code } && code?.StartsWith('4') == true) return true;
+        }
         return false;
     }
 

@@ -68,6 +68,8 @@ public class Job : INotifyPropertyChanged
         lock (_gate)
         {
             var now = DateTime.UtcNow;
+            // Bytes que já estavam no PS5 não contam como velocidade desta conexão.
+            if (_lastUi == default) { _lastBytes = done; _lastTime = now; }
             if ((now - _lastUi).TotalMilliseconds < 250 && done < total) return;
             _lastUi = now;
             var dt = (now - _lastTime).TotalSeconds;
