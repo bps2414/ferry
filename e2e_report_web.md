@@ -1,9 +1,9 @@
 # Relatório E2E web — Ferry self-hosted (pt-BR)
 
-- Data: 2026-09-30 17:23:35 UTC
-- Resultado geral: **PASSOU**  (87s)
+- Data: 2026-10-14 00:45:56 UTC
+- Resultado geral: **PASSOU**  (106s)
 - Servidor: DLL local .NET, dados isolados; Chromium (Playwright). Docker não exercitado nesta rodada.
-- PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 24.07 (x64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-06-19
+- PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
 
 | Verificação | Resultado |
 |---|---|
@@ -20,7 +20,7 @@
 | Primeira abertura cria o usuário | ✅ tela "Criar acesso", senha curta: "A senha precisa ter pelo menos 8 caracteres.", auth.json criado |
 | Idioma inválido não altera preferência | ✅  |
 | Escolha explícita precede navegador | ✅  |
-| Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "A porta é um número de 1 a 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = \\?\C:\Users\ADMINI~1\AppData\Local\Temp\ferry-web-e2e-pt-BR\games; GET atrasado 1,5 s não desfez o que foi digitado=true |
+| Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "A porta é um número de 1 a 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = /tmp/ferry-web-e2e-pt-BR/games; GET atrasado 1,5 s não desfez o que foi digitado=true |
 | Testar conexão | ✅ Conectado, mas /mnt/ext1/homebrew não existe (será criado no envio). |
 | Log já recebido muda de idioma sem perder sequência | ✅  |
 | Testar aguarda a URL salva e funciona desligado | ✅  |
@@ -33,19 +33,20 @@
 | Idioma durante upload preserva campo editado | ✅  |
 | Webhook de senha chega antes da resposta ao diálogo | ✅  |
 | Idioma preserva diálogo e senha digitada | ✅  |
-| Upload pelo navegador → senha no navegador → envio ao PS5 | ✅ 8 volumes .7z enviados pela página; diálogo "Arquivo protegido por senha", 1ª senha errada → "Senha incorreta", 2ª certa; estado Verificado (/mnt/ext1/homebrew/PPSA09001-Jogo Web); 7/7 SHA-256 iguais; capa e PPSA09001; senha entrou nas senhas conhecidas=true; cartão durante o envio "(o envio acabou antes de pegar o meio)" |
+| Upload pelo navegador → senha no navegador → envio ao PS5 | ✅ 8 volumes .7z enviados pela página; diálogo "Arquivo protegido por senha", 1ª senha errada → "Senha incorreta", 2ª certa; estado Verificado (/mnt/ext1/homebrew/PPSA09001-Jogo Web); 7/7 SHA-256 iguais; capa e PPSA09001; senha entrou nas senhas conhecidas=true; cartão durante o envio "PS5 online" |
 | Webhook de senha sem resposta não bloqueia diálogo nem FTP | ✅  |
 | Webhook contém evento, jogo e idioma sem repetir senha incorreta | ✅  |
 | Idioma preserva card pausado e progresso | ✅  |
 | Idioma durante transferência mantém andamento | ✅  |
 | Reinício interrompe uma transferência ainda incompleta | ✅  |
 | Idioma persiste após reiniciar e recarregar | ✅  |
-| Pausar e retomar pela página | ✅ congelou em 21.8% por 1,5 s e retomou |
-| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 64.2% (337797925 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
+| Pausar e retomar pela página | ✅ congelou em 22.5% por 1,5 s e retomou |
+| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 48% (269629420 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
 | Webhook persiste ao reiniciar e não repete conclusão restaurada | ✅  |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Jogo já instalado no PS5 — o loader pode…" |
 | Webhook de erro não exporta senha nem diagnósticos brutos | ✅  |
+| Guia DPI acessível e traduzido | ✅  |
 | Porta DPI inválida preserva configuração | ✅  |
 | Teste DPI não instala | ✅  |
 | Modo padrão apenas envia, zero solicitações DPI | ✅  |
@@ -71,6 +72,7 @@
 ![10-webhook](e2e/web/report/pt-BR/10-webhook.png)
 ![03-fila-vazia](e2e/web/report/pt-BR/03-fila-vazia.png)
 ![04-senha](e2e/web/report/pt-BR/04-senha.png)
+![05-enviando](e2e/web/report/pt-BR/05-enviando.png)
 ![06-concluido](e2e/web/report/pt-BR/06-concluido.png)
 ![07-pausado](e2e/web/report/pt-BR/07-pausado.png)
 ![11-pkg](e2e/web/report/pt-BR/11-pkg.png)
@@ -82,10 +84,10 @@ Repetir: `dotnet build web -c Release`; em `e2e/web`, `npm ci`, `npx playwright 
 
 # Relatório E2E web — Ferry self-hosted (en)
 
-- Data: 2026-09-30 17:25:01 UTC
-- Resultado geral: **PASSOU**  (85s)
+- Data: 2026-10-14 00:47:41 UTC
+- Resultado geral: **PASSOU**  (104s)
 - Servidor: DLL local .NET, dados isolados; Chromium (Playwright). Docker não exercitado nesta rodada.
-- PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 24.07 (x64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-06-19
+- PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
 
 | Verificação | Resultado |
 |---|---|
@@ -102,7 +104,7 @@ Repetir: `dotnet build web -c Release`; em `e2e/web`, `npm ci`, `npx playwright 
 | Primeira abertura cria o usuário | ✅ tela "Create access", senha curta: "The password must have at least 8 characters.", auth.json criado |
 | Idioma inválido não altera preferência | ✅  |
 | Escolha explícita precede navegador | ✅  |
-| Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "The port must be a number from 1 to 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = \\?\C:\Users\ADMINI~1\AppData\Local\Temp\ferry-web-e2e-en\games; GET atrasado 1,5 s não desfez o que foi digitado=true |
+| Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "The port must be a number from 1 to 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = /tmp/ferry-web-e2e-en/games; GET atrasado 1,5 s não desfez o que foi digitado=true |
 | Testar conexão | ✅ Connected, but /mnt/ext1/homebrew does not exist (it will be created during transfer). |
 | Log já recebido muda de idioma sem perder sequência | ✅  |
 | Testar aguarda a URL salva e funciona desligado | ✅  |
@@ -122,12 +124,13 @@ Repetir: `dotnet build web -c Release`; em `e2e/web`, `npm ci`, `npx playwright 
 | Idioma durante transferência mantém andamento | ✅  |
 | Reinício interrompe uma transferência ainda incompleta | ✅  |
 | Idioma persiste após reiniciar e recarregar | ✅  |
-| Pausar e retomar pela página | ✅ congelou em 21.8% por 1,5 s e retomou |
-| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 64.2% (337799624 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Sent and verified before reopening") sem reenviar nada |
+| Pausar e retomar pela página | ✅ congelou em 33.6% por 1,5 s e retomou |
+| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 44.3% (214915960 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Sent and verified before reopening") sem reenviar nada |
 | Webhook persiste ao reiniciar e não repete conclusão restaurada | ✅  |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Game already installed on the PS5 — the …" |
 | Webhook de erro não exporta senha nem diagnósticos brutos | ✅  |
+| Guia DPI acessível e traduzido | ✅  |
 | Porta DPI inválida preserva configuração | ✅  |
 | Teste DPI não instala | ✅  |
 | Modo padrão apenas envia, zero solicitações DPI | ✅  |

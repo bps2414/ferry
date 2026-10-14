@@ -119,16 +119,25 @@ function render(s, acceptLanguage = true) {
     if (document.activeElement !== select) select.value = s.language;
     return;
   }
-  const box = $("#jobs");
+  const groups = {};
+  for (const section of $$("#jobs .group")) groups[section.dataset.group] = { section, list: $(".group-list", section), items: [] };
   const seen = new Set();
-  s.jobs.forEach((j, i) => {
+  for (const j of s.jobs) {
     seen.add(j.id);
     let el = rows.get(j.id);
     if (!el) { el = newRow(j.id); rows.set(j.id, el); }
-    fillRow(el, j);
-    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
-  });
+    const group = groupOf(j, s);
+    fillRow(el, j, group, s.password?.id === j.id);
+    groups[group].items.push(el);
+  }
   for (const [id, el] of rows) if (!seen.has(id)) { el.remove(); rows.delete(id); }
+  // a ordem dentro de cada grupo é a do motor (a que o usuário escolheu com "Transferir agora")
+  for (const { section, list, items } of Object.values(groups)) {
+    items.forEach((el, i) => { if (list.children[i] !== el) list.insertBefore(el, list.children[i] || null); });
+    section.hidden = items.length === 0;
+    text($(".count", section), items.length ? fmt(items.length, 0) : "");
+  }
+  renderOverall(s);
 
   const m = s.summary, parts = [];
   if (m.sending) parts.push(t("ui.sending", fmt(m.sending, 0)));
@@ -147,15 +156,15 @@ function render(s, acceptLanguage = true) {
   $("#badge").hidden = pending <= 0;
   $("#badge").textContent = pending;
   $("#empty").hidden = s.jobs.length > 0 || uploads.size > 0;
-  $("#emptyFolder").textContent = settings.inputFolder ? t("ui.watchFolderPath", settings.inputFolder) : "";
+  $("#emptyFolder").textContent = settings.inputFolder ? t("ui.watchFolderPath", displayPath(settings.inputFolder)) : "";
   document.title = m.sending ? `Ferry · ${fmt1.format(s.jobs.find(j => j.isActive)?.progress ?? 0)}%` : "Ferry";
 
-  // cartão do PS5 na barra lateral
+  // status do PS5 no topo do conteúdo
   const p = s.ps5;
   $("#dot").className = "dot " + p.status;
   $("#statusTitle").textContent = t({ online: "ui.online", offline: "ui.offline", testing: "ui.testing" }[p.status] || "ui.untested");
   $("#statusHost").textContent = `${p.host}:${p.port}`;
-  $("#statusDest").textContent = p.remoteDir;
+  $("#statusDest").textContent = displayPath(p.remoteDir);
   $("#found").hidden = !p.found;
   if (p.found) $("#foundText").textContent = t("ui.found", p.found);
   password(s.password);
@@ -176,9 +185,21 @@ function newRow(id) {
   return el;
 }
 
-function fillRow(el, j) {
+// Precisa de você → Enviando → Na fila → Concluídos
+function groupOf(j, s) {
+  if (s.password?.id === j.id || j.stage === "Erro" || j.stage === "PacotePronto" || j.stage === "VerifiqueNoPs5") return "attention";
+  if (j.isActive || j.stage === "Extraindo" || j.stage === "Enviando" || j.stage === "SolicitandoInstalacao") return "active";
+  if (j.stage === "Verificado" || j.stage === "InstalacaoSolicitada") return "done";
+  return "queue";
+}
+
+function fillRow(el, j, group, asking) {
   el.dataset.stage = j.stage;
+  el.dataset.group = group;
+  el.toggleAttribute("data-password", asking);
   el.classList.toggle("active", j.isActive);
+  el.classList.toggle("compact", group === "queue" || group === "done");
+  el.classList.toggle("nobar", !j.isActive && !(j.progress > 0 && j.progress < 100)); // barra vazia ou cheia de quem está parado não diz nada
   el.classList.toggle("nocover", !j.icon);
   const img = $(".cover", el);
   if (j.icon && img.dataset.v !== String(j.icon)) { img.dataset.v = j.icon; img.src = `/api/jobs/${j.id}/icon?v=${j.icon}`; }
@@ -187,7 +208,7 @@ function fillRow(el, j) {
   text($(".stage", el), j.stageMessage ? renderMessage(j.stageMessage) : t("ui.stage." + j.stage));
   text($(".tid", el), j.titleId);
   text($(".package-format", el), j.packageFormat);
-  text($(".amount", el), j.totalBytes > 0 ? t("ui.amount", size(j.doneBytes).join(" "), size(j.totalBytes).join(" ")) : "");
+  text($(".amount", el), !(j.totalBytes > 0) ? "" : group === "done" ? size(j.totalBytes).join(" ") : t("ui.amount", size(j.doneBytes).join(" "), size(j.totalBytes).join(" ")));
   text($(".detail", el), renderMessage(j.detailMessage || j.detail));
   $(".detail", el).title = renderMessage(j.detailMessage || j.detail);
   text($(".file", el), j.currentFile);
@@ -196,8 +217,10 @@ function fillRow(el, j) {
   text($(".rate .v", el), rv); text($(".rate .u", el), ru + "/s");
   const [ev, eu] = remaining(j.secondsRemaining);
   text($(".eta .v", el), ev); text($(".eta .u", el), eu);
-  $(".rate", el).hidden = $(".eta", el).hidden = j.canSendNow || j.canRequestInstall;
-  $(".pct", el).hidden = !!j.canRequestInstall;
+  // números só quando dizem algo: o ativo mostra os três; parado com progresso, só o %; o resto, nenhum
+  const showPct = group === "active" || (group === "queue" && j.progress > 0 && j.stage !== "AguardandoPartes");
+  $(".rate", el).hidden = $(".eta", el).hidden = group !== "active" || j.canSendNow || j.canRequestInstall;
+  $(".pct", el).hidden = !showPct || !!j.canRequestInstall;
   $(".sendnow", el).hidden = !j.canSendNow;
   $(".install", el).hidden = !j.canRequestInstall;
   text($(".install", el), t(j.stage === "VerifiqueNoPs5" ? "ui.resendInstall" : "ui.requestInstall"));
@@ -205,6 +228,24 @@ function fillRow(el, j) {
   $$(".acts [data-act]", el).forEach(b => b.hidden = !show[b.dataset.act]);
   $(".fill", el).style.width = j.progress + "%";
 }
+
+// Progresso da fila: bytes dos itens enviando/na fila. O término previsto só aparece quando todos têm tamanho conhecido
+// e há velocidade; senão, nada de número inventado.
+function renderOverall(s) {
+  const pending = s.jobs.filter(j => { const g = groupOf(j, s); return g === "active" || g === "queue"; });
+  const known = pending.filter(j => j.totalBytes > 0);
+  $("#overall").hidden = pending.length < 2 || known.length === 0;
+  if ($("#overall").hidden) return;
+  const total = known.reduce((a, j) => a + j.totalBytes, 0), done = known.reduce((a, j) => a + Math.min(j.doneBytes, j.totalBytes), 0);
+  $("#overallFill").style.width = (total ? done * 100 / total : 0) + "%";
+  text($("#overallAmount"), t("ui.amount", size(done).join(" "), size(total).join(" ")));
+  const rate = s.summary.rate;
+  const eta = rate > 0 && known.length === pending.length ? new Date(Date.now() + (total - done) / rate * 1000) : null;
+  text($("#overallEta"), eta ? t("ui.finishesAt", eta.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })) : "");
+}
+
+// Caminhos longos do Windows chegam com o prefixo \\?\ (ou \\?\UNC\); só a exibição o esconde, o valor salvo não muda.
+function displayPath(p) { return String(p ?? "").replace(/^\\\\\?\\UNC\\/i, "\\\\").replace(/^\\\\\?\\/, ""); }
 
 function text(el, v) { v = v ?? ""; if (el.textContent !== v) el.textContent = v; }
 
@@ -225,6 +266,14 @@ function remaining(seconds) {
 }
 
 $("#clearDone").addEventListener("click", () => api("POST", "/api/jobs/clear-finished"));
+// Concluídos começam recolhidos; a escolha fica neste navegador.
+function setDoneOpen(open, remember = true) {
+  $('.group[data-group="done"]').classList.toggle("collapsed", !open);
+  $("#doneToggle").setAttribute("aria-expanded", String(open));
+  if (remember) try { localStorage.setItem("ferry.doneOpen", open ? "1" : "0"); } catch { }
+}
+try { setDoneOpen(localStorage.getItem("ferry.doneOpen") === "1", false); } catch { setDoneOpen(false, false); }
+$("#doneToggle").addEventListener("click", () => setDoneOpen($("#doneToggle").getAttribute("aria-expanded") !== "true"));
 
 // ---------- senha do arquivo (no lugar do diálogo do app Windows) ----------
 let asking = null, answered = 0; // seq do pedido aberto / do último respondido (não reabre enquanto o servidor processa)
@@ -381,6 +430,29 @@ $("#webhookTestBtn").addEventListener("click", async () => {
   finally { button.disabled = false; }
 });
 
+// índice das Configurações: rola até a seção e acompanha a rolagem
+const sectionLinks = $$(".set-nav a");
+function markSection(id) { sectionLinks.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + id)); }
+sectionLinks.forEach(a => a.addEventListener("click", e => {
+  e.preventDefault();
+  const id = a.getAttribute("href").slice(1);
+  $("#" + id).scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  markSection(id);
+}));
+let spyQueued = false;
+addEventListener("scroll", () => {
+  if (spyQueued || $("#page-settings").hidden) return;
+  spyQueued = true;
+  requestAnimationFrame(() => {
+    spyQueued = false;
+    const line = innerHeight * 0.3;
+    let current = $$(".set-section")[0];
+    for (const section of $$(".set-section")) if (section.getBoundingClientRect().top <= line) current = section;
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) current = $$(".set-section").at(-1);
+    markSection(current.id);
+  });
+}, { passive: true });
+
 $("#preset").addEventListener("change", () => {
   const v = $("#preset").value;
   if (!v) return;
@@ -439,16 +511,38 @@ $("#copyLog").addEventListener("click", async () => {
 // ---------- avisos: na página sempre; do sistema quando o navegador deixa (https ou localhost) ----------
 function notice(n) {
   const title = n.titleMessage || n.title, body = n.textMessage || n.text;
-  toast(n.kind, title, body);
+  toast(n.kind, title, body, n.jobId);
   if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification(renderMessage(title), { body: renderMessage(body), icon: "logo.svg" });
 }
-function toast(kind, title, body) {
-  const t = document.createElement("div");
-  t.className = "toast " + kind;
-  const b = document.createElement("b"); bindText(b, title); t.append(b);
-  const detail = document.createElement("span"); bindText(detail, body); t.append(detail);
-  $("#toasts").append(t);
-  setTimeout(() => { localizedText.delete(b); localizedText.delete(detail); t.remove(); }, 6000);
+// Um aviso por jogo e tipo: um pedido repetido (ex.: senha incorreta pede de novo) renova o que já está na tela.
+function toast(kind, title, body, jobId) {
+  const key = kind + "|" + (jobId || JSON.stringify([title, body]));
+  const close = el => { localizedText.delete(el._title); localizedText.delete(el._detail); el.remove(); };
+  const existing = [...$("#toasts").children].find(el => el.dataset.key === key);
+  if (existing) { bindText(existing._title, title); bindText(existing._detail, body); clearTimeout(existing._timer); existing._timer = setTimeout(() => close(existing), 6000); return; }
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.dataset.key = key;
+  el._title = document.createElement("b"); bindText(el._title, title); el.append(el._title);
+  el._detail = document.createElement("span"); bindText(el._detail, body); el.append(el._detail);
+  if (jobId && (kind === "error" || kind === "unknown" || kind === "package_ready")) {
+    const view = document.createElement("button");
+    view.className = "btn small";
+    view.dataset.i18n = "ui.view";
+    view.textContent = t("ui.view");
+    view.addEventListener("click", () => { showJob(jobId); close(el); });
+    el.append(view);
+  }
+  $("#toasts").append(el);
+  el._timer = setTimeout(() => close(el), 6000);
+}
+function showJob(id) {
+  const row = rows.get(id);
+  if (!row) return;
+  showPage("queue");
+  if (row.dataset.group === "done") setDoneOpen(true);
+  row.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
 }
 function refreshNotify() {
   const can = "Notification" in window && window.isSecureContext;
@@ -463,6 +557,7 @@ const uploads = new Map();
 let uploading = Promise.resolve();
 
 $("#addBtn").addEventListener("click", () => $("#fileInput").click());
+$("#addFab").addEventListener("click", () => $("#fileInput").click());
 $("#empty").addEventListener("click", () => $("#fileInput").click());
 $("#fileInput").addEventListener("change", e => { addUploads([...e.target.files]); e.target.value = ""; });
 
