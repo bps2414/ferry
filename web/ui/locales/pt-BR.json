@@ -163,5 +163,6 @@
   "ui.section.packages": "Pacotes PKG",
   "ui.section.notices": "Avisos",
   "ui.section.browser": "Navegador",
-  "ui.section.general": "Geral"
+  "ui.section.general": "Geral",
+  "ui.requestFailed": "Sem resposta do servidor Ferry ({0}). Confira a conexão e tente de novo."
 }

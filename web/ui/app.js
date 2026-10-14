@@ -126,8 +126,10 @@ function render(s, acceptLanguage = true) {
     seen.add(j.id);
     let el = rows.get(j.id);
     if (!el) { el = newRow(j.id); rows.set(j.id, el); }
-    const group = groupOf(j, s);
-    fillRow(el, j, group, s.password?.id === j.id);
+    const group = groupOf(j, s), asking = s.password?.id === j.id;
+    // o SSE manda a fila inteira a cada mudança; só reescreve o cartão cujo jogo, grupo ou idioma mudou
+    const key = locale + "|" + group + "|" + asking + "|" + JSON.stringify(j);
+    if (el._key !== key) { fillRow(el, j, group, asking); el._key = key; }
     groups[group].items.push(el);
   }
   for (const [id, el] of rows) if (!seen.has(id)) { el.remove(); rows.delete(id); }
@@ -461,6 +463,8 @@ $("#preset").addEventListener("change", () => {
   queueSave("remoteDir", el);
 });
 
+// Sem resposta do servidor (rede caiu, servidor reiniciando) o fetch rejeita com TypeError: diz isso em vez de ficar em "Testando…".
+const requestFailure = error => error instanceof TypeError ? message("ui.requestFailed", error.message) : errorMessage(error);
 async function test() {
   $("#testBtn").disabled = true;
   $("#testResult").className = "test-result";
@@ -469,7 +473,8 @@ async function test() {
     const r = await api("POST", "/api/ps5/test");
     bindText($("#testResult"), r.messageData || r.message);
     $("#testResult").classList.add(r.ok ? "ok" : "fail");
-  } finally { $("#testBtn").disabled = false; }
+  } catch (error) { $("#testResult").classList.add("fail"); bindText($("#testResult"), requestFailure(error)); }
+  finally { $("#testBtn").disabled = false; }
 }
 $("#testBtn").addEventListener("click", test);
 $("#sideTest").addEventListener("click", test);
@@ -478,6 +483,7 @@ $("#findBtn").addEventListener("click", async () => {
   $("#testResult").className = "test-result";
   bindText($("#testResult"), message("ui.searching"));
   try { const r = await api("POST", "/api/ps5/discover"); bindText($("#testResult"), r.messageData || r.message); }
+  catch (error) { $("#testResult").classList.add("fail"); bindText($("#testResult"), requestFailure(error)); }
   finally { $("#findBtn").disabled = false; }
 });
 $("#useFound").addEventListener("click", async () => {

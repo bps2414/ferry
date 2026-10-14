@@ -1,6 +1,6 @@
 # Redesenho da interface — Fila, Configurações, celular e Windows
 
-Data: **2026-10-14**. Estado: **plano aprovado em 2026-10-14; código não alterado**. Base analisada: `fab0939`. Escopo: interface web (`web/ui`) e app Windows (`app/MainWindow.xaml`, `app/App.xaml`). Evidência: capturas do E2E web (`e2e/web/report/pt-BR`), da rodada de energia (`e2e/windows/report/power-pt-BR.png`) e `docs/screenshots`.
+Data: **2026-10-14**. Estado: **implementado em 2026-10-14** (PR bps2414/ferry#3). Desvios em relação ao plano no fim do documento. Base analisada: `fab0939`. Escopo: interface web (`web/ui`) e app Windows (`app/MainWindow.xaml`, `app/App.xaml`). Evidência: capturas do E2E web (`e2e/web/report/pt-BR`), da rodada de energia (`e2e/windows/report/power-pt-BR.png`) e `docs/screenshots`.
 
 ## Decisão de direção
 
@@ -36,7 +36,7 @@ O que muda é a **densidade de informação e a hierarquia**: a Régua foi desen
 
 ### Windows
 
-13. **Energia empurra a fila para baixo.** As duas caixas de energia e o texto explicativo (≈170 px) ficam acima do título "Fila" (`power-pt-BR.png`). O texto de ressalva PKG aparece sempre, mesmo sem PKG na fila.
+13. ~~**Energia empurra a fila para baixo.**~~ A captura `power-pt-BR.png` era anterior a `0ca8baf`, que já levou as opções para Configurações → Energia; o topo só mostra a faixa da contagem. Nada a mudar aqui além de dar a Energia uma seção própria no índice.
 
 ### Celular
 
@@ -153,3 +153,16 @@ O E2E web localiza cards por `.job` + `.title` e lê `.pct .v` (`e2e/web/web.mjs
 1. Concluídos **recolhidos por padrão**.
 2. Botão **"Adicionar" fixo no rodapé** no celular: aprovado.
 3. **Sem mockups (R0)**: implementar direto a partir deste plano; a revisão visual acontece nas capturas do E2E de cada fase.
+
+## Resultado da implementação (2026-10-14)
+
+Validação: E2E web local em pt-BR e en (114 verificações, nenhuma falha), contratos de localização (1852), `tools/generate-tokens.py --check`, compilação WPF. O E2E WPF roda na CI Windows da PR. Capturas antes/depois e medidas: `docs/redesign/` (geradas por `e2e/web/showcase.mjs`).
+
+Desvios conscientes:
+
+- **Configurações**: em vez de uma seção por tela, todas as seções numa coluna com índice fixo que acompanha a rolagem. Mantém todos os campos no DOM/árvore visual (os testes web e WPF continuam preenchendo campos diretamente) e evita esconder um campo com erro de validação. Uma rolagem só, com a barra na borda da janela; a caixa de senhas cresce com o conteúdo (relato do usuário: barra de rolagem no meio da tela e hierarquia fraca).
+- **Concluído**: sem "enviado às HH:MM" — o motor não guarda o horário de conclusão; mostra o tamanho e o detalhe.
+- **Aviso de senha**: sem botão "Digitar senha"; o diálogo já abre sozinho. A correção foi juntar avisos repetidos do mesmo jogo.
+- **"Partes faltando há muito tempo"** não entra em *Precisa de você*: não há horário da última parte no estado.
+- **Windows**: energia continua em Configurações (já estava desde `0ca8baf`), agora com seção própria no índice.
+- **Desempenho (web)**: a fila deixou de reescrever todos os cartões a cada atualização do SSE; só os que mudaram.

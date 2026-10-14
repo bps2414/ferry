@@ -62,7 +62,7 @@ Abre `http://<ip-del-servidor>:8021`. La primera vez, la página pide crear el u
 ## Cómo usar
 
 1. Ejecuta un payload de FTP en la PS5 (**ftpsrv**, puerto 2121, o el FTP de **etaHEN**, puerto 1337).
-2. Abre la app → **Configurações** (Ajustes): IP de la PS5, puerto, destino (**M.2** `/mnt/ext1/homebrew` o **SSD interno** `/data/homebrew`). Todo se guarda solo. El pie de la barra lateral muestra si la PS5 está en línea.
+2. Abre la app → **Configurações** (Ajustes): IP de la PS5, puerto, destino (**M.2** `/mnt/ext1/homebrew` o **SSD interno** `/data/homebrew`). Todo se guarda solo. El sello en la parte superior de cada página muestra si la PS5 está en línea.
 3. En **Fila** (Cola), haz clic en el centro de la pantalla (abre el selector de archivos) o arrastra los archivos a la ventana. Selecciona **todas las partes** a la vez.
 4. Listo: cuando estén todas las partes, el juego se extrae y se envía a `<destino>/<carpeta del juego>`.
 

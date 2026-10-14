@@ -4,7 +4,7 @@
 
 > **Reavaliação em 01/10/2026:** a próxima proposta passa a ser [retirar PKG por FTP + DPI por caminho local e adotar USB/PKG Manager](plans/next/remover-pkg-ftp-e-adotar-pkg-manager.md), após o usuário reportar que o método atual não resolve seu cenário. Ainda não implementada. O diagnóstico da Fase 6.1 abaixo precisa ser revisto para excluir essa premissa; o restante registra o planejamento de 30/09.
 
-> **Plano de redesenho (14/10/2026):** [redesenho da interface](plans/next/redesenho-interface.md) — Fila por grupos, métricas por estado, Configurações por seções, energia compacta no Windows e tokens únicos web/WPF. Ainda não implementado; a seção de destinos PKG espera o plano do PKG Manager.
+> **Redesenho (14/10/2026):** [redesenho da interface](plans/next/redesenho-interface.md) — Fila por grupos, métricas por estado, Configurações por seções e tokens únicos web/WPF. Implementado na PR bps2414/ferry#3, aguardando revisão; a seção de destinos PKG muda de novo com o plano do PKG Manager.
 
 Reavaliado em 2026-09-30. Ordem: lógica → UI/marca → self-hosted (Docker) → inglês → webhook → PKG/fPKG → diagnóstico de serviços e destinos. RAR progressivo passa a prova técnica futura; payload fica fora da próxima fase.
 

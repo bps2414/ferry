@@ -90,7 +90,8 @@ const cookie = setup.headers.get("set-cookie").split(";")[0];
 await fetch(base + "/api/settings", { method: "PUT", headers: { "Content-Type": "application/json", cookie }, body: JSON.stringify({ host: "192.168.1.50", port: 2121 }) });
 const [cookieName, cookieValue] = cookie.split("=");
 
-for (const locale of ["pt-BR", "en"]) {
+const perfOnly = process.env.SHOWCASE_PERF_ONLY === "1";
+for (const locale of perfOnly ? [] : ["pt-BR", "en"]) {
   await fetch(base + "/api/settings", { method: "PUT", headers: { "Content-Type": "application/json", cookie }, body: JSON.stringify({ language: locale }) });
   for (const [label, viewport] of [["desktop", { width: 1440, height: 900 }], ["celular", { width: 390, height: 844 }]]) {
     const { ctx, page } = await session(locale, viewport, () => sse("state", state(locale)));
@@ -98,11 +99,19 @@ for (const locale of ["pt-BR", "en"]) {
     await page.locator(".job").first().waitFor({ state: "attached" });
     await page.waitForTimeout(3000); // a marca termina a animação de entrada
     await page.screenshot({ path: path.join(out, `${locale}-fila-${label}.png`) });
-    if (label === "celular") await page.screenshot({ path: path.join(out, `${locale}-fila-${label}-inteira.png`), fullPage: true });
+    // na página inteira, o botão fixo do rodapé cairia no meio da imagem; a captura da tela já o mostra
+    const hideFab = async hidden => page.evaluate(h => { for (const el of document.querySelectorAll(".fab")) el.style.visibility = h ? "hidden" : ""; }, hidden);
+    if (label === "celular") { await hideFab(true); await page.screenshot({ path: path.join(out, `${locale}-fila-${label}-inteira.png`), fullPage: true }); await hideFab(false); }
     // a fila inteira: quanto rola para ver tudo (concluídos recolhidos contam como uma linha)
     results[`${locale} ${label} altura da fila (px)`] = await page.evaluate(() => document.documentElement.scrollHeight);
     const toggle = page.locator("#doneToggle");
-    if (await toggle.count()) { await toggle.click(); await page.waitForTimeout(250); await page.screenshot({ path: path.join(out, `${locale}-fila-${label}-concluidos-abertos.png`), fullPage: label === "celular" }); }
+    if (await toggle.count()) {
+      await toggle.click(); await page.waitForTimeout(250);
+      if (label === "celular") await hideFab(true);
+      await page.screenshot({ path: path.join(out, `${locale}-fila-${label}-concluidos-abertos.png`), fullPage: true });
+      await hideFab(false);
+      await toggle.click(); // volta ao padrão (recolhido) para a próxima abertura
+    }
     await page.click('.nav[data-page="settings"]');
     await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(300);
@@ -113,7 +122,7 @@ for (const locale of ["pt-BR", "en"]) {
 }
 
 // avisos repetidos: senha pedida duas vezes para o mesmo jogo (a segunda depois de uma senha incorreta)
-{
+if (!perfOnly) {
   const locale = "pt-BR";
   const notice = seq => sse("notice", { seq, kind: "password", titleMessage: { key: "web.passwordTitle", args: [] }, textMessage: { key: "web.passwordText", args: ["Blue_Harbor_v1.00.rar"] }, title: "", text: "", jobId: "blue" });
   const { ctx, page } = await session(locale, { width: 1440, height: 900 }, () => sse("state", state(locale)) + notice(1) + notice(2));
@@ -125,7 +134,7 @@ for (const locale of ["pt-BR", "en"]) {
   await ctx.close();
 }
 
-// desempenho: render() com 200 jogos, 100 atualizações de progresso (o SSE manda até 4/s)
+// desempenho: render() com 200 jogos, 300 atualizações de progresso (o SSE manda até 4/s); as 20 primeiras aquecem
 {
   const locale = "pt-BR";
   const big = state(locale, { jobs: Array.from({ length: 191 }, (_, i) => job("bulk" + i, { name: `Jogo_${String(i).padStart(3, "0")}.rar`, stage: i % 3 ? "NaFila" : "Verificado", progress: i % 3 ? 0 : 100, total: (i + 1) * 0.1 * GB })) });
@@ -135,12 +144,12 @@ for (const locale of ["pt-BR", "en"]) {
   const perf = await page.evaluate(big => {
     render(big);
     const times = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 320; i++) {
       big.jobs[1].progress = 62.4 + i / 10; big.jobs[1].doneBytes += 2 ** 20 * 20;
-      const t0 = performance.now(); render(big); document.body.offsetHeight; times.push(performance.now() - t0);
+      const t0 = performance.now(); render(big); document.body.offsetHeight; if (i >= 20) times.push(performance.now() - t0);
     }
     times.sort((a, b) => a - b);
-    return { median: times[50], p95: times[95], nodes: document.querySelectorAll("*").length, rows: document.querySelectorAll(".job").length };
+    return { median: times[150], p95: times[285], nodes: document.querySelectorAll("*").length, rows: document.querySelectorAll(".job").length };
   }, big);
   results["render 200 jogos — mediana (ms)"] = +perf.median.toFixed(2);
   results["render 200 jogos — p95 (ms)"] = +perf.p95.toFixed(2);

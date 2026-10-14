@@ -11,6 +11,21 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned interface (web and Windows), keeping the dark identity: the **Queue** is now grouped into *Needs you* (error, PKG uploaded, check on PS5, pending password), *Sending*, *Queued* and *Finished* (collapsed by default, with **Clear finished** in the group header). Idle cards are compact and only show numbers that mean something; the active card keeps %, MB/s and time remaining.
+- Queue header with overall progress and the estimated finish time (only when every item has a known size).
+- PS5 status moved from the sidebar footer to a badge at the top of every page.
+- **Settings** split into sections with an index that follows scrolling (PS5, Destinations, Transfer, Passwords, Notifications, General; on Windows also Power). A single scroll with the scrollbar at the window edge; the passwords box grows with its content instead of scrolling on its own in the middle of the screen.
+- Mobile: brand and tabs on one line, compact cards and a fixed **Add files** button at the bottom.
+- Colors and sizes come from one file (`tools/tokens.json`) for web and Windows; CI flags drift.
+
+### Fixed
+
+- Web: repeated password requests for the same game (e.g. after a wrong password) stacked identical notices; the existing notice is now refreshed. Error and PKG notices get **View**, which jumps to the card.
+- Web: long Windows paths were shown with the `\\?\` prefix; they are now shown without it (the saved value is unchanged).
+- Web: the queue rewrote every card on each update; now only changed cards are (≈6× faster with 200 games).
+
 ## [1.6.2-beta.1] - 2026-10-07
 
 ### Added

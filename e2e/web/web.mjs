@@ -304,6 +304,15 @@ try {
   await until(async () => (await page.locator("#statusTitle").textContent()) === "PS5 online", 5000, "cartão PS5 online");
   shotsTaken.config = await shot("02-configuracoes");
   check("Testar conexão", true, test);
+  // sem resposta do servidor (rede caiu): o resultado diz isso em vez de ficar em "Testando…", sem erro solto na página
+  const errorsBefore = pageErrors.length;
+  await page.route("**/api/ps5/test", route => route.abort("connectionreset"));
+  await page.click("#testBtn");
+  const offline = await until(async () => await page.locator("#testResult").evaluate(el => el.classList.contains("fail")) && await page.locator("#testResult").textContent(), 5000, "teste sem resposta do servidor");
+  await page.unroute("**/api/ps5/test");
+  check("Teste sem resposta do servidor não fica preso", offline.includes(locale === "en" ? "No response from the Ferry server" : "Sem resposta do servidor Ferry") && await page.locator("#testBtn").isEnabled() && pageErrors.length === errorsBefore, offline);
+  await page.click("#testBtn");
+  await until(async () => (await page.locator("#testResult").textContent()).startsWith(expected.connected), 15000, "teste de conexão de novo");
   const originalLines = await (await page.request.get(base + "/api/log")).json();
   const translatedLog = locale === "en" ? "Teste de conexão:" : "Connection test:";
   await switchLanguage(locale === "en" ? "pt-BR" : "en");
