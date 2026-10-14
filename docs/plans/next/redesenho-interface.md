@@ -1,6 +1,6 @@
 # Redesenho da interface — Fila, Configurações, celular e Windows
 
-Data: **2026-10-14**. Estado: **plano; código não alterado**. Base analisada: `fab0939`. Escopo: interface web (`web/ui`) e app Windows (`app/MainWindow.xaml`, `app/App.xaml`). Evidência: capturas do E2E web (`e2e/web/report/pt-BR`), da rodada de energia (`e2e/windows/report/power-pt-BR.png`) e `docs/screenshots`.
+Data: **2026-10-14**. Estado: **plano aprovado em 2026-10-14; código não alterado**. Base analisada: `fab0939`. Escopo: interface web (`web/ui`) e app Windows (`app/MainWindow.xaml`, `app/App.xaml`). Evidência: capturas do E2E web (`e2e/web/report/pt-BR`), da rodada de energia (`e2e/windows/report/power-pt-BR.png`) e `docs/screenshots`.
 
 ## Decisão de direção
 
@@ -57,7 +57,7 @@ Ordem fixa, cabeçalho de grupo discreto (rótulo + contagem), grupos vazios som
 | **Precisa de você** | senha pendente, erro, partes faltando há muito tempo, "Verifique no PS5" | completo, com ação principal visível (Digitar senha / Tentar de novo / Ver partes) |
 | **Enviando** | ativo | Régua completa: capa, título, %, MB/s, restante, barra |
 | **Na fila** | aguardando, pausado, aguardando partes | compacto (1 linha + barra fina): título, estado, `x GB de y GB`, ações |
-| **Concluídos** | concluído, instalação solicitada | colapsável, linha única sem barra; "Limpar" no cabeçalho do grupo |
+| **Concluídos** | concluído, instalação solicitada | **recolhido por padrão** (cabeçalho com contagem); aberto, linha única sem barra; "Limpar" no cabeçalho do grupo |
 
 A ordem dentro de "Na fila" continua a do motor (não reordenar o que o usuário escolheu com "Transferir agora").
 
@@ -110,7 +110,7 @@ Trocar as duas caixas por um controle **"Ao terminar"** no cabeçalho da Fila (b
 
 ### 10. Celular
 
-Cards compactos dos grupos 1 e 3 (≈72 px), concluídos colapsados, chip de status no topo, abas fixas, botão "Adicionar" fixo no rodapé da tela. Meta: 5 jogos em uma tela de 390×844.
+Cards compactos dos grupos 1 e 3 (≈72 px), concluídos recolhidos, chip de status no topo, abas fixas, **botão "Adicionar" fixo no rodapé da tela** (aprovado); no celular ele substitui o do cabeçalho. Meta: 5 jogos em uma tela de 390×844.
 
 ### 11. Fonte única de tokens
 
@@ -126,8 +126,7 @@ Cards compactos dos grupos 1 e 3 (≈72 px), concluídos colapsados, chip de sta
 
 | # | Entrega | Depende de | Validação |
 |---|---|---|---|
-| R0 | **Mockups estáticos** (HTML com dados fixos) da Fila em todos os estados, Configurações por seção, celular 390 px e energia Windows; pt-BR e en; aprovação do usuário | — | revisão visual |
-| R1 | Tokens únicos + componentes base (etiqueta de estado, card compacto, cabeçalho de grupo, chip de status) | R0 | CI de tokens; E2E web atual sem regressão |
+| R1 | Tokens únicos + componentes base (etiqueta de estado, card compacto, cabeçalho de grupo, chip de status) | — | CI de tokens; E2E web atual sem regressão |
 | R2 | Fila web: grupos, métricas por estado, ações, cabeçalho agregado, toasts | R1 | E2E web pt-BR/en + novas capturas por estado |
 | R3 | Configurações web por seções; prefixo `\\?\` | R1; **após Etapa 1 do PKG Manager** para a seção Destinos | E2E web (login, webhook, PKG) |
 | R4 | Paridade WPF: Fila, Configurações e energia compacta | R2, R3 | `e2e/windows` (`--power` e padrão), capturas pt-BR/en |
@@ -149,8 +148,8 @@ O E2E web localiza cards por `.job` + `.title` e lê `.pct .v` (`e2e/web/web.mjs
 - Tokens web/WPF gerados de uma fonte, verificados na CI.
 - E2E web e Windows passando nos dois idiomas, com capturas novas em `e2e/*/report`.
 
-## Questões abertas para o usuário
+## Decisões do usuário (2026-10-14)
 
-1. Concluídos colapsados por padrão, ou sempre visíveis com opção de recolher?
-2. Pode haver um botão fixo de "Adicionar" no celular, ou prefere manter só no cabeçalho?
-3. Fazer R0 (mockups) antes de qualquer código, como na Fase 2? (Recomendado.)
+1. Concluídos **recolhidos por padrão**.
+2. Botão **"Adicionar" fixo no rodapé** no celular: aprovado.
+3. **Sem mockups (R0)**: implementar direto a partir deste plano; a revisão visual acontece nas capturas do E2E de cada fase.
