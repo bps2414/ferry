@@ -182,11 +182,11 @@ const startServer = () => {
   server.stdout.on("data", d => serverLog.push(d.toString()));
   server.stderr.on("data", d => serverLog.push(d.toString()));
 };
-const stopServer = async () => {
+const stopServer = async (signal = "SIGTERM") => {
   if (!localMode) { try { docker("rm", "-f", name); } catch { } return; }
   if (!server || server.exitCode !== null) return;
   const closed = new Promise(resolve => server.once("exit", resolve));
-  server.kill();
+  server.kill(signal);
   await closed;
 };
 startServer();
@@ -463,7 +463,7 @@ try {
   check("Reinício interrompe uma transferência ainda incompleta", cut > 0 && cut < fs.statSync(imgw).size && hookEvents("completed", "IMGW").length === 0);
   // A graceful Docker stop can finish FTP while shutdown discards best-effort notifications.
   // Kill immediately so this test exercises recovery and a new completion after reopening.
-  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
+  if (localMode) { await stopServer("SIGKILL"); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
   await until(up200, 30000, "container de volta");
   await until(async () => (await stage("IMGW")) === "Verificado", 180000, "IMGW concluído depois de reiniciar");
   const stillIn = await page.locator("#shell").isVisible() && !(await page.locator("#auth").isVisible());
@@ -568,7 +568,7 @@ try {
   check("PKG compactado chega íntegro, sem sucesso em resposta perdida", dpiRequests.at(-1)?.hash === sha(pkg)
     && fs.existsSync(path.join(games, "PKGARCH.zip")) && hookEvents("installation_requested", "PKGARCH").length === 0);
   const requestsBefore = dpiRequests.length;
-  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
+  if (localMode) { await stopServer("SIGKILL"); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
   await until(up200, 30000, "servidor reiniciado com PKG");
   await page.reload();
   await until(async () => await stage("PKGARCH") === "VerifiqueNoPs5" && await stage("PKGWEB") === "InstalacaoSolicitada", 15000, "PKGs restaurados");

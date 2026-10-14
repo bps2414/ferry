@@ -1,13 +1,16 @@
 /* "PlayStation noir": preto-azulado, quase monocromático, um acento (azul). Verde/vermelho/âmbar só para estado.
-   Mesmos tokens do App.xaml do app Windows. */
+   Cores e medidas vêm de tools/tokens.json (as mesmas do App.xaml do app Windows). */
 @font-face { font-family: Geist; src: url(fonts/Geist-Regular.ttf) format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: Geist; src: url(fonts/Geist-Medium.ttf) format("truetype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: Geist; src: url(fonts/Geist-SemiBold.ttf) format("truetype"); font-weight: 600; font-display: swap; }
 
 :root {
+  /* tokens:start (gerado por tools/generate-tokens.py a partir de tools/tokens.json; não editar à mão) */
   --bg: #0A0D12; --side: #0D1117; --hover: #0F141B; --field: #121821; --line: #1B222D; --line2: #29323F;
-  --text: #E9EDF3; --text2: #A9B3C2; --muted: #8490A2; --idle: #4A5363;
-  --accent: #6F97FF; --accent-text: #9DB8FF; --green: #4ADE80; --red: #FF7A7A; --amber: #F2B84B;
+  --text: #E9EDF3; --text2: #A9B3C2; --muted: #8490A2; --idle: #4A5363; --accent: #6F97FF; --accent-text: #9DB8FF;
+  --green: #4ADE80; --red: #FF7A7A; --amber: #F2B84B;
+  --page-title: 34px; --job-title: 22px; --job-title-active: 26px; --stat: 28px; --label: 13px; --radius: 6px;
+  /* tokens:end */
   color-scheme: dark;
 }
 * { box-sizing: border-box; }

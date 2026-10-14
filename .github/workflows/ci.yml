@@ -87,6 +87,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Tokens visuais (web e Windows) gerados de tools/tokens.json
+        run: python3 tools/generate-tokens.py --check
+
       - name: Dependências do E2E (pyftpdlib, 7-Zip com RAR)
         run: |
           pip install pyftpdlib
