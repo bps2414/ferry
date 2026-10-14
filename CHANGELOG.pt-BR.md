@@ -11,6 +11,21 @@ Todas as mudanças relevantes do Ferry ficam aqui. O formato segue o [Keep a Cha
 
 ## [Não lançado]
 
+### Alterado
+
+- Interface redesenhada (web e Windows), mantendo a identidade escura: a **Fila** agora é agrupada em *Precisa de você* (erro, PKG enviado, verifique no PS5, senha pendente), *Enviando*, *Na fila* e *Concluídos* (recolhido por padrão, com **Limpar concluídos** no cabeçalho do grupo). Cartões parados ficam compactos e só mostram números que dizem algo; o ativo mantém %, MB/s e tempo restante.
+- Cabeçalho da Fila com o progresso total e o horário previsto de término (só quando todos os itens têm tamanho conhecido).
+- Status do PS5 saiu do rodapé da barra lateral e virou um selo no topo de todas as páginas.
+- **Configurações** em seções com índice que acompanha a rolagem (PS5, Destinos, Envio, Senhas, Avisos, Geral; no Windows também Energia). Uma rolagem só, com a barra na borda da janela; a caixa de senhas cresce com o conteúdo em vez de rolar sozinha no meio da tela.
+- Celular: marca e abas numa linha, cartões compactos e botão **Adicionar arquivos** fixo no rodapé.
+- Cores e medidas vêm de um arquivo só (`tools/tokens.json`) para web e Windows; a CI acusa divergência.
+
+### Corrigido
+
+- Web: pedidos repetidos de senha para o mesmo jogo (ex.: depois de uma senha incorreta) empilhavam avisos iguais; agora o aviso existente é renovado. Avisos de erro e de PKG ganham **Ver**, que leva ao cartão.
+- Web: caminhos longos do Windows apareciam com o prefixo `\\?\`; agora aparecem sem ele (o valor salvo não muda).
+- Web: a fila reescrevia todos os cartões a cada atualização; agora só os que mudaram (≈6× mais rápido com 200 jogos).
+
 ## [1.6.2-beta.1] - 2026-10-07
 
 ### Adicionado

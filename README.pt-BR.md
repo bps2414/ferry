@@ -62,7 +62,7 @@ Abra `http://<ip-do-servidor>:8021`. Na primeira abertura a página pede para cr
 ## Como usar
 
 1. Rode o payload de FTP no PS5 (**ftpsrv**, porta 2121, ou o FTP do **etaHEN**, porta 1337).
-2. Abra o app → **Configurações**: IP do PS5, porta, destino (**M.2** `/mnt/ext1/homebrew` ou **SSD interno** `/data/homebrew`). Tudo salva sozinho. O pé da barra lateral mostra se o PS5 está online.
+2. Abra o app → **Configurações**: IP do PS5, porta, destino (**M.2** `/mnt/ext1/homebrew` ou **SSD interno** `/data/homebrew`). Tudo salva sozinho. O selo no topo de todas as páginas mostra se o PS5 está online.
 3. Na **Fila**, clique no centro da tela (abre o seletor do Windows) ou arraste os arquivos para a janela. Selecione **todas as partes** de uma vez.
 4. Pronto: quando todas as partes estiverem presentes, o jogo é extraído e enviado para `<destino>/<pasta do jogo>`.
 

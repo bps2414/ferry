@@ -19,7 +19,7 @@ public class Hub(Settings settings)
     {
         public string Text => $"{Time}  {Message.Render()}";
     }
-    public record Notice(long Seq, string Kind, Message TitleMessage, Message TextMessage)
+    public record Notice(long Seq, string Kind, Message TitleMessage, Message TextMessage, string? JobId)
     {
         public string Title => TitleMessage.Render();
         public string Text => TextMessage.Render();
@@ -43,11 +43,12 @@ public class Hub(Settings settings)
     public List<Line> LogSince(long seq) { lock (_log) return _log.Where(l => l.Seq > seq).ToList(); }
     public void ClearLog() { lock (_log) _log.Clear(); }
 
-    void Notify(string kind, Message title, Message text)
+    // JobId: a página junta avisos repetidos do mesmo jogo e oferece "Ver" no cartão
+    void Notify(string kind, Message title, Message text, Job? job = null)
     {
         lock (_notices)
         {
-            _notices.Add(new(Interlocked.Increment(ref _seq), kind, title, text));
+            _notices.Add(new(Interlocked.Increment(ref _seq), kind, title, text, job == null ? null : Id(job)));
             if (_notices.Count > 100) _notices.RemoveAt(0);
         }
     }
@@ -57,11 +58,11 @@ public class Hub(Settings settings)
 
     public void OnDone(Job job)
     {
-        if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name));
-        else if (job.Stage == Stage.PacotePronto) Notify("package_ready", new("web.packageReadyTitle"), job.DetailMessage ?? new("web.packageReadyText", job.Title != "" ? job.Title : job.Name));
-        else if (job.Stage == Stage.InstalacaoSolicitada) Notify("installation_requested", new("web.installationTitle"), new("web.installationText", job.Title != "" ? job.Title : job.Name));
-        else if (job.Stage == Stage.VerifiqueNoPs5) Notify("unknown", new("web.installationUnknownTitle"), new("web.installationUnknownText", job.Title != "" ? job.Title : job.Name));
-        else Notify("error", new("web.errorTitle"), new("web.errorText", job.Name, job.DetailMessage ?? new Message("core.raw", Short(job.Detail))));
+        if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name), job);
+        else if (job.Stage == Stage.PacotePronto) Notify("package_ready", new("web.packageReadyTitle"), job.DetailMessage ?? new("web.packageReadyText", job.Title != "" ? job.Title : job.Name), job);
+        else if (job.Stage == Stage.InstalacaoSolicitada) Notify("installation_requested", new("web.installationTitle"), new("web.installationText", job.Title != "" ? job.Title : job.Name), job);
+        else if (job.Stage == Stage.VerifiqueNoPs5) Notify("unknown", new("web.installationUnknownTitle"), new("web.installationUnknownText", job.Title != "" ? job.Title : job.Name), job);
+        else Notify("error", new("web.errorTitle"), new("web.errorText", job.Name, job.DetailMessage ?? new Message("core.raw", Short(job.Detail))), job);
     }
 
     static string Short(string s)
@@ -78,7 +79,7 @@ public class Hub(Settings settings)
     {
         var ask = new Ask(Interlocked.Increment(ref _seq), job, job.ArchivePassword != null, new(TaskCreationOptions.RunContinuationsAsynchronously));
         _asks[Id(job)] = ask;
-        Notify("password", new("web.passwordTitle"), new("web.passwordText", job.Name));
+        Notify("password", new("web.passwordTitle"), new("web.passwordText", job.Name), job);
         return ask.Answer.Task;
     }
 

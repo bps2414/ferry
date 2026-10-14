@@ -62,7 +62,7 @@ Open `http://<server-ip>:8021`. On first open the page asks you to create a user
 ## How to use
 
 1. Run an FTP payload on the PS5 (**ftpsrv**, port 2121, or **etaHEN**'s FTP, port 1337).
-2. Open **Settings**: PS5 IP, port, destination (**M.2** `/mnt/ext1/homebrew` or **internal SSD** `/data/homebrew`). Everything saves automatically. The bottom of the sidebar shows whether the PS5 is online.
+2. Open **Settings**: PS5 IP, port, destination (**M.2** `/mnt/ext1/homebrew` or **internal SSD** `/data/homebrew`). Everything saves automatically. The badge at the top of every page shows whether the PS5 is online.
 3. In **Queue**, click the middle of the screen (opens the file picker) or drag the files onto the window. Select **all parts** at once.
 4. Done: once every part is present, the game is extracted and sent to `<destination>/<game folder>`.
 

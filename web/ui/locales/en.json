@@ -151,5 +151,18 @@
   "ui.dpiHelpStep3": "Then enable Request installation automatically via DPI for new uploads, or use the DPI button on an uploaded package.",
   "ui.dpiHelpConfig": "Alternatively, set DPI=1 in /data/etaHEN/config.ini and reload etaHEN to apply it. You can leave automatic mode off and install on PS5 instead.",
   "ui.dpiHelpV2": "Ferry uses DPI v1 on port 9090. Direct Package Installer V2 on port 12800 is a separate service; some firmware versions require it for ★ Custom Background Package Installer.",
-  "ui.dpiHelpCompatibility": "Options and support depend on the etaHEN version and console firmware. Check the instructions for your version; an open port does not confirm installation compatibility."
+  "ui.dpiHelpCompatibility": "Options and support depend on the etaHEN version and console firmware. Check the instructions for your version; an open port does not confirm installation compatibility.",
+  "ui.group.attention": "Needs you",
+  "ui.group.active": "Sending",
+  "ui.group.queue": "Queued",
+  "ui.group.done": "Finished",
+  "ui.finishesAt": "done around {0}",
+  "ui.view": "View",
+  "ui.sections": "Sections",
+  "ui.section.destinations": "Destinations",
+  "ui.section.packages": "PKG packages",
+  "ui.section.notices": "Notifications",
+  "ui.section.browser": "Browser",
+  "ui.section.general": "General",
+  "ui.requestFailed": "No response from the Ferry server ({0}). Check the connection and try again."
 }

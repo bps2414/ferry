@@ -182,11 +182,11 @@ const startServer = () => {
   server.stdout.on("data", d => serverLog.push(d.toString()));
   server.stderr.on("data", d => serverLog.push(d.toString()));
 };
-const stopServer = async () => {
+const stopServer = async (signal = "SIGTERM") => {
   if (!localMode) { try { docker("rm", "-f", name); } catch { } return; }
   if (!server || server.exitCode !== null) return;
   const closed = new Promise(resolve => server.once("exit", resolve));
-  server.kill();
+  server.kill(signal);
   await closed;
 };
 startServer();
@@ -304,6 +304,15 @@ try {
   await until(async () => (await page.locator("#statusTitle").textContent()) === "PS5 online", 5000, "cartão PS5 online");
   shotsTaken.config = await shot("02-configuracoes");
   check("Testar conexão", true, test);
+  // sem resposta do servidor (rede caiu): o resultado diz isso em vez de ficar em "Testando…", sem erro solto na página
+  const errorsBefore = pageErrors.length;
+  await page.route("**/api/ps5/test", route => route.abort("connectionreset"));
+  await page.click("#testBtn");
+  const offline = await until(async () => await page.locator("#testResult").evaluate(el => el.classList.contains("fail")) && await page.locator("#testResult").textContent(), 5000, "teste sem resposta do servidor");
+  await page.unroute("**/api/ps5/test");
+  check("Teste sem resposta do servidor não fica preso", offline.includes(locale === "en" ? "No response from the Ferry server" : "Sem resposta do servidor Ferry") && await page.locator("#testBtn").isEnabled() && pageErrors.length === errorsBefore, offline);
+  await page.click("#testBtn");
+  await until(async () => (await page.locator("#testResult").textContent()).startsWith(expected.connected), 15000, "teste de conexão de novo");
   const originalLines = await (await page.request.get(base + "/api/log")).json();
   const translatedLog = locale === "en" ? "Teste de conexão:" : "Connection test:";
   await switchLanguage(locale === "en" ? "pt-BR" : "en");
@@ -463,7 +472,7 @@ try {
   check("Reinício interrompe uma transferência ainda incompleta", cut > 0 && cut < fs.statSync(imgw).size && hookEvents("completed", "IMGW").length === 0);
   // A graceful Docker stop can finish FTP while shutdown discards best-effort notifications.
   // Kill immediately so this test exercises recovery and a new completion after reopening.
-  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
+  if (localMode) { await stopServer("SIGKILL"); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
   await until(up200, 30000, "container de volta");
   await until(async () => (await stage("IMGW")) === "Verificado", 180000, "IMGW concluído depois de reiniciar");
   const stillIn = await page.locator("#shell").isVisible() && !(await page.locator("#auth").isVisible());
@@ -568,7 +577,7 @@ try {
   check("PKG compactado chega íntegro, sem sucesso em resposta perdida", dpiRequests.at(-1)?.hash === sha(pkg)
     && fs.existsSync(path.join(games, "PKGARCH.zip")) && hookEvents("installation_requested", "PKGARCH").length === 0);
   const requestsBefore = dpiRequests.length;
-  if (localMode) { await stopServer(); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
+  if (localMode) { await stopServer("SIGKILL"); startServer(); } else { docker("kill", "--signal", "KILL", name); docker("start", name); }
   await until(up200, 30000, "servidor reiniciado com PKG");
   await page.reload();
   await until(async () => await stage("PKGARCH") === "VerifiqueNoPs5" && await stage("PKGWEB") === "InstalacaoSolicitada", 15000, "PKGs restaurados");

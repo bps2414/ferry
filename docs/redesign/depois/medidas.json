@@ -1,0 +1,14 @@
+{
+  "pt-BR desktop altura da fila (px)": 900,
+  "pt-BR desktop altura das configurações (px)": 3514,
+  "pt-BR celular altura da fila (px)": 1238,
+  "pt-BR celular altura das configurações (px)": 3910,
+  "en desktop altura da fila (px)": 900,
+  "en desktop altura das configurações (px)": 3495,
+  "en celular altura da fila (px)": 1238,
+  "en celular altura das configurações (px)": 3893,
+  "avisos na tela para 2 pedidos de senha do mesmo jogo": 1,
+  "render 200 jogos — mediana (ms)": 2.2,
+  "render 200 jogos — p95 (ms)": 3.4,
+  "elementos no DOM com 200 jogos": 10026
+}

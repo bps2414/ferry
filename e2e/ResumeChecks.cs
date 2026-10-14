@@ -73,7 +73,7 @@ static class ResumeChecks
                 catch (SocketException) { await Task.Delay(50, stop.Token); }
             }
             var commandFile = Path.Combine(remoteRoot, "commands.txt");
-            await Until(() => File.Exists(commandFile) && File.ReadAllLines(commandFile).LastOrDefault() == "CLOSE 0", stop.Token);
+            await Until(() => File.Exists(commandFile) && CommandLog(commandFile).LastOrDefault() == "CLOSE 0", stop.Token);
             var settings = new Settings { Host = "127.0.0.1", Port = port, User = "ps5", Password = "ps5pass", InputFolder = input, ImageDir = "/images", Connections = 3, DeleteOriginal = false };
             if (fault is "replay" or "cancel-replay")
             {
@@ -98,8 +98,8 @@ static class ResumeChecks
                 Check(job.Stage == Stage.Verificado, fault + " transfer completes");
                 Check(SHA256.HashData(File.ReadAllBytes(Path.Combine(remote, "Image.exfat"))).SequenceEqual(SHA256.HashData(payload)), fault + " final content hash matches");
             }
-            await Until(() => File.ReadAllLines(Path.Combine(remoteRoot, "commands.txt")).LastOrDefault() == "CLOSE 0", stop.Token);
-            var commands = File.ReadAllLines(Path.Combine(remoteRoot, "commands.txt"));
+            await Until(() => CommandLog(Path.Combine(remoteRoot, "commands.txt")).LastOrDefault() == "CLOSE 0", stop.Token);
+            var commands = CommandLog(Path.Combine(remoteRoot, "commands.txt"));
             var stor = commands.Count(l => l.StartsWith("STOR "));
             var appe = commands.Count(l => l.StartsWith("APPE "));
             if (fault is "reset" or "temporary")
@@ -128,6 +128,22 @@ static class ResumeChecks
         while (!predicate()) await Task.Delay(50, ct);
     }
 
+    // O FTP falso (Python) acrescenta linhas ao log enquanto o teste lê; no Windows a leitura concorrente pode
+    // falhar com violação de compartilhamento. Tenta de novo em vez de derrubar o teste.
+    static string[] CommandLog(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.TrimEnd('\r')).ToArray();
+            }
+            catch (IOException) when (attempt < 100) { Thread.Sleep(20); }
+        }
+    }
+
     static async Task RateBaseline()
     {
         var job = new Job { Key = "rate", Name = "rate" };
@@ -152,7 +168,7 @@ static class ResumeChecks
             await src.Reading.Task.WaitAsync(stop);
             Check(reported == 4 << 20, "partial bytes are credited before archive replay starts");
             Check(reread == 0, "archive replay reports preparation before blocking on decompression");
-            var commands = File.ReadAllLines(Path.Combine(remoteRoot, "commands.txt"));
+            var commands = CommandLog(Path.Combine(remoteRoot, "commands.txt"));
             Check(commands.Last() == "CLOSE 0", "archive replay opens no idle FTP sessions");
             if (cancel)
             {
