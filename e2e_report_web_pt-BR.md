@@ -1,7 +1,7 @@
 # Relatório E2E web — Ferry self-hosted (pt-BR)
 
-- Data: 2026-10-14 00:45:56 UTC
-- Resultado geral: **PASSOU**  (106s)
+- Data: 2026-10-14 00:58:18 UTC
+- Resultado geral: **PASSOU**  (93s)
 - Servidor: DLL local .NET, dados isolados; Chromium (Playwright). Docker não exercitado nesta rodada.
 - PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
 
@@ -22,6 +22,7 @@
 | Escolha explícita precede navegador | ✅  |
 | Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "A porta é um número de 1 a 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = /tmp/ferry-web-e2e-pt-BR/games; GET atrasado 1,5 s não desfez o que foi digitado=true |
 | Testar conexão | ✅ Conectado, mas /mnt/ext1/homebrew não existe (será criado no envio). |
+| Teste sem resposta do servidor não fica preso | ✅ Sem resposta do servidor Ferry (Failed to fetch). Confira a conexão e tente de novo. |
 | Log já recebido muda de idioma sem perder sequência | ✅  |
 | Testar aguarda a URL salva e funciona desligado | ✅  |
 | API valida serviço e tipo do interruptor | ✅  |
@@ -41,7 +42,7 @@
 | Reinício interrompe uma transferência ainda incompleta | ✅  |
 | Idioma persiste após reiniciar e recarregar | ✅  |
 | Pausar e retomar pela página | ✅ congelou em 22.5% por 1,5 s e retomou |
-| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 48% (269629420 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
+| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 42% (251852176 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Enviado e conferido antes de reabrir") sem reenviar nada |
 | Webhook persiste ao reiniciar e não repete conclusão restaurada | ✅  |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Jogo já instalado no PS5 — o loader pode…" |

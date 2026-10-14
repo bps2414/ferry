@@ -1,7 +1,7 @@
 # Relatório E2E web — Ferry self-hosted (en)
 
-- Data: 2026-10-14 00:47:41 UTC
-- Resultado geral: **PASSOU**  (104s)
+- Data: 2026-10-14 00:59:47 UTC
+- Resultado geral: **PASSOU**  (88s)
 - Servidor: DLL local .NET, dados isolados; Chromium (Playwright). Docker não exercitado nesta rodada.
 - PS5 falso: pyftpdlib imitando o ftpsrv novo (com APPE), 40 MB/s por conexão; arquivos de teste gerados com 7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
 
@@ -22,6 +22,7 @@
 | Escolha explícita precede navegador | ✅  |
 | Configurações salvam sozinhas e recusam o inválido | ✅ porta "abc" → "The port must be a number from 1 to 65535." (continuou 2121); host/porta/usuário/senha salvos; pasta monitorada = /tmp/ferry-web-e2e-en/games; GET atrasado 1,5 s não desfez o que foi digitado=true |
 | Testar conexão | ✅ Connected, but /mnt/ext1/homebrew does not exist (it will be created during transfer). |
+| Teste sem resposta do servidor não fica preso | ✅ No response from the Ferry server (Failed to fetch). Check the connection and try again. |
 | Log já recebido muda de idioma sem perder sequência | ✅  |
 | Testar aguarda a URL salva e funciona desligado | ✅  |
 | API valida serviço e tipo do interruptor | ✅  |
@@ -33,15 +34,15 @@
 | Idioma durante upload preserva campo editado | ✅  |
 | Webhook de senha chega antes da resposta ao diálogo | ✅  |
 | Idioma preserva diálogo e senha digitada | ✅  |
-| Upload pelo navegador → senha no navegador → envio ao PS5 | ✅ 8 volumes .7z enviados pela página; diálogo "Password-protected archive", 1ª senha errada → "Senha incorreta", 2ª certa; estado Verificado (/mnt/ext1/homebrew/PPSA09001-Jogo Web); 7/7 SHA-256 iguais; capa e PPSA09001; senha entrou nas senhas conhecidas=true; cartão durante o envio "PS5 online" |
+| Upload pelo navegador → senha no navegador → envio ao PS5 | ✅ 8 volumes .7z enviados pela página; diálogo "Password-protected archive", 1ª senha errada → "Senha incorreta", 2ª certa; estado Verificado (/mnt/ext1/homebrew/PPSA09001-Jogo Web); 7/7 SHA-256 iguais; capa e PPSA09001; senha entrou nas senhas conhecidas=true; cartão durante o envio "(o envio acabou antes de pegar o meio)" |
 | Webhook de senha sem resposta não bloqueia diálogo nem FTP | ✅  |
 | Webhook contém evento, jogo e idioma sem repetir senha incorreta | ✅  |
 | Idioma preserva card pausado e progresso | ✅  |
 | Idioma durante transferência mantém andamento | ✅  |
 | Reinício interrompe uma transferência ainda incompleta | ✅  |
 | Idioma persiste após reiniciar e recarregar | ✅  |
-| Pausar e retomar pela página | ✅ congelou em 33.6% por 1,5 s e retomou |
-| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 44.3% (214915960 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Sent and verified before reopening") sem reenviar nada |
+| Pausar e retomar pela página | ✅ congelou em 22.5% por 1,5 s e retomou |
+| Reiniciar o servidor local no meio do envio | ✅ reinício da DLL local em 41.9% (251754141 bytes no PS5); voltou sozinho, continuou com APPE (2x após reabrir), hash confere, sem .ferry-part; login continuou valendo=true; Jogo Web continuou Verificado ("Sent and verified before reopening") sem reenviar nada |
 | Webhook persiste ao reiniciar e não repete conclusão restaurada | ✅  |
 | Upload continua de onde parou | ✅ 1º bloco (16 MB) pela API; bloco repetido → 409; parcial não entrou na fila=true; a página continuou do byte 16777216 (3 bloco(s)); arquivo no servidor e no PS5 com o mesmo hash |
 | Adicionar de novo um jogo concluído | ✅ reenvio pela página começou do byte 0 (4 blocos, sem pular por ter o mesmo tamanho); o card voltou para a fila e parou em "Game already installed on the PS5 — the …" |
@@ -72,7 +73,6 @@
 ![10-webhook](e2e/web/report/en/10-webhook.png)
 ![03-fila-vazia](e2e/web/report/en/03-fila-vazia.png)
 ![04-senha](e2e/web/report/en/04-senha.png)
-![05-enviando](e2e/web/report/en/05-enviando.png)
 ![06-concluido](e2e/web/report/en/06-concluido.png)
 ![07-pausado](e2e/web/report/en/07-pausado.png)
 ![11-pkg](e2e/web/report/en/11-pkg.png)
