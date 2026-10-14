@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     WindowState _restoredState = WindowState.Normal;
     bool _loading; // preenchendo os campos por código: não conta como edição do usuário
     (string Ip, int Port)? _found; // PS5 achado na varredura, aguardando "Usar este"
+    ListCollectionView? _queueView;
+    List<(Job Job, string Group)> _grouped = [];
 
     public MainWindow() : this(new WindowsPowerService()) { }
 
@@ -73,7 +75,10 @@ public partial class MainWindow : Window
             });
         };
         BindingOperations.EnableCollectionSynchronization(_engine.Jobs, _engine.Lock);
-        JobList.ItemsSource = _engine.Jobs;
+        // fila em grupos (Precisa de você → Enviando → Na fila → Concluídos), na ordem do motor dentro de cada grupo
+        _queueView = (ListCollectionView)CollectionViewSource.GetDefaultView(_engine.Jobs);
+        _queueView.GroupDescriptions.Add(new PropertyGroupDescription(null, new JobGroupConverter()));
+        JobList.ItemsSource = _queueView;
         _engine.Restore();
         _powerSession = new(_engine.Jobs, _engine.Lock, power, clock, _engine.ObserveWork);
 
@@ -180,11 +185,60 @@ public partial class MainWindow : Window
         SpeedPill.Visibility = rate > 0 ? Visibility.Visible : Visibility.Collapsed;
         var sz = WpfText.Current.Size((long)rate).Split(' ');
         (SpeedText.Text, SpeedUnit.Text) = (sz[0], " " + sz[1] + "/s");
-        ClearBtn.Visibility = done + requested > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyHint.Visibility = jobs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RegroupQueue(jobs);
+        RefreshOverall(jobs, rate);
         var pending = jobs.Count - done - requested;
         QueueBadge.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
         QueueBadgeText.Text = pending.ToString(WpfText.Current.Culture);
+    }
+
+    // O grupo depende do estado; a lista só é reorganizada quando algum jogo muda de grupo ou de posição
+    // (recriar os cartões a cada tique perderia a animação da barra e o foco do teclado).
+    void RegroupQueue(List<Job> jobs)
+    {
+        if (_queueView == null) return;
+        var grouped = jobs.Select(j => (j, QueueGroups.Of(j))).ToList();
+        if (grouped.SequenceEqual(_grouped)) return;
+        _grouped = grouped;
+        _queueView.CustomSort = new QueueGroups.Sort(jobs.Select((job, index) => (job, index)).ToDictionary(x => x.job, x => x.index));
+    }
+
+    // Progresso da fila: bytes dos itens enviando/na fila. Término previsto só com todos os tamanhos conhecidos e velocidade.
+    void RefreshOverall(List<Job> jobs, double rate)
+    {
+        var pending = jobs.Where(j => QueueGroups.Of(j) is "active" or "queue").ToList();
+        var known = pending.Where(j => j.TotalBytes > 0).ToList();
+        OverallPanel.Visibility = pending.Count >= 2 && known.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (OverallPanel.Visibility != Visibility.Visible) return;
+        long total = known.Sum(j => j.TotalBytes), sent = known.Sum(j => Math.Min(j.DoneBytes, j.TotalBytes));
+        OverallBar.Value = total > 0 ? sent * 100.0 / total : 0;
+        OverallAmount.Text = T("ui.amount", WpfText.Current.Size(sent), WpfText.Current.Size(total));
+        OverallEta.Text = rate > 0 && known.Count == pending.Count
+            ? " · " + T("ui.finishesAt", DateTime.Now.AddSeconds((total - sent) / rate).ToString("t", WpfText.Current.Culture))
+            : "";
+    }
+
+    // índice das Configurações: o clique rola até a seção; a rolagem marca a seção visível
+    void OnSectionNav(object s, RoutedEventArgs e)
+    {
+        if (s is not RadioButton { Tag: string name } || FindName(name) is not FrameworkElement section) return;
+        var top = section.TransformToAncestor(SettingsScroll).Transform(new Point(0, 0)).Y;
+        SettingsScroll.ScrollToVerticalOffset(SettingsScroll.VerticalOffset + top);
+    }
+
+    void OnSettingsScroll(object s, ScrollChangedEventArgs e)
+    {
+        if (SectionNav == null || !SettingsScroll.IsVisible) return;
+        RadioButton? current = null;
+        var line = SettingsScroll.ViewportHeight * 0.3;
+        foreach (RadioButton item in SectionNav.Children)
+        {
+            if (FindName((string)item.Tag) is not FrameworkElement section || !section.IsVisible) continue;
+            if (current == null || section.TransformToAncestor(SettingsScroll).Transform(new Point(0, 0)).Y <= line) current = item;
+        }
+        if (SettingsScroll.VerticalOffset >= SettingsScroll.ScrollableHeight - 1 && SectionNav.Children.Count > 0) current = (RadioButton)SectionNav.Children[^1];
+        if (current != null && current.IsChecked != true) current.IsChecked = true;
     }
 
     void RefreshPower()
@@ -402,6 +456,7 @@ public partial class MainWindow : Window
     {
         StatusHost.Text = $"{_settings.Host}:{_settings.Port}";
         StatusDest.Text = _settings.RemoteDir;
+        StatusDest.ToolTip = _settings.RemoteDir;
         EmptyDest.Text = $"PS5 · {_settings.Host}";
     }
 
@@ -545,6 +600,8 @@ public partial class MainWindow : Window
             new System.Windows.Media.Animation.DoubleAnimation(v, TimeSpan.FromMilliseconds(ms)) { EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut } });
     }
     void OnClearFinished(object s, RoutedEventArgs e) => _engine.ClearFinished();
+    // "Limpar concluídos" fica no cabeçalho do grupo (modelo de estilo não aceita Click direto)
+    void OnQueueButton(object s, RoutedEventArgs e) { if (e.OriginalSource is Button { Tag: "clear-finished" }) _engine.ClearFinished(); }
 
     void OnDragEnter(object s, DragEventArgs e)
     {

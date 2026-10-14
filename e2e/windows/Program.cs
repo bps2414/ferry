@@ -252,6 +252,11 @@ internal static partial class Program
             Assert(job!.Stage == Stage.InstalacaoSolicitada, "WPF package accepted: " + job.Detail);
             Assert(received.Count == 1 && received.Single().Hash.SequenceEqual(SHA256.HashData(bytes)), "WPF package hash before DPI");
             Assert(File.Exists(source), "WPF retains PKG original despite DeleteOriginal");
+            // a instalação solicitada vai para Concluídos, que começa recolhido; abre o grupo para ler o cartão
+            Invoke(window, "RefreshSummary");
+            Assert(QueueGroups.Of(job) == "done" && !QueueGroups.Current.DoneExpanded, "requested installation moves to collapsed Finished group");
+            QueueGroups.Current.DoneExpanded = true;
+            Pump();
             foreach (var locale in new[] { "pt-BR", "en" })
             {
                 SelectLanguage(window, locale);

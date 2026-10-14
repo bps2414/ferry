@@ -259,11 +259,16 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .set-nav a { color: var(--muted); text-decoration: none; font-size: 14px; padding: 8px 0 8px 12px; border-left: 2px solid var(--line); }
 .set-nav a:hover { color: var(--text2); }
 .set-nav a.on { color: var(--text); border-left-color: var(--accent); font-weight: 600; }
-.set-section { padding: 24px 0 28px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
-.set-section:last-child { border-bottom: 0; }
-.set-section h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-.set-section h3 { font-size: 14px; font-weight: 600; margin-top: 26px; }
-.set-section textarea { margin-top: 12px; }
+/* hierarquia: título da seção grande; subgrupo em versalete discreto com fio; rótulo do campo em cinza */
+.set-section { padding: 32px 0 36px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+.set-section:first-child { padding-top: 20px; }
+.set-section:last-child { border-bottom: 0; min-height: calc(100vh - 120px); }
+.set-section h2 { font-size: 22px; font-weight: 600; line-height: 1.2; margin-bottom: 8px; }
+.set-section h3 { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--line); }
+.set-section h2 + .hint { margin-top: 0; }
+.set-section h2 + h3 { margin-top: 12px; padding-top: 0; border-top: 0; }
+/* a caixa de senhas cresce com o conteúdo: uma rolagem só, a da página */
+.set-section textarea { margin-top: 12px; min-height: 140px; field-sizing: content; resize: none; overflow: hidden; }
 .test { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; }
 /* resultado de teste: linha de status curta, com ponto de estado */
 .test-result { font-size: 14px; color: var(--text2); display: flex; gap: 8px; align-items: baseline; flex: 1 1 260px; min-width: 0; }

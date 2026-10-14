@@ -24,27 +24,6 @@
                     <TextBlock Text="{text:Loc ui.tagline}" FontSize="11" Foreground="{StaticResource Muted}" Margin="52,0,0,0"/>
                 </StackPanel>
 
-                <!-- status do PS5: texto, sem cartão -->
-                <StackPanel DockPanel.Dock="Bottom">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="{StaticResource Muted}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="StatusTitle" Text="{text:Loc ui.untested}" FontWeight="SemiBold" Margin="8,0,0,0"/>
-                    </StackPanel>
-                    <TextBlock x:Name="StatusHost" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="StatusDest" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                    <!-- PS5 achado na rede: só oferece, nunca troca sozinho -->
-                    <Border x:Name="FoundBar" Visibility="Collapsed" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,14,0,0">
-                        <StackPanel>
-                            <TextBlock x:Name="FoundText" FontSize="12.5" Foreground="{StaticResource Text}" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="{text:Loc ui.useFound}" Style="{StaticResource Primary}" Height="30" Padding="12,0" Click="OnUseFound"/>
-                                <Button Content="{text:Loc ui.ignore}" Style="{StaticResource LinkBtn}" Margin="14,0,0,0" VerticalAlignment="Center" Click="OnDismissFound"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <Button x:Name="SideTestBtn" Content="{text:Loc ui.test}" Style="{StaticResource LinkBtn}" Margin="0,12,0,0" Click="OnTest"/>
-                </StackPanel>
-
                 <StackPanel Margin="0,40,0,0">
                     <RadioButton x:Name="NavQueue" Style="{StaticResource NavItem}" GroupName="nav" IsChecked="True" Checked="OnNav">
                         <DockPanel>
@@ -61,13 +40,33 @@
         </Border>
 
         <!-- ============ CONTEÚDO ============ -->
-        <Grid Grid.Column="1" Margin="32,26,32,20">
+        <Grid Grid.Column="1" Margin="32,12,32,20">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+            <!-- status do PS5 no topo de todas as páginas (e o PS5 achado na rede: só oferece, nunca troca sozinho) -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
+                <Border x:Name="FoundBar" Visibility="Collapsed" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="16" Padding="14,4,6,4" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="FoundText" FontSize="12.5" Foreground="{StaticResource Text}" VerticalAlignment="Center"/>
+                        <Button Content="{text:Loc ui.useFound}" Style="{StaticResource Primary}" Height="26" Padding="10,0" Margin="12,0,0,0" Click="OnUseFound"/>
+                        <Button Content="{text:Loc ui.ignore}" Style="{StaticResource LinkBtn}" Margin="12,0,8,0" VerticalAlignment="Center" Click="OnDismissFound"/>
+                    </StackPanel>
+                </Border>
+                <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="16" Padding="12,6" AutomationProperties.LiveSetting="Polite">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource Idle}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusTitle" Text="{text:Loc ui.untested}" FontWeight="SemiBold" FontSize="12.5" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusHost" FontWeight="SemiBold" FontSize="12.5" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusDest" Foreground="{StaticResource Muted}" FontSize="12.5" Margin="10,0,0,0" MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <Button x:Name="SideTestBtn" Content="{text:Loc ui.test}" Style="{StaticResource LinkBtn}" Margin="12,0,0,0" VerticalAlignment="Center" Click="OnTest"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
             <!-- aviso de desligamento armado: só aparece enquanto o desligamento está armado -->
-            <Border x:Name="PowerBanner" Visibility="Collapsed" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="4" Padding="14,10" Margin="0,0,0,18">
+            <Border x:Name="PowerBanner" Grid.Row="1" Visibility="Collapsed" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="4" Padding="14,10" Margin="0,0,0,18">
                 <DockPanel>
                     <Button x:Name="CancelShutdownBtn" DockPanel.Dock="Right" Content="{text:Loc app.cancelShutdown}" Style="{StaticResource Btn}"
                             Click="OnCancelShutdown" Margin="12,0,0,0" AutomationProperties.Name="{text:Loc app.cancelShutdown}"/>
@@ -76,13 +75,20 @@
             </Border>
 
             <!-- == FILA == -->
-            <Grid x:Name="QueuePage" Grid.Row="1">
+            <Grid x:Name="QueuePage" Grid.Row="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18">
                     <DockPanel>
+                        <!-- progresso da fila inteira (itens enviando e na fila) e término previsto -->
+                        <DockPanel x:Name="OverallPanel" DockPanel.Dock="Bottom" Margin="0,16,0,0" Visibility="Collapsed">
+                            <TextBlock DockPanel.Dock="Right" FontSize="13" Foreground="{StaticResource Text2}" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <Run x:Name="OverallAmount"/><Run x:Name="OverallEta"/>
+                            </TextBlock>
+                            <ProgressBar x:Name="OverallBar" Height="4" Maximum="100" Background="{StaticResource Line}" Foreground="{StaticResource Accent}" BorderThickness="0" VerticalAlignment="Center" IsTabStop="False"/>
+                        </DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <!-- velocidade total agora -->
                             <StackPanel x:Name="SpeedPill" Margin="0,0,24,0" Visibility="Collapsed" VerticalAlignment="Bottom">
@@ -91,7 +97,6 @@
                                 </TextBlock>
                                 <TextBlock Text="{text:Loc ui.totalNow}" FontSize="12" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,4,0,0"/>
                             </StackPanel>
-                            <Button x:Name="ClearBtn" Content="{text:Loc ui.clearDone}" Style="{StaticResource Btn}" Margin="0,0,8,0" Click="OnClearFinished" Visibility="Collapsed"/>
                             <Button Style="{StaticResource Primary}" Click="OnPickFiles">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE710;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center"/>
@@ -100,7 +105,7 @@
                             </Button>
                         </StackPanel>
                         <StackPanel VerticalAlignment="Bottom">
-                            <TextBlock Text="{text:Loc ui.queue}" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
+                            <TextBlock Text="{text:Loc ui.queue}" FontSize="{StaticResource PageTitleSize}" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
                             <TextBlock x:Name="SummaryText" Foreground="{StaticResource Muted}" FontSize="13" Margin="0,8,0,0" Text="{text:Loc ui.emptyQueue}"/>
                         </StackPanel>
                     </DockPanel>
@@ -121,14 +126,97 @@
                     </StackPanel>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
-                    <ItemsControl x:Name="JobList" Focusable="False">
+                <ScrollViewer Grid.Row="1" Margin="0,0,-32,-20" Padding="0,0,32,20" VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <ItemsControl x:Name="JobList" Focusable="False" ButtonBase.Click="OnQueueButton">
+                        <!-- grupos: Precisa de você → Enviando → Na fila → Concluídos (recolhido por padrão) -->
+                        <ItemsControl.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.ContainerStyle>
+                                    <Style TargetType="GroupItem">
+                                        <Setter Property="Margin" Value="0,18,0,0"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="GroupItem">
+                                                    <StackPanel>
+                                                        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock x:Name="GroupTitle" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text2}">
+                                                                    <TextBlock.Text>
+                                                                        <MultiBinding Converter="{StaticResource GroupTitleText}">
+                                                                            <Binding Path="Name"/>
+                                                                            <Binding Path="Locale" Source="{x:Static text:WpfText.Current}"/>
+                                                                        </MultiBinding>
+                                                                    </TextBlock.Text>
+                                                                </TextBlock>
+                                                                <TextBlock Text="{Binding ItemCount}" FontSize="12" Foreground="{StaticResource Muted}" Margin="10,0,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <ItemsPresenter/>
+                                                    </StackPanel>
+                                                    <ControlTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding Name}" Value="attention">
+                                                            <Setter TargetName="GroupTitle" Property="Foreground" Value="{StaticResource Amber}"/>
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Name}" Value="done">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="GroupItem">
+                                                            <StackPanel>
+                                                                <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,0,0,6">
+                                                                    <DockPanel>
+                                                                        <Button DockPanel.Dock="Right" Content="{text:Loc ui.clearDone}" Style="{StaticResource LinkBtn}" VerticalAlignment="Center" Tag="clear-finished"/>
+                                                                        <ToggleButton x:Name="DoneToggle" HorizontalAlignment="Left" Cursor="Hand" FocusVisualStyle="{StaticResource Focus}"
+                                                                                      IsChecked="{Binding DoneExpanded, Source={x:Static text:QueueGroups.Current}, Mode=TwoWay}"
+                                                                                      AutomationProperties.Name="{text:Loc ui.group.done}">
+                                                                            <ToggleButton.Template>
+                                                                                <ControlTemplate TargetType="ToggleButton">
+                                                                                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                                                                                        <TextBlock x:Name="Chevron" Text="&#xE76C;" FontFamily="{StaticResource Icons}" FontSize="10" Foreground="{StaticResource Muted}" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                                                                            <TextBlock.RenderTransform><RotateTransform Angle="0"/></TextBlock.RenderTransform>
+                                                                                        </TextBlock>
+                                                                                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                    <ControlTemplate.Triggers>
+                                                                                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="Chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="90"/></Setter.Value></Setter></Trigger>
+                                                                                    </ControlTemplate.Triggers>
+                                                                                </ControlTemplate>
+                                                                            </ToggleButton.Template>
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text2}">
+                                                                                    <TextBlock.Text>
+                                                                                        <MultiBinding Converter="{StaticResource GroupTitleText}">
+                                                                                            <Binding Path="Name"/>
+                                                                                            <Binding Path="Locale" Source="{x:Static text:WpfText.Current}"/>
+                                                                                        </MultiBinding>
+                                                                                    </TextBlock.Text>
+                                                                                </TextBlock>
+                                                                                <TextBlock Text="{Binding ItemCount}" FontSize="12" Foreground="{StaticResource Muted}" Margin="10,0,0,0"/>
+                                                                            </StackPanel>
+                                                                        </ToggleButton>
+                                                                    </DockPanel>
+                                                                </Border>
+                                                                <ItemsPresenter Visibility="{Binding DoneExpanded, Source={x:Static text:QueueGroups.Current}, Converter={StaticResource Vis}}"/>
+                                                            </StackPanel>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </GroupStyle.ContainerStyle>
+                            </GroupStyle>
+                        </ItemsControl.GroupStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type local:Job}">
                                 <Border x:Name="Row" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,18,4,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="88"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="96"/>
                                             <ColumnDefinition Width="104"/>
@@ -140,13 +228,16 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
-                                        <!-- capa (sem capa, o nome do arquivo ocupa o lugar dela em tipografia grande) -->
+                                        <!-- precisa de você: fio na cor do estado à esquerda -->
+                                        <Rectangle x:Name="Mark" Grid.RowSpan="2" Width="2" HorizontalAlignment="Left" Margin="-14,0,0,0" Visibility="Collapsed"
+                                                   Fill="{Binding Foreground, ElementName=Bar}"/>
+                                        <!-- capa (sem capa, o título ocupa o lugar dela) -->
                                         <Image x:Name="Cover" Width="88" Height="88" Stretch="UniformToFill" VerticalAlignment="Top" Source="{Binding Icon}">
                                             <Image.Clip><RectangleGeometry Rect="0,0,88,88" RadiusX="3" RadiusY="3"/></Image.Clip>
                                         </Image>
 
                                         <StackPanel x:Name="Info" Grid.Column="1" Margin="20,0,16,0" VerticalAlignment="Center">
-                                            <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
+                                            <TextBlock x:Name="TitleText" FontSize="{StaticResource JobTitleSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Text" Value="{Binding Title}"/>
@@ -157,6 +248,8 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                             <WrapPanel Margin="0,5,0,0">
+                                                <!-- estado como etiqueta: ponto na cor da travessia + texto -->
+                                                <Ellipse x:Name="StageDot" Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center" Fill="{Binding Foreground, ElementName=Bar}"/>
                                                 <TextBlock x:Name="StageLbl" Text="{text:JobText Stage}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource Text2}" Margin="0,0,14,0"/>
                                                 <TextBlock x:Name="IdLbl" Text="{Binding TitleId}" FontSize="12.5" Foreground="{StaticResource Muted}" Margin="0,0,14,0"/>
                                                 <TextBlock Text="{Binding Package.Format}" FontSize="12.5" Foreground="{StaticResource Muted}" Margin="0,0,14,0"/>
@@ -191,7 +284,14 @@
                                         <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                                             <Button Style="{StaticResource IconButton}" Content="&#xE769;" ToolTip="{text:Loc ui.pause}" AutomationProperties.Name="{text:Loc ui.pause}" Click="OnPause" Visibility="{Binding CanPause, Converter={StaticResource Vis}}"/>
                                             <Button Style="{StaticResource IconButton}" Content="&#xE768;" ToolTip="{text:Loc ui.resume}" AutomationProperties.Name="{text:Loc ui.resume}" Click="OnResume" Visibility="{Binding CanResume, Converter={StaticResource Vis}}"/>
-                                            <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="{text:Loc ui.retryHint}" AutomationProperties.Name="{text:Loc ui.retry}" Click="OnRetry" Foreground="{StaticResource Text}" Visibility="{Binding CanRetry, Converter={StaticResource Vis}}"/>
+                                            <Button x:Name="RetryIconBtn" Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="{text:Loc ui.retryHint}" AutomationProperties.Name="{text:Loc ui.retry}" Click="OnRetry" Foreground="{StaticResource Text}" Visibility="{Binding CanRetry, Converter={StaticResource Vis}}"/>
+                                            <!-- com erro, "Tentar de novo" é a ação principal, com texto -->
+                                            <Button x:Name="RetryTextBtn" Style="{StaticResource Btn}" ToolTip="{text:Loc ui.retryHint}" Click="OnRetry" Margin="0,0,6,0" Visibility="Collapsed">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{text:Loc ui.retry}" Margin="8,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
                                             <Button Style="{StaticResource IconButton}" Content="&#xE711;" ToolTip="{text:Loc ui.cancel}" AutomationProperties.Name="{text:Loc ui.cancel}" Click="OnCancel" Visibility="{Binding CanCancel, Converter={StaticResource Vis}}"/>
                                             <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="{text:Loc ui.remove}" AutomationProperties.Name="{text:Loc ui.remove}" Click="OnRemove"/>
                                         </StackPanel>
@@ -199,7 +299,7 @@
                                         <!-- a travessia: anima suave até o valor novo (OnProgress) -->
                                         <ProgressBar x:Name="Bar" Grid.Row="1" Grid.ColumnSpan="6" Style="{StaticResource Bar}" Margin="0,16,0,0"
                                                      Tag="{Binding Progress, NotifyOnTargetUpdated=True}" Binding.TargetUpdated="OnProgress">
-                                            <ProgressBar.Foreground><SolidColorBrush Color="#4A5363"/></ProgressBar.Foreground>
+                                            <ProgressBar.Foreground><SolidColorBrush Color="{StaticResource IdleColor}"/></ProgressBar.Foreground>
                                         </ProgressBar>
                                     </Grid>
                                 </Border>
@@ -212,16 +312,53 @@
                                         <Setter TargetName="Info" Property="Grid.Column" Value="0"/>
                                         <Setter TargetName="Info" Property="Grid.ColumnSpan" Value="2"/>
                                         <Setter TargetName="Info" Property="Margin" Value="0,0,16,0"/>
-                                        <Setter TargetName="TitleText" Property="FontSize" Value="30"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding TitleId}" Value=""><Setter TargetName="IdLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{Binding Amount}" Value=""><Setter TargetName="AmountLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{text:JobText Detail}" Value=""><Setter TargetName="DetailText" Property="Visibility" Value="Collapsed"/></DataTrigger>
                                     <DataTrigger Binding="{Binding CurrentFile}" Value=""><Setter TargetName="FileLbl" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                    <!-- números só quando dizem algo: o ativo mostra os três; parado com progresso, só o % -->
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <Setter TargetName="TitleText" Property="FontSize" Value="{StaticResource JobTitleActiveSize}"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsActive}" Value="False">
-                                        <Setter TargetName="PctCell" Property="TextElement.Foreground" Value="{StaticResource Muted}"/>
-                                        <Setter TargetName="RateCell" Property="TextElement.Foreground" Value="{StaticResource Muted}"/>
-                                        <Setter TargetName="EtaCell" Property="TextElement.Foreground" Value="{StaticResource Muted}"/>
+                                        <Setter TargetName="PctCell" Property="TextElement.Foreground" Value="{StaticResource Text2}"/>
+                                        <Setter TargetName="RateCell" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="EtaCell" Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions><Condition Binding="{Binding IsActive}" Value="False"/><Condition Binding="{Binding Progress}" Value="0"/></MultiDataTrigger.Conditions>
+                                        <Setter TargetName="PctCell" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="Bar" Property="Visibility" Value="Collapsed"/>
+                                    </MultiDataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions><Condition Binding="{Binding IsActive}" Value="False"/><Condition Binding="{Binding Progress}" Value="100"/></MultiDataTrigger.Conditions>
+                                        <Setter TargetName="Bar" Property="Visibility" Value="Collapsed"/>
+                                    </MultiDataTrigger>
+                                    <!-- grupo do cartão: compacto na fila e nos concluídos; marcado em "precisa de você" -->
+                                    <DataTrigger Binding="{Binding Converter={StaticResource JobGroup}}" Value="attention">
+                                        <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="Row" Property="Padding" Value="14,18,4,8"/>
+                                        <Setter TargetName="PctCell" Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Converter={StaticResource JobGroup}}" Value="queue">
+                                        <Setter TargetName="Row" Property="Padding" Value="0,12,4,8"/>
+                                        <Setter TargetName="Cover" Property="Width" Value="44"/>
+                                        <Setter TargetName="Cover" Property="Height" Value="44"/>
+                                        <Setter TargetName="Info" Property="Margin" Value="14,0,16,0"/>
+                                        <Setter TargetName="TitleText" Property="FontSize" Value="16"/>
+                                        <Setter TargetName="FileLbl" Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Converter={StaticResource JobGroup}}" Value="done">
+                                        <Setter TargetName="Row" Property="Padding" Value="0,12,4,12"/>
+                                        <Setter TargetName="Cover" Property="Width" Value="44"/>
+                                        <Setter TargetName="Cover" Property="Height" Value="44"/>
+                                        <Setter TargetName="Info" Property="Margin" Value="14,0,16,0"/>
+                                        <Setter TargetName="TitleText" Property="FontSize" Value="16"/>
+                                        <Setter TargetName="TitleText" Property="Foreground" Value="{StaticResource Text2}"/>
+                                        <Setter TargetName="FileLbl" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="PctCell" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="Bar" Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding CanSendNow}" Value="True">
                                         <Setter TargetName="RateCell" Property="Visibility" Value="Collapsed"/>
@@ -230,13 +367,13 @@
 
                                     <!-- estado: cor do rótulo e transição de cor da travessia -->
                                     <DataTrigger Binding="{Binding Stage}" Value="AguardandoPartes">
-                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="#4A5363" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
+                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="{StaticResource IdleColor}" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="NaFila">
-                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="#4A5363" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
+                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="{StaticResource IdleColor}" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="Cancelado">
-                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="#4A5363" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
+                                        <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="{StaticResource IdleColor}" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="Extraindo">
                                         <Setter TargetName="StageLbl" Property="Foreground" Value="{StaticResource AccentText}"/>
@@ -279,7 +416,12 @@
                                         <Setter TargetName="StageLbl" Property="Foreground" Value="{StaticResource Amber}"/>
                                         <DataTrigger.EnterActions><BeginStoryboard><Storyboard><ColorAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(ProgressBar.Foreground).(SolidColorBrush.Color)" To="{StaticResource AmberColor}" Duration="0:0:0.3"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding Stage}" Value="AguardandoPartes">
+                                        <Setter TargetName="PctCell" Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding Stage}" Value="Erro">
+                                        <Setter TargetName="RetryIconBtn" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="RetryTextBtn" Property="Visibility" Value="Visible"/>
                                         <Setter TargetName="StageLbl" Property="Foreground" Value="{StaticResource Red}"/>
                                         <Setter TargetName="DetailText" Property="Foreground" Value="{StaticResource Red}"/>
                                         <Setter TargetName="DetailText" Property="TextWrapping" Value="Wrap"/>
@@ -300,31 +442,35 @@
                 </Border>
             </Grid>
 
-            <!-- == CONFIGURAÇÕES: duas colunas, sem rolar no tamanho padrão (rola só se a janela ficar menor) == -->
-            <ScrollViewer x:Name="SettingsPage" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed" Focusable="False">
-                <Grid x:Name="SettingsPanel" MinHeight="800" Binding.SourceUpdated="OnSourceUpdated">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Border BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Right" Text="{text:Loc ui.autosaved}" Foreground="{StaticResource Muted}" FontSize="13" VerticalAlignment="Bottom"/>
-                            <TextBlock Text="{text:Loc ui.settings}" FontSize="34" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
-                        </DockPanel>
-                    </Border>
-
-                    <Grid Grid.Row="1" Margin="0,4,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="40"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- esquerda: conexão e destino -->
-                        <StackPanel>
-
-                            <Border Style="{StaticResource Group}">
+            <!-- == CONFIGURAÇÕES: índice fixo à esquerda, seções numa coluna (cada seção cabe na tela no tamanho padrão) == -->
+            <Grid x:Name="SettingsPage" Grid.Row="2" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{text:Loc ui.autosaved}" Foreground="{StaticResource Muted}" FontSize="13" VerticalAlignment="Bottom"/>
+                        <TextBlock Text="{text:Loc ui.settings}" FontSize="{StaticResource PageTitleSize}" FontWeight="SemiBold" LineHeight="34" LineStackingStrategy="BlockLineHeight"/>
+                    </DockPanel>
+                </Border>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel x:Name="SectionNav" Margin="0,20,24,0" AutomationProperties.Name="{text:Loc ui.sections}">
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecPs5" Content="{text:Loc app.ps5}" Click="OnSectionNav" IsChecked="True"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecDestinations" Content="{text:Loc ui.section.destinations}" Click="OnSectionNav"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecTransfer" Content="{text:Loc ui.transfer}" Click="OnSectionNav"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecPower" Content="{text:Loc app.power}" Click="OnSectionNav"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecPasswords" Content="{text:Loc ui.knownPasswords}" Click="OnSectionNav"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecNotices" Content="{text:Loc ui.section.notices}" Click="OnSectionNav"/>
+                        <RadioButton Style="{StaticResource SectionItem}" GroupName="sections" Tag="SecGeneral" Content="{text:Loc ui.section.general}" Click="OnSectionNav"/>
+                    </StackPanel>
+                    <ScrollViewer x:Name="SettingsScroll" Grid.Column="1" Margin="0,0,-32,-20" Padding="0,0,32,20" VerticalScrollBarVisibility="Auto" Focusable="False" ScrollChanged="OnSettingsScroll">
+                        <StackPanel x:Name="SettingsPanel" MaxWidth="760" HorizontalAlignment="Left" Binding.SourceUpdated="OnSourceUpdated">
+                            <Border x:Name="SecPs5" Style="{StaticResource Group}">
                                 <StackPanel>
                                     <TextBlock Text="{text:Loc app.ps5}" Style="{StaticResource GroupTitle}"/>
                                     <TextBlock Text="{text:Loc ui.host}" Style="{StaticResource Label}"/>
@@ -354,7 +500,7 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource Group}" BorderThickness="0">
+                            <Border x:Name="SecDestinations" Style="{StaticResource Group}">
                                 <StackPanel>
                                     <TextBlock Text="{text:Loc ui.destination}" Style="{StaticResource GroupTitle}"/>
                                     <TextBlock Text="{text:Loc ui.gamesFolder}" Style="{StaticResource Label}"
@@ -370,6 +516,7 @@
                                                ToolTip="{text:Loc app.exfatHint}"/>
                                     <TextBox x:Name="ImageBox" TextChanged="OnImageDirChanged" AutomationProperties.Name="{text:Loc app.exfatFolder}"/>
                                     <TextBlock x:Name="ImageHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                                    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Margin="0,24,0,0" Padding="0,16,0,0"><TextBlock Text="{text:Loc ui.section.packages}" Style="{StaticResource SubTitle}"/></Border>
                                     <TextBlock Text="{text:Loc ui.pkgDir}" Style="{StaticResource Label}" Margin="0,12,0,5"/>
                                     <TextBox x:Name="PkgBox" TextChanged="OnPkgDirChanged" AutomationProperties.Name="{text:Loc ui.pkgDir}"/>
                                     <TextBlock x:Name="PkgHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
@@ -401,7 +548,52 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource Group}" BorderThickness="0">
+                            <Border x:Name="SecTransfer" Style="{StaticResource Group}">
+                                <StackPanel>
+                                    <TextBlock Text="{text:Loc ui.transfer}" Style="{StaticResource GroupTitle}"/>
+                                    <TextBlock Text="{text:Loc ui.connections}" Style="{StaticResource Label}"
+                                               ToolTip="{text:Loc app.connectionsHint}"/>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Connections}" Width="28" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="15"/>
+                                        <Slider Minimum="1" Maximum="8" IsSnapToTickEnabled="True" TickFrequency="1" Value="{Binding Connections, NotifyOnSourceUpdated=True}" VerticalAlignment="Center" AutomationProperties.Name="{text:Loc ui.connections}"/>
+                                    </DockPanel>
+                                    <CheckBox Margin="0,12,0,0" Content="{text:Loc ui.deleteOriginal}" IsChecked="{Binding DeleteOriginal, NotifyOnSourceUpdated=True}"/>
+                                    <CheckBox Margin="0,10,0,0" Content="{text:Loc ui.autoClearFinished}" IsChecked="{Binding AutoClearFinished, NotifyOnSourceUpdated=True}"/>
+                                    <TextBlock Text="{text:Loc ui.pkgRetentionHint}" Style="{StaticResource Hint}"/>
+                                    <StackPanel Margin="0,24,0,0">
+                                        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,16,0,0"><TextBlock Text="{text:Loc ui.watchFolder}" Style="{StaticResource SubTitle}"/></Border>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="{text:Loc app.choose}" Style="{StaticResource Btn}" Margin="10,0,0,0" Click="OnPickFolder"/>
+                                            <TextBox x:Name="FolderBox" TextChanged="OnFolderChanged" AutomationProperties.Name="{text:Loc ui.watchFolder}"/>
+                                        </DockPanel>
+                                        <TextBlock x:Name="FolderHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
+                                        <TextBlock Style="{StaticResource Hint}" Text="{text:Loc app.watchHint}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="SecPower" Style="{StaticResource Group}">
+                                <StackPanel>
+                                    <TextBlock Text="{text:Loc app.power}" Style="{StaticResource GroupTitle}"/>
+                                    <CheckBox x:Name="ShutdownAfterBox" Content="{text:Loc app.shutdownAfter}" Checked="OnShutdownAfterChanged" Unchecked="OnShutdownAfterChanged"
+                                              AutomationProperties.Name="{text:Loc app.shutdownAfter}"/>
+                                    <TextBlock x:Name="PowerStatusText" Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite"/>
+                                    <TextBlock Text="{text:Loc app.powerHint}" Style="{StaticResource Hint}"/>
+                                    <CheckBox x:Name="KeepAwakeBox" Content="{text:Loc app.keepAwake}" Margin="0,12,0,0"
+                                              Checked="OnKeepAwakeChanged" Unchecked="OnKeepAwakeChanged" AutomationProperties.Name="{text:Loc app.keepAwake}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="SecPasswords" Style="{StaticResource Group}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource GroupTitle}">
+                                        <Run Text="{text:Loc ui.knownPasswords}"/><Run Text="{text:Loc app.passwordsHint}" FontWeight="Normal" FontSize="12" Foreground="{StaticResource Muted}"/>
+                                    </TextBlock>
+                                    <TextBox x:Name="PwList" AcceptsReturn="True" TextWrapping="NoWrap" VerticalContentAlignment="Top" MinHeight="140"
+                                             VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto" TextChanged="OnPwListChanged"
+                                             AutomationProperties.Name="{text:Loc ui.knownPasswords}"
+                                             ToolTip="{text:Loc app.passwordsTooltip}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="SecNotices" Style="{StaticResource Group}">
                                 <StackPanel>
                                     <TextBlock Text="{text:Loc ui.webhook}" Style="{StaticResource GroupTitle}"/>
                                     <CheckBox x:Name="WebhookEnabledBox" Content="{text:Loc ui.webhookEnabled}" Checked="OnWebhookEnabledChanged" Unchecked="OnWebhookEnabledChanged"/>
@@ -421,18 +613,7 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
-
-                        <!-- direita: pasta monitorada, envio e senhas (a caixa de senhas estica até o fim) -->
-                        <Grid Grid.Column="2">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Border Style="{StaticResource Group}">
+                            <Border x:Name="SecGeneral" Style="{StaticResource Group}">
                                 <StackPanel>
                                     <TextBlock Text="{text:Loc ui.language}" Style="{StaticResource GroupTitle}"/>
                                     <ComboBox x:Name="LanguageBox" SelectionChanged="OnLanguageChanged" AutomationProperties.Name="{text:Loc ui.language}">
@@ -443,58 +624,13 @@
                                     <TextBlock Text="{text:Loc app.languageHint}" Style="{StaticResource Hint}"/>
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Row="1" Style="{StaticResource Group}">
-                                <StackPanel>
-                                    <TextBlock Text="{text:Loc ui.watchFolder}" Style="{StaticResource GroupTitle}"/>
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Content="{text:Loc app.choose}" Style="{StaticResource Btn}" Margin="10,0,0,0" Click="OnPickFolder"/>
-                                        <TextBox x:Name="FolderBox" TextChanged="OnFolderChanged" AutomationProperties.Name="{text:Loc ui.watchFolder}"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="FolderHint" Style="{StaticResource Hint}" Foreground="{StaticResource Red}" Visibility="Collapsed"/>
-                                    <TextBlock Style="{StaticResource Hint}" Text="{text:Loc app.watchHint}"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Grid.Row="2" Style="{StaticResource Group}">
-                                <StackPanel>
-                                    <TextBlock Text="{text:Loc ui.transfer}" Style="{StaticResource GroupTitle}"/>
-                                    <TextBlock Text="{text:Loc ui.connections}" Style="{StaticResource Label}"
-                                               ToolTip="{text:Loc app.connectionsHint}"/>
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Connections}" Width="28" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="15"/>
-                                        <Slider Minimum="1" Maximum="8" IsSnapToTickEnabled="True" TickFrequency="1" Value="{Binding Connections, NotifyOnSourceUpdated=True}" VerticalAlignment="Center" AutomationProperties.Name="{text:Loc ui.connections}"/>
-                                    </DockPanel>
-                                    <CheckBox Margin="0,12,0,0" Content="{text:Loc ui.deleteOriginal}" IsChecked="{Binding DeleteOriginal, NotifyOnSourceUpdated=True}"/>
-                                    <CheckBox Margin="0,10,0,0" Content="{text:Loc ui.autoClearFinished}" IsChecked="{Binding AutoClearFinished, NotifyOnSourceUpdated=True}"/>
-                                    <TextBlock Text="{text:Loc ui.pkgRetentionHint}" Style="{StaticResource Hint}"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Grid.Row="3" Style="{StaticResource Group}">
-                                <StackPanel>
-                                    <TextBlock Text="{text:Loc app.power}" Style="{StaticResource GroupTitle}"/>
-                                    <CheckBox x:Name="ShutdownAfterBox" Content="{text:Loc app.shutdownAfter}" Checked="OnShutdownAfterChanged" Unchecked="OnShutdownAfterChanged"
-                                              AutomationProperties.Name="{text:Loc app.shutdownAfter}"/>
-                                    <TextBlock x:Name="PowerStatusText" Style="{StaticResource Hint}" AutomationProperties.LiveSetting="Polite"/>
-                                    <TextBlock Text="{text:Loc app.powerHint}" Style="{StaticResource Hint}"/>
-                                    <CheckBox x:Name="KeepAwakeBox" Content="{text:Loc app.keepAwake}" Margin="0,12,0,0"
-                                              Checked="OnKeepAwakeChanged" Unchecked="OnKeepAwakeChanged" AutomationProperties.Name="{text:Loc app.keepAwake}"/>
-                                </StackPanel>
-                            </Border>
-                            <DockPanel Grid.Row="4" Margin="0,16,0,0">
-                                <TextBlock DockPanel.Dock="Top" Style="{StaticResource GroupTitle}">
-                                    <Run Text="{text:Loc ui.knownPasswords}"/><Run Text="{text:Loc app.passwordsHint}" FontWeight="Normal" FontSize="12" Foreground="{StaticResource Muted}"/>
-                                </TextBlock>
-                                <TextBox x:Name="PwList" AcceptsReturn="True" TextWrapping="NoWrap" VerticalContentAlignment="Top"
-                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextChanged="OnPwListChanged"
-                                         AutomationProperties.Name="{text:Loc ui.knownPasswords}"
-                                         ToolTip="{text:Loc app.passwordsTooltip}"/>
-                            </DockPanel>
-                        </Grid>
-                    </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
-            </ScrollViewer>
+            </Grid>
 
             <!-- == LOG == -->
-            <DockPanel x:Name="LogPage" Grid.Row="1" Visibility="Collapsed">
+            <DockPanel x:Name="LogPage" Grid.Row="2" Visibility="Collapsed">
                 <Border DockPanel.Dock="Top" BorderBrush="{StaticResource Line2}" BorderThickness="0,0,0,1" Padding="0,0,0,18" Margin="0,0,0,18">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">

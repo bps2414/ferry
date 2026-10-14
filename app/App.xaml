@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:local="clr-namespace:Ferry"
              ThemeMode="Dark"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
@@ -67,6 +68,8 @@
         <FontFamily x:Key="ContentControlThemeFontFamily">pack://application:,,,/Ferry;component/fonts/#Geist</FontFamily>
         <FontFamily x:Key="Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
         <BooleanToVisibilityConverter x:Key="Vis"/>
+        <local:JobGroupConverter x:Key="JobGroup"/>
+        <local:GroupTitleConverter x:Key="GroupTitleText"/>
 
         <!-- foco do teclado: contorno claro, visível no fundo escuro -->
         <Style x:Key="Focus">
@@ -230,16 +233,50 @@
             </Setter>
         </Style>
 
+        <!-- título de seção das Configurações -->
         <Style x:Key="GroupTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="22"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+        <!-- subgrupo dentro da seção: versalete discreto -->
+        <Style x:Key="SubTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
+            <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
         <Style x:Key="Group" TargetType="Border">
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="Padding" Value="0,16"/>
+            <Setter Property="Padding" Value="0,28"/>
+        </Style>
+
+        <!-- índice das Configurações: fio à esquerda; a seção visível ganha o acento -->
+        <Style x:Key="SectionItem" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="2,0,0,0" Padding="12,8">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource Text2}"/></Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="Label" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Muted}"/>
