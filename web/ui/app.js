@@ -191,7 +191,7 @@ function newRow(id) {
 function groupOf(j, s) {
   if (s.password?.id === j.id || j.stage === "Erro" || j.stage === "PacotePronto" || j.stage === "VerifiqueNoPs5") return "attention";
   if (j.isActive || j.stage === "Extraindo" || j.stage === "Enviando" || j.stage === "SolicitandoInstalacao") return "active";
-  if (j.stage === "Verificado" || j.stage === "InstalacaoSolicitada") return "done";
+  if (j.stage === "Verificado" || j.stage === "InstalacaoSolicitada" || j.stage === "Instalado") return "done";
   return "queue";
 }
 
@@ -314,11 +314,17 @@ function fillSettings() {
     const hint = $(`[data-err="${k}"]`);
     if (hint) bindText(hint, "");
   }
+  showInstaller();
   if (!edits.connections) $("#connVal").textContent = settings.connections;
   if (!edits.remoteDir) {
     const opt = [...$("#preset").options].find(o => o.value === settings.remoteDir);
     $("#preset").value = opt ? opt.value : "";
   }
+}
+
+function showInstaller() {
+  const kind = $('[data-set="installer"]').value;
+  for (const el of $$("[data-installer]")) el.hidden = el.dataset.installer !== kind;
 }
 
 const timers = {}, edits = {}; // edits[k]: nº da última edição ainda não salva (0/undefined = nada pendente)
@@ -343,6 +349,7 @@ for (const el of $$("[data-set]")) {
   const ev = el.type === "checkbox" || el.type === "range" || el.tagName === "SELECT" ? "change" : "input";
   el.addEventListener(ev, () => {
     if (k === "connections") $("#connVal").textContent = el.value;
+    if (k === "installer") showInstaller();
     edits[k] = ++editSeq;
     if (k === "language") setLanguage(el.value);
     clearTimeout(timers[k]);
@@ -355,7 +362,7 @@ for (const el of $$("[data-set]")) {
 async function save(k, el) {
   const mine = edits[k];
   let v = el.type === "checkbox" ? el.checked : el.value;
-  if (k === "port" || k === "dpiPort" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
+  if (k === "port" || k === "dpiPort" || k === "hyperDpiPort" || k === "hyperDpiWebPort" || k === "connections") v = /^\d+$/.test(v) ? Number(v) : -1;
   if (k === "knownPasswords") v = el.value.split("\n").map(s => s.trim()).filter(Boolean);
   try {
     const body = { [k]: v };
@@ -396,11 +403,12 @@ $("#dpiTestBtn").addEventListener("click", async () => {
   bindText(result, message("ui.dpiTesting"));
   try {
     let saved = true;
-    for (const key of ["host", "dpiPort"]) {
+    const keys = ["installer", "host", ...($('[data-set="installer"]').value === "hyperdpi" ? ["hyperDpiPort", "hyperDpiWebPort"] : ["dpiPort"])];
+    for (const key of keys) {
       clearTimeout(timers[key]);
       saved = await queueSave(key, $(`[data-set="${key}"]`)) && saved;
     }
-    if (!saved || $('[data-set="host"]').classList.contains("bad") || $('[data-set="dpiPort"]').classList.contains("bad")) {
+    if (!saved || keys.some(key => $(`[data-set="${key}"]`).classList.contains("bad"))) {
       bindText(result, message("ui.dpiSaveFirst")); return;
     }
     const response = await api("POST", "/api/ps5/dpi/test");

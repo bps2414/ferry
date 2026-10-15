@@ -43,6 +43,17 @@ Jogo, update e DLC são enviados como PKGs separados, com nomes exclusivos, mesm
 
 Fontes: [menu de serviços](https://github.com/etaHEN/etaHEN/blob/main/Source%20Code/shellui/assets/etaHEN_toolbox.xml) e [pasta e leitura dos pacotes](https://github.com/etaHEN/etaHEN/blob/main/Source%20Code/shellui/src/MonoUtils.cpp). A build [GronedWaffel r2](https://github.com/GronedWaffel/etahen-13.60/releases/tag/v2.5B-13.60-r2) mantém esses serviços, mas declara suporte somente ao firmware 13.60; não comprova compatibilidade com 13.42.
 
+## HyperDPI (alternativa ao DPI v1)
+
+Em **Configurações → Pacotes PKG → Instalador**, escolha **HyperDPI** para usar o instalador do HyperHEN. O DPI v1 do etaHEN continua disponível e é o padrão.
+
+1. No PS5, ative o HyperDPI no **HyperHEN Toolbox**.
+2. No Ferry, confira as portas (API 9090 e WebUI 12800 por padrão; mude se você mudou no console) e clique em **Testar DPI**. O teste só consulta o HyperDPI e não instala nada.
+3. O Ferry envia o PKG por FTP para a pasta fixa `/user/data/HyperHEN/pkgs` (a pasta de PKGs das configurações é ignorada), pede a instalação ao HyperDPI e acompanha o resultado até o fim.
+4. Depois da instalação confirmada, o card vira **Instalado** e o Ferry apaga o PKG da pasta do console por FTP. Se a instalação falhar, o PKG fica no console e você pode pedir de novo sem reenviar. Se o resultado não puder ser confirmado, o card mostra **Verifique no PS5** e nada é reenviado sozinho.
+
+Aviso: o HyperDPI não tem autenticação. Qualquer aparelho da rede pode pedir instalações a ele; use só em rede de confiança.
+
 ## Pesquisa de referência
 
 A pesquisa abaixo descreve o estado consultado em 30/09/2026, incluindo propostas anteriores. Para o comportamento implementado, vale o contrato acima; HTTP direto permanece futuro e compatibilidade por firmware não é uma garantia do Ferry.

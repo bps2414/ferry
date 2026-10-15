@@ -19,6 +19,10 @@ public sealed class PackagePreparation
     public string Host { get; set; } = "";
     public int Port { get; set; }
     public int DpiPort { get; set; }
+    /// "" = etaHEN DPI v1 (fila antiga)
+    public string Installer { get; set; } = "";
+    public int HyperDpiPort { get; set; }
+    public int HyperDpiWebPort { get; set; }
     public string User { get; set; } = "";
     public string ProtectedPassword { get; set; } = "";
     public string RemotePath { get; set; } = "";
@@ -94,10 +98,12 @@ public partial class Engine
         {
             "prepared" => Stage.PacotePronto,
             "submitted" => Stage.InstalacaoSolicitada,
+            "installed" => Stage.Instalado,
             "submitting" or "unknown" => Stage.VerifiqueNoPs5,
             _ => Stage.AguardandoPartes,
         };
         if (job.Stage == Stage.InstalacaoSolicitada) job.Finish(new Message("core.pkg.requested"));
+        else if (job.Stage == Stage.Instalado) job.Finish(new Message("core.hyperdpi.installed"));
         else if (job.Stage == Stage.VerifiqueNoPs5) job.Finish(new Message("core.pkg.unknown"));
         else if (job.Stage == Stage.PacotePronto) job.Finish(PackageReadyMessage(job.Package!));
     }
@@ -133,12 +139,21 @@ public partial class Engine
             }
             job.Stage = Stage.SolicitandoInstalacao;
             job.SetDetail(new("core.pkg.submitting"));
-            await PkgInstaller.InstallAsync(p.Host, p.DpiPort, p.RemotePath);
+            string? contentId = null;
+            if (p.Installer == "hyperdpi") contentId = await HyperDpi.InstallAsync(p.Host, p.HyperDpiPort, p.RemotePath, p.Size);
+            else await PkgInstaller.InstallAsync(p.Host, p.DpiPort, p.RemotePath);
             lock (_dropped)
             {
                 p.State = "submitted";
                 try { SaveQueueRequired(); }
                 catch { p.State = "unknown"; throw; }
+            }
+            if (!string.IsNullOrEmpty(contentId))
+            {
+                // O card continua ativo até o resultado; o motor segue com as outras transferências.
+                job.SetDetail(new("core.hyperdpi.tracking"));
+                _ = Task.Run(() => TrackHyperDpiAsync(job, p, contentId));
+                return;
             }
             job.Stage = Stage.InstalacaoSolicitada;
             job.Finish(new Message("core.pkg.requested"));
@@ -156,6 +171,44 @@ public partial class Engine
             JobLog(job, diagnostic);
             if (p.State == "unknown") NotifyPackageDone(job);
         }
+    }
+
+    async Task TrackHyperDpiAsync(Job job, PackagePreparation p, string contentId)
+    {
+        try
+        {
+            var (phase, error) = await HyperDpi.TrackAsync(p.Host, p.HyperDpiWebPort, contentId, _stop);
+            Message detail;
+            if (phase == "complete")
+            {
+                lock (_dropped) { p.State = "installed"; try { SaveQueueRequired(); } catch { } }
+                // Instalação confirmada: o PKG na pasta do console não serve mais. Falha ao apagar só vai para o log.
+                var removed = true;
+                try { await Ftp.DeleteAsync(new Settings { Host = p.Host, Port = p.Port, User = p.User, Password = Secret.Unprotect(p.ProtectedPassword) ?? "" }, p.RemotePath, _stop); }
+                catch (Exception e) when (e is not OperationCanceledException) { removed = false; JobLog(job, Localization.ExceptionMessage(e)); }
+                job.Stage = Stage.Instalado;
+                detail = new(removed ? "core.hyperdpi.installed" : "core.hyperdpi.installedKept");
+                job.Finish(detail);
+            }
+            else if (phase == "error")
+            {
+                lock (_dropped) { p.State = "prepared"; try { SaveQueueRequired(); } catch { } }
+                job.Stage = Stage.PacotePronto;
+                detail = new("core.concat", new Message("core.hyperdpi.failed", error), new Message("core.pkg.retryHint"));
+                job.Finish(detail);
+            }
+            else
+            {
+                lock (_dropped) { p.State = "unknown"; try { SaveQueueRequired(); } catch { } }
+                job.Stage = Stage.VerifiqueNoPs5;
+                detail = new("core.pkg.unknown");
+                job.Finish(detail);
+            }
+            JobLog(job, detail);
+            NotifyPackageDone(job);
+        }
+        catch (OperationCanceledException) { } // app fechando: segue "submitted" e volta como solicitada
+        catch (Exception e) { Emit(new("core.error", Localization.ExceptionMessage(e))); }
     }
 
     void NotifyPackageDone(Job job)
@@ -214,9 +267,10 @@ public partial class Engine
         var before = Sig(job.Parts);
         var header = await ReadPackageHeaderAsync(job, entry, loose, ct);
         if (before != Sig(job.Parts)) throw new LocalizedException(new("core.pkg.changed"));
-        var dir = PackageDirectory(settings.PkgDir);
+        var hyper = settings.Installer == "hyperdpi";
+        var dir = hyper ? HyperDpi.Dir : PackageDirectory(settings.PkgDir);
         var identity = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            $"{before}|{entry.Path}|{entry.Size}|{Convert.ToHexString(header)}|{settings.Host}|{settings.Port}|{settings.DpiPort}|{dir}")));
+            $"{before}|{entry.Path}|{entry.Size}|{Convert.ToHexString(header)}|{settings.Host}|{settings.Port}|{settings.DpiPort}|{dir}" + (hyper ? $"|hyperdpi|{settings.HyperDpiPort}|{settings.HyperDpiWebPort}" : ""))));
         PackagePreparation p;
         lock (_dropped)
         {
@@ -226,12 +280,16 @@ public partial class Engine
                     EntryPath = entry.Path, SourceSignature = before, HeaderHash = Convert.ToHexString(SHA256.HashData(header)),
                     Format = PackageHeader.Validate(header, entry.Size) == "CNT" ? "PS4 / CNT" : "PS5 / FIH",
                     Parts = [.. job.Parts], Host = settings.Host, Port = settings.Port, DpiPort = settings.DpiPort,
+                    Installer = hyper ? "hyperdpi" : "", HyperDpiPort = settings.HyperDpiPort, HyperDpiWebPort = settings.HyperDpiWebPort,
                     User = settings.User, ProtectedPassword = Secret.Protect(settings.Password), Size = entry.Size,
-                    RemotePath = dir + "/" + Path.GetFileNameWithoutExtension(SafePackageName(entry.Path)) + "-" + identity.ToLowerInvariant() + ".pkg",
+                    RemotePath = dir + "/" + (hyper ? HyperDpi.Name(Path.GetFileName(entry.Path.Replace('\\', '/')), identity[..16].ToLowerInvariant())
+                        : Path.GetFileNameWithoutExtension(SafePackageName(entry.Path)) + "-" + identity.ToLowerInvariant() + ".pkg"),
                     // etaHEN matches any filename containing .pkg, including .pkg.ferry-part.
                     PartialPath = dir + "/" + identity.ToLowerInvariant() + PartSuffix };
                 _packages[identity] = p;
             }
+            // Instalado e apagado do console: adicionar de novo envia o PKG outra vez.
+            if (p.State == "installed") { p.State = "transferring"; p.PartialStarted = false; }
             job.Package = p;
             SaveQueueRequired();
         }

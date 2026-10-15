@@ -139,5 +139,21 @@
   "core.webhook.installationRequestedText": "{0}: request accepted. Follow installation on the PS5.",
   "core.webhook.packageReadyTitle": "PKG ready",
   "core.webhook.packageReadyText": "{0}: PKG uploaded. Open etaHEN Toolbox > ★ Custom Background Package Installer on PS5 to install manually.",
-  "core.image.duplicate": "The archive contains images with duplicate destination names; separate or rename the images."
+  "core.image.duplicate": "The archive contains images with duplicate destination names; separate or rename the images.",
+  "core.stage.Instalado": "Installed",
+  "core.ftp.deleteFailed": "Could not delete {0} (FTP {1}: {2}).",
+  "core.hyperdpi.connected": "HyperDPI {0} responding (firmware {1}). Nothing was installed.",
+  "core.hyperdpi.notService": "The port answered, but it is not HyperDPI. Check the HyperDPI API port and that it is enabled in HyperHEN Toolbox.",
+  "core.hyperdpi.name": "Invalid package name or size for HyperDPI.",
+  "core.hyperdpi.sizeGap": "HyperDPI did not find the complete PKG in its folder (expected {0} bytes, found {1}).",
+  "core.hyperdpi.initFailed": "HyperDPI could not start the system installer (code {0}).",
+  "core.hyperdpi.busy": "HyperDPI is busy or starting up. Try again in a few seconds.",
+  "core.hyperdpi.rejected": "The PS5 installer rejected the PKG (code {0}). The file was kept.",
+  "core.hyperdpi.error": "HyperDPI refused the request ({0}).",
+  "core.hyperdpi.response": "Invalid or incomplete HyperDPI response.",
+  "core.hyperdpi.connectionFailed": "HyperDPI failed: {0}. Check that HyperDPI is enabled in HyperHEN Toolbox and the configured ports.",
+  "core.hyperdpi.tracking": "Installing on the PS5. Following progress through HyperDPI.",
+  "core.hyperdpi.installed": "Installed on the PS5. The PKG was removed from the console folder.",
+  "core.hyperdpi.installedKept": "Installed on the PS5. The PKG could not be removed from the console folder; delete it manually if you want the space back.",
+  "core.hyperdpi.failed": "The PS5 failed to install the PKG (code {0})."
 }

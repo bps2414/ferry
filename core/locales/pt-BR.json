@@ -139,5 +139,21 @@
   "core.webhook.installationRequestedText": "{0}: solicitação aceita. Acompanhe a instalação no PS5.",
   "core.webhook.packageReadyTitle": "PKG pronto",
   "core.webhook.packageReadyText": "{0}: PKG enviado. Abra etaHEN Toolbox > ★ Custom Background Package Installer no PS5 para instalar manualmente.",
-  "core.image.duplicate": "O compactado tem imagens com nomes de destino repetidos; separe ou renomeie as imagens."
+  "core.image.duplicate": "O compactado tem imagens com nomes de destino repetidos; separe ou renomeie as imagens.",
+  "core.stage.Instalado": "Instalado",
+  "core.ftp.deleteFailed": "Não foi possível apagar {0} (FTP {1}: {2}).",
+  "core.hyperdpi.connected": "HyperDPI {0} respondendo (firmware {1}). Nada foi instalado.",
+  "core.hyperdpi.notService": "A porta respondeu, mas não é o HyperDPI. Confira a porta da API do HyperDPI e se ele está ativado no HyperHEN Toolbox.",
+  "core.hyperdpi.name": "Nome ou tamanho de pacote inválido para o HyperDPI.",
+  "core.hyperdpi.sizeGap": "O HyperDPI não encontrou o PKG completo na pasta dele (esperados {0} bytes, encontrados {1}).",
+  "core.hyperdpi.initFailed": "O HyperDPI não conseguiu iniciar o instalador do sistema (código {0}).",
+  "core.hyperdpi.busy": "O HyperDPI está ocupado ou iniciando. Tente de novo em alguns segundos.",
+  "core.hyperdpi.rejected": "O instalador do PS5 recusou o PKG (código {0}). O arquivo foi mantido.",
+  "core.hyperdpi.error": "O HyperDPI recusou o pedido ({0}).",
+  "core.hyperdpi.response": "Resposta do HyperDPI inválida ou incompleta.",
+  "core.hyperdpi.connectionFailed": "Falha no HyperDPI: {0}. Confira se o HyperDPI está ativado no HyperHEN Toolbox e as portas configuradas.",
+  "core.hyperdpi.tracking": "Instalando no PS5. Acompanhando o progresso pelo HyperDPI.",
+  "core.hyperdpi.installed": "Instalado no PS5. O PKG foi removido da pasta do console.",
+  "core.hyperdpi.installedKept": "Instalado no PS5. Não foi possível remover o PKG da pasta do console; apague manualmente se quiser o espaço de volta.",
+  "core.hyperdpi.failed": "O PS5 não conseguiu instalar o PKG (código {0})."
 }

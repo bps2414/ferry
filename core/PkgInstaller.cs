@@ -14,6 +14,7 @@ public static class PkgInstaller
 {
     public static async Task<Message> TestAsync(Settings settings, CancellationToken ct = default)
     {
+        if (settings.Installer == "hyperdpi") return await HyperDpi.TestAsync(settings, ct);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(TimeSpan.FromSeconds(10));
         using var client = new TcpClient();

@@ -84,7 +84,7 @@ public sealed class Webhooks : IAsyncDisposable
 
     public void OnDone(Job job)
     {
-        if (job.Stage is Stage.Verificado or Stage.Erro) Enqueue(job.Stage == Stage.Verificado ? "completed" : "error", job);
+        if (job.Stage is Stage.Verificado or Stage.Instalado or Stage.Erro) Enqueue(job.Stage != Stage.Erro ? "completed" : "error", job);
         else if (job.Stage == Stage.InstalacaoSolicitada) Enqueue("installation_requested", job);
         else if (job.Stage == Stage.PacotePronto) Enqueue("package_ready", job);
     }

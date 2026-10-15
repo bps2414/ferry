@@ -85,7 +85,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
         {
             foreach (var j in Jobs.Where(j => j.Package != null && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
                 _checkedPackages.Remove(j.Package!.Identity);
-            foreach (var j in Jobs.Where(j => j.Stage == Stage.Verificado && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
+            foreach (var j in Jobs.Where(j => j.Stage is Stage.Verificado or Stage.Instalado && keys.Contains(j.Key, StringComparer.OrdinalIgnoreCase)))
             {
                 j.Detail = ""; j.Progress = 0; j.Stage = Stage.AguardandoPartes;
             }
@@ -103,8 +103,11 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
         JobLog(job, new("core.removed"));
     }
 
+    CancellationToken _stop;
+
     public async Task RunAsync(CancellationToken stop)
     {
+        _stop = stop;
         var scan = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
@@ -449,7 +452,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
     {
         if (!settings.AutoClearFinished || HoldAutoClear) { _finishedSeen.Clear(); return; }
         var now = DateTime.UtcNow;
-        bool Finished(Job j) => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada;
+        bool Finished(Job j) => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada or Stage.Instalado;
         lock (Lock)
         {
             foreach (var j in Jobs.Where(Finished)) _finishedSeen.TryAdd(j, now);
@@ -460,7 +463,7 @@ public partial class Engine(Settings settings, Action<string> log, Func<Job, Tas
 
     public void ClearFinished()
     {
-        lock (Lock) foreach (var j in Jobs.Where(j => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada).ToList()) { Jobs.Remove(j); Forget(j.Key); }
+        lock (Lock) foreach (var j in Jobs.Where(j => j.Stage is Stage.Verificado or Stage.InstalacaoSolicitada or Stage.Instalado).ToList()) { Jobs.Remove(j); Forget(j.Key); }
         SaveQueue();
     }
 

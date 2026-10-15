@@ -39,5 +39,7 @@
   "web.invalidPkgDir": "Informe um caminho no PS5 iniciado com /, sem . ou .. (ex.: /data/etaHEN/pkgs).",
   "web.invalidAutoInstallPackages": "Escolha ligado ou desligado para a instalação automática pelo DPI.",
   "web.packageReadyTitle": "PKG enviado",
-  "web.packageReadyText": "{0} enviado. Abra etaHEN Toolbox > ★ Custom Background Package Installer no PS5 para instalar manualmente."
+  "web.packageReadyText": "{0} enviado. Abra etaHEN Toolbox > ★ Custom Background Package Installer no PS5 para instalar manualmente.",
+  "web.invalidInstaller": "Escolha etaHEN DPI v1 ou HyperDPI.",
+  "web.hyperDpiTestFailed": "Teste do HyperDPI falhou: {0}. Confira se o HyperDPI está ativado no HyperHEN Toolbox e as portas."
 }

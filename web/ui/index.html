@@ -195,14 +195,29 @@
             <label class="field"><span><span data-i18n="ui.exfat">Imagens .exfat (ShadowMount+)</span></span><input data-set="imageDir" spellcheck="false"></label>
             <p class="hint error" data-err="imageDir"></p>
             <h3 data-i18n="ui.section.packages">Pacotes PKG</h3>
+            <label class="field"><span data-i18n="ui.installer">Instalador</span>
+              <select data-set="installer"><option value="etahen" data-i18n="ui.installerEtaHen">etaHEN DPI v1</option><option value="hyperdpi">HyperDPI</option></select>
+            </label>
+            <p class="hint error" data-err="installer"></p>
+            <div data-installer="etahen">
             <label class="field"><span data-i18n="ui.pkgDir">Pasta dos PKGs no PS5</span><input data-set="pkgDir" spellcheck="false"></label>
             <p class="hint error" data-err="pkgDir"></p>
             <p class="hint" data-i18n="ui.pkgHint"></p>
+            </div>
             <p class="hint" data-i18n="ui.pkgSpaceHint"></p>
             <p class="hint" data-i18n="ui.pkgCompatibilityHint"></p>
             <label class="check"><input data-set="autoInstallPackages" type="checkbox"><span data-i18n="ui.autoInstallPackages">Solicitar instalação automaticamente pelo DPI</span></label>
             <p class="hint error" data-err="autoInstallPackages"></p>
             <p class="hint" data-i18n="ui.autoInstallPackagesHint"></p>
+            <div data-installer="hyperdpi" hidden>
+              <label class="field port"><span data-i18n="ui.hyperDpiPort">Porta da API do HyperDPI</span><input data-set="hyperDpiPort" inputmode="numeric"></label>
+              <p class="hint error" data-err="hyperDpiPort"></p>
+              <label class="field port"><span data-i18n="ui.hyperDpiWebPort">Porta do WebUI do HyperDPI</span><input data-set="hyperDpiWebPort" inputmode="numeric"></label>
+              <p class="hint error" data-err="hyperDpiWebPort"></p>
+              <label class="field"><span data-i18n="ui.hyperDpiDir">Pasta dos PKGs no PS5</span><input value="/user/data/HyperHEN/pkgs" readonly></label>
+              <p class="hint" data-i18n="ui.hyperDpiHint"></p>
+            </div>
+            <div data-installer="etahen">
             <label class="field port"><span data-i18n="ui.dpiPort">Porta DPI</span><input data-set="dpiPort" inputmode="numeric"></label>
             <p class="hint error" data-err="dpiPort"></p>
             <p class="hint" data-i18n="ui.dpiHint"></p>
@@ -213,6 +228,7 @@
               <p class="hint" data-i18n="ui.dpiHelpV2"></p>
               <p class="hint" data-i18n="ui.dpiHelpCompatibility"></p>
             </details>
+            </div>
             <div class="test"><button id="dpiTestBtn" class="btn" data-i18n="ui.dpiTest">Testar DPI</button><p id="dpiTestResult" class="test-result" role="status" aria-live="polite"></p></div>
           </section>
 

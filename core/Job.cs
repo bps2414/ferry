@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ferry;
 
-public enum Stage { AguardandoPartes, NaFila, Extraindo, Enviando, Verificado, Pausado, Cancelado, Erro, PacotePronto, SolicitandoInstalacao, InstalacaoSolicitada, VerifiqueNoPs5 }
+public enum Stage { AguardandoPartes, NaFila, Extraindo, Enviando, Verificado, Pausado, Cancelado, Erro, PacotePronto, SolicitandoInstalacao, InstalacaoSolicitada, VerifiqueNoPs5, Instalado }
 
 public class Job : INotifyPropertyChanged
 {

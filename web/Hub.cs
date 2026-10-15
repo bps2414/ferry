@@ -58,7 +58,7 @@ public class Hub(Settings settings)
 
     public void OnDone(Job job)
     {
-        if (job.Stage == Stage.Verificado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name), job);
+        if (job.Stage is Stage.Verificado or Stage.Instalado) Notify("done", new("web.doneTitle"), new("web.doneText", job.Title != "" ? job.Title : job.Name), job);
         else if (job.Stage == Stage.PacotePronto) Notify("package_ready", new("web.packageReadyTitle"), job.DetailMessage ?? new("web.packageReadyText", job.Title != "" ? job.Title : job.Name), job);
         else if (job.Stage == Stage.InstalacaoSolicitada) Notify("installation_requested", new("web.installationTitle"), new("web.installationText", job.Title != "" ? job.Title : job.Name), job);
         else if (job.Stage == Stage.VerifiqueNoPs5) Notify("unknown", new("web.installationUnknownTitle"), new("web.installationUnknownText", job.Title != "" ? job.Title : job.Name), job);
@@ -170,7 +170,7 @@ public class Hub(Settings settings)
             summary = new
             {
                 sending = Count(Stage.Extraindo, Stage.Enviando), queued = Count(Stage.NaFila, Stage.AguardandoPartes, Stage.Pausado),
-                done = Count(Stage.Verificado), requested = Count(Stage.InstalacaoSolicitada), ready = Count(Stage.PacotePronto), submitting = Count(Stage.SolicitandoInstalacao), unknown = Count(Stage.VerifiqueNoPs5),
+                done = Count(Stage.Verificado, Stage.Instalado), requested = Count(Stage.InstalacaoSolicitada), ready = Count(Stage.PacotePronto), submitting = Count(Stage.SolicitandoInstalacao), unknown = Count(Stage.VerifiqueNoPs5),
                 errors = Count(Stage.Erro), rate = (long)jobs.Where(j => j.IsActive).Sum(j => j.Rate),
             },
             ps5 = new { settings.Host, settings.Port, settings.RemoteDir, status = Ps5Status, message = TestMessage, messageData = TestMessageData, found = Found is { } f ? $"{f.Ip}:{f.Port}" : null },

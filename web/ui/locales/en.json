@@ -164,5 +164,13 @@
   "ui.section.notices": "Notifications",
   "ui.section.browser": "Browser",
   "ui.section.general": "General",
-  "ui.requestFailed": "No response from the Ferry server ({0}). Check the connection and try again."
+  "ui.requestFailed": "No response from the Ferry server ({0}). Check the connection and try again.",
+  "ui.stage.Instalado": "Installed",
+  "ui.installer": "Installer",
+  "ui.installerEtaHen": "etaHEN DPI v1",
+  "ui.hyperDpiPort": "HyperDPI API port",
+  "ui.hyperDpiWebPort": "HyperDPI WebUI port",
+  "ui.hyperDpiDir": "PKG folder on PS5 (fixed)",
+  "ui.hyperDpiHint": "Enable HyperDPI in HyperHEN Toolbox on the PS5. Ferry uploads the PKG to this folder by FTP, asks HyperDPI to install it, follows the result and deletes the PKG from the console after a confirmed installation. HyperDPI has no authentication: use it only on a trusted network.",
+  "ui.hyperDpiTestFailed": "HyperDPI test failed: {0}. Check that HyperDPI is enabled in HyperHEN Toolbox and the ports."
 }

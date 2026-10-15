@@ -67,7 +67,7 @@ public partial class MainWindow : Window
             _webhooks.OnDone(job);
             Dispatcher.BeginInvoke(() =>
             {
-                if (job.Stage == Stage.Verificado) Toast(new("core.webhook.completedTitle"), new("core.webhook.completedText", job.Title != "" ? job.Title : job.Name));
+                if (job.Stage is Stage.Verificado or Stage.Instalado) Toast(new("core.webhook.completedTitle"), new("core.webhook.completedText", job.Title != "" ? job.Title : job.Name));
                 else if (job.Stage == Stage.PacotePronto) Toast(new("ui.packageReadyTitle"), job.DetailMessage ?? new("ui.packageReadyText", job.Title != "" ? job.Title : job.Name));
                 else if (job.Stage == Stage.InstalacaoSolicitada) Toast(new("ui.installationTitle"), new("ui.installationText", job.Title != "" ? job.Title : job.Name));
                 else if (job.Stage == Stage.VerifiqueNoPs5) Toast(new("ui.installationUnknownTitle"), new("ui.installationUnknownText", job.Title != "" ? job.Title : job.Name));
@@ -164,7 +164,7 @@ public partial class MainWindow : Window
         int Count(params Stage[] s) => jobs.Count(j => s.Contains(j.Stage));
         var sending = Count(Stage.Extraindo, Stage.Enviando);
         var queued = Count(Stage.NaFila, Stage.AguardandoPartes, Stage.Pausado);
-        var done = Count(Stage.Verificado);
+        var done = Count(Stage.Verificado, Stage.Instalado);
         var requested = Count(Stage.InstalacaoSolicitada);
         var ready = Count(Stage.PacotePronto);
         var submitting = Count(Stage.SolicitandoInstalacao);
@@ -299,12 +299,16 @@ public partial class MainWindow : Window
         ImageBox.Text = _settings.ImageDir;
         PkgBox.Text = _settings.PkgDir;
         DpiPortBox.Text = _settings.DpiPort.ToString(CultureInfo.InvariantCulture);
+        HyperDpiPortBox.Text = _settings.HyperDpiPort.ToString(CultureInfo.InvariantCulture);
+        HyperDpiWebPortBox.Text = _settings.HyperDpiWebPort.ToString(CultureInfo.InvariantCulture);
+        foreach (ComboBoxItem item in InstallerBox.Items) if ((string)item.Tag == _settings.Installer) InstallerBox.SelectedItem = item;
+        ShowInstaller();
         WebhookUrlBox.Password = _settings.WebhookUrl;
         WebhookEnabledBox.IsChecked = _settings.WebhookEnabled;
         foreach (ComboBoxItem item in WebhookKindBox.Items) if ((string)item.Tag == _settings.WebhookKind) WebhookKindBox.SelectedItem = item;
         _loading = false;
         Validate(HostBox, HostHint, null); Validate(PortBox, PortHint, null); Validate(FolderBox, FolderHint, null); Validate(ImageBox, ImageHint, null);
-        Validate(PkgBox, PkgHint, null); Validate(DpiPortBox, DpiPortHint, null);
+        Validate(PkgBox, PkgHint, null); Validate(DpiPortBox, DpiPortHint, null); Validate(HyperDpiPortBox, HyperDpiPortHint, null); Validate(HyperDpiWebPortBox, HyperDpiWebPortHint, null);
     }
 
     void Validate(TextBox box, TextBlock hint, string? error)
@@ -373,9 +377,40 @@ public partial class MainWindow : Window
         _settings.DpiPort = port; Persist();
     }
 
+    void ShowInstaller()
+    {
+        var hyper = _settings.Installer == "hyperdpi";
+        EtaHenPkg.Visibility = EtaHenDpi.Visibility = hyper ? Visibility.Collapsed : Visibility.Visible;
+        HyperDpiPanel.Visibility = hyper ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void OnInstallerChanged(object s, SelectionChangedEventArgs e)
+    {
+        if (_loading || InstallerBox.SelectedItem is not ComboBoxItem { Tag: string kind } || kind == _settings.Installer) return;
+        _settings.Installer = kind; Persist(); ShowInstaller();
+    }
+
+    void OnHyperDpiPortChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var ok = int.TryParse(HyperDpiPortBox.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535;
+        Validate(HyperDpiPortBox, HyperDpiPortHint, ok ? null : "app.portInvalid");
+        if (!ok || port == _settings.HyperDpiPort) return;
+        _settings.HyperDpiPort = port; Persist();
+    }
+
+    void OnHyperDpiWebPortChanged(object s, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        var ok = int.TryParse(HyperDpiWebPortBox.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) && port is >= 1 and <= 65535;
+        Validate(HyperDpiWebPortBox, HyperDpiWebPortHint, ok ? null : "app.portInvalid");
+        if (!ok || port == _settings.HyperDpiWebPort) return;
+        _settings.HyperDpiWebPort = port; Persist();
+    }
+
     async void OnDpiTest(object s, RoutedEventArgs e)
     {
-        if (HostHint.Visibility == Visibility.Visible || DpiPortHint.Visibility == Visibility.Visible)
+        if ((_settings.Installer == "hyperdpi" ? new[] { HostHint, HyperDpiPortHint, HyperDpiWebPortHint } : [HostHint, DpiPortHint]).Any(h => h.Visibility == Visibility.Visible))
         { SetText(DpiTestResult, "ui.dpiSaveFirst"); return; }
         DpiTestBtn.IsEnabled = false;
         SetText(DpiTestResult, "ui.dpiTesting");
@@ -388,7 +423,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SetText(DpiTestResult, "ui.dpiTestFailed", Localization.ExceptionMessage(ex));
+            SetText(DpiTestResult, _settings.Installer == "hyperdpi" ? "ui.hyperDpiTestFailed" : "ui.dpiTestFailed", Localization.ExceptionMessage(ex));
             DpiTestResult.Foreground = (Brush)FindResource("Red");
         }
         finally { DpiTestBtn.IsEnabled = true; }

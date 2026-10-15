@@ -29,6 +29,10 @@ public class Settings
     public string ImageDir { get; set; } = "/mnt/ext1/homebrew";
     public string PkgDir { get; set; } = "/data/etaHEN/pkgs";
     public int DpiPort { get; set; } = 9090;
+    /// "etahen" (DPI v1, padrão) ou "hyperdpi" (HyperHEN)
+    public string Installer { get; set; } = "etahen";
+    public int HyperDpiPort { get; set; } = 9090;
+    public int HyperDpiWebPort { get; set; } = 12800;
     public bool AutoInstallPackages { get; set; }
     public int Connections { get; set; } = 4;
     public bool DeleteOriginal { get; set; }
@@ -44,6 +48,7 @@ public class Settings
             var settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new();
             // Change only the former default. Existing queue snapshots keep their paths.
             if (settings.PkgDir.TrimEnd('/') == "/data/ferry/pkg") settings.PkgDir = "/data/etaHEN/pkgs";
+            if (settings.Installer is not ("etahen" or "hyperdpi")) settings.Installer = "etahen";
             return settings;
         }
         catch { return new(); }

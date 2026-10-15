@@ -28,7 +28,7 @@ public sealed class TransferPowerSession : IDisposable
         lock (_sync) { Subscribe(); _jobs.CollectionChanged += CollectionChanged; }
     }
 
-    static bool Successful(Job job) => job.Stage is Stage.Verificado or Stage.PacotePronto or Stage.InstalacaoSolicitada;
+    static bool Successful(Job job) => job.Stage is Stage.Verificado or Stage.PacotePronto or Stage.InstalacaoSolicitada or Stage.Instalado;
     static bool Pending(Job job) => job.Stage is Stage.AguardandoPartes or Stage.NaFila or Stage.Extraindo or Stage.Enviando or Stage.Pausado or Stage.SolicitandoInstalacao;
 
     public bool CanArm

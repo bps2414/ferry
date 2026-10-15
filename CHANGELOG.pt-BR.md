@@ -11,6 +11,10 @@ Todas as mudanças relevantes do Ferry ficam aqui. O formato segue o [Keep a Cha
 
 ## [Não lançado]
 
+### Adicionado
+
+- **HyperDPI** (HyperHEN) como segundo instalador de PKG, escolhido nas Configurações; o DPI v1 do etaHEN continua sendo o padrão. O Ferry envia o PKG por FTP para `/user/data/HyperHEN/pkgs`, pede a instalação, acompanha até o fim (novo estágio **Instalado**) e apaga o PKG do console depois da instalação confirmada.
+
 ### Alterado
 
 - Interface redesenhada (web e Windows), mantendo a identidade escura: a **Fila** agora é agrupada em *Precisa de você* (erro, PKG enviado, verifique no PS5, senha pendente), *Enviando*, *Na fila* e *Concluídos* (recolhido por padrão, com **Limpar concluídos** no cabeçalho do grupo). Cartões parados ficam compactos e só mostram números que dizem algo; o ativo mantém %, MB/s e tempo restante.

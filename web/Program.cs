@@ -116,6 +116,18 @@ api.MapPut("/settings", (JsonElement body) =>
                 if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var dpi) && dpi is >= 1 and <= 65535) settings.DpiPort = dpi;
                 else errorsMessages["dpiPort"] = new("web.invalidPort");
                 break;
+            case "installer":
+                if (Str() is "etahen" or "hyperdpi") settings.Installer = Str()!;
+                else errorsMessages["installer"] = new("web.invalidInstaller");
+                break;
+            case "hyperdpiport":
+                if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var hp) && hp is >= 1 and <= 65535) settings.HyperDpiPort = hp;
+                else errorsMessages["hyperDpiPort"] = new("web.invalidPort");
+                break;
+            case "hyperdpiwebport":
+                if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var hw) && hw is >= 1 and <= 65535) settings.HyperDpiWebPort = hw;
+                else errorsMessages["hyperDpiWebPort"] = new("web.invalidPort");
+                break;
             case "autoinstallpackages":
                 if (v.ValueKind is JsonValueKind.True or JsonValueKind.False) settings.AutoInstallPackages = v.GetBoolean();
                 else errorsMessages["autoInstallPackages"] = new("web.invalidAutoInstallPackages");
@@ -145,7 +157,7 @@ api.MapPost("/ps5/dpi/test", async (HttpContext context) =>
 {
     Message msg; bool ok;
     try { msg = await PkgInstaller.TestAsync(settings, context.RequestAborted); ok = true; }
-    catch (Exception ex) { msg = new("web.dpiTestFailed", Localization.ExceptionMessage(ex)); ok = false; }
+    catch (Exception ex) { msg = new(settings.Installer == "hyperdpi" ? "web.hyperDpiTestFailed" : "web.dpiTestFailed", Localization.ExceptionMessage(ex)); ok = false; }
     hub.Log(msg);
     return Results.Json(new { ok, message = msg.Render(), messageData = msg });
 });

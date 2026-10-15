@@ -11,6 +11,10 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Added
+
+- **HyperDPI** (HyperHEN) as a second PKG installer, chosen in Settings; etaHEN DPI v1 stays the default. Ferry uploads the PKG by FTP to `/user/data/HyperHEN/pkgs`, requests the installation, follows it to the end (new **Installed** stage) and deletes the staged PKG from the console after a confirmed install.
+
 ### Changed
 
 - Redesigned interface (web and Windows), keeping the dark identity: the **Queue** is now grouped into *Needs you* (error, PKG uploaded, check on PS5, pending password), *Sending*, *Queued* and *Finished* (collapsed by default, with **Clear finished** in the group header). Idle cards are compact and only show numbers that mean something; the active card keeps %, MB/s and time remaining.

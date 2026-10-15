@@ -26,7 +26,7 @@ public sealed class QueueGroups : INotifyPropertyChanged
         Stage.Erro or Stage.PacotePronto or Stage.VerifiqueNoPs5 => "attention",
         _ when job.IsActive => "active",
         Stage.Extraindo or Stage.Enviando or Stage.SolicitandoInstalacao => "active",
-        Stage.Verificado or Stage.InstalacaoSolicitada => "done",
+        Stage.Verificado or Stage.InstalacaoSolicitada or Stage.Instalado => "done",
         _ => "queue",
     };
 

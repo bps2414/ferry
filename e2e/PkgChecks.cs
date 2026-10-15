@@ -31,7 +31,7 @@ static class PkgChecks
 
         // Failure contracts are exercised before success cases. Sections permit focused reruns.
         (string name, Func<Task> run)[] sections = [("inputs", InvalidInputs), ("archives", ArchiveFailures),
-            ("publication", PublicationFailures), ("manual", ManualDefaultsAndMigration), ("formats", PackagesAndImages), ("dpi", DpiFailuresAndRetry),
+            ("publication", PublicationFailures), ("manual", ManualDefaultsAndMigration), ("formats", PackagesAndImages), ("dpi", DpiFailuresAndRetry), ("hyperdpi", HyperDpiFlow),
             ("persistence", PersistenceAndConcurrency), ("pause", PauseResumeIdentity)];
         if (section != null && !sections.Any(s => s.name == section)) throw new ArgumentException("Unknown PKG section: " + section);
         foreach (var test in sections.Where(s => section == null || section == s.name)) await test.run();
@@ -397,6 +397,63 @@ static class PkgChecks
         }
     }
 
+    static async Task HyperDpiFlow()
+    {
+        const string Dir = "/user/data/HyperHEN/pkgs/";
+        var longName = new string('a', 140) + " é(1);x.pkg";
+        await using (var s = await Scenario.Create("hyperdpi-success"))
+        {
+            s.Settings.Installer = "hyperdpi"; s.Settings.PkgDir = "/ignored";
+            s.Engine.AddFiles([Put(s.Input, longName, Payload())]);
+            var job = await s.RequestPrepared();
+            var remote = job.Package!.RemotePath;
+            Check(remote.StartsWith(Dir) && System.Text.RegularExpressions.Regex.IsMatch(remote[Dir.Length..], "^[A-Za-z0-9._-]{1,96}$") && !remote.Contains(".."), "HyperDPI name is sanitized and uses the fixed folder");
+            Check(remote.Length - Dir.Length <= 96 && remote.EndsWith(".pkg"), "HyperDPI name stays within 96 characters");
+            Check(job.Stage == Stage.Instalado && job.Package.State == "installed", "HyperDPI install tracked to the installed stage");
+            Check(s.Hyper.Installs.Count == 1 && s.Hyper.Valid && s.Dpi.Count == 0, "finalize request is empty, names the staged file and size matches");
+            await Until(() => s.RemoteFiles().Length == 0);
+            Check(true, "staged PKG deleted from the console after confirmed install");
+            await s.Stop();
+            var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
+            await s.Wait(j => j.Stage == Stage.Instalado);
+            await Task.Delay(800);
+            Check(s.Hyper.Installs.Count == 1, "restart keeps the installed PKG without resubmitting");
+        }
+        foreach (var mode in new[] { "error", "busy", "reject" })
+        await using (var s = await Scenario.Create("hyperdpi-" + mode))
+        {
+            s.Settings.Installer = "hyperdpi"; s.Hyper.Mode = mode;
+            s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
+            var job = await s.RequestPrepared();
+            Check(job.Stage == Stage.PacotePronto && job.Package!.State == "prepared" && job.CanRequestInstall && s.RemoteFiles().Length == 1, "HyperDPI " + mode + " keeps the PKG and allows retry");
+            Check(mode == "busy" || job.Detail.Contains("0x80A30001") || job.Detail.Contains("0x80990001"), "HyperDPI " + mode + " shows the error code");
+            var uploads = s.UploadCount;
+            s.Hyper.Mode = "success";
+            Check(s.Engine.RequestInstall(job), "HyperDPI retry after " + mode + " is queued");
+            await s.Wait(j => j.Stage == Stage.Instalado);
+            Check(s.Hyper.Installs.Count == 2 && s.UploadCount == uploads, "HyperDPI retry after " + mode + " does not upload again");
+        }
+        await using (var s = await Scenario.Create("hyperdpi-lost"))
+        {
+            s.Settings.Installer = "hyperdpi"; s.Hyper.Mode = "lost";
+            s.Engine.AddFiles([Put(s.Input, "Game.pkg", Payload())]);
+            var job = await s.RequestPrepared();
+            Check(job.Stage == Stage.VerifiqueNoPs5 && s.RemoteFiles().Length == 1 && !s.Engine.RequestInstall(job), "dropped HyperDPI connection is uncertain and needs confirmation");
+            await s.Stop();
+            var restarted = s.NewEngine(); restarted.Restore(); await s.Run(restarted);
+            await s.Wait(j => j.Stage == Stage.VerifiqueNoPs5);
+            await Task.Delay(800);
+            Check(s.Hyper.Installs.Count == 1, "uncertain HyperDPI request survives restart without resubmitting");
+        }
+        await using (var s = await Scenario.Create("hyperdpi-probe"))
+        {
+            s.Settings.Installer = "hyperdpi";
+            var message = await PkgInstaller.TestAsync(s.Settings);
+            Check(message.Key == "core.hyperdpi.connected" && s.Hyper.Installs.Count == 0, "HyperDPI test pings without installing");
+        }
+        Check(Enumerable.Range(0, 300).Select(n => HyperDpi.Name(new string('x', n) + "a..b é.pkg", new string('f', 16))).All(n => n.Length <= 96 && !n.Contains("..") && n.EndsWith("-ffffffffffffffff.pkg")), "HyperDPI names never exceed 96 characters");
+    }
+
     static async Task PersistenceAndConcurrency()
     {
         await using (var s = await Scenario.Create("unknown-retry-failure"))
@@ -609,6 +666,7 @@ static class PkgChecks
         public required Settings Settings;
         public required Engine Engine;
         public required FakeDpi Dpi;
+        public required FakeHyperDpi Hyper;
         public required Process Ftp;
         public ConcurrentQueue<string> FtpLogs = new();
         readonly ConcurrentQueue<string> _engineLogs = new();
@@ -623,12 +681,12 @@ static class PkgChecks
         {
             var folder = Path.Combine(_work, name); var input = Path.Combine(folder, "input"); var ftpRoot = Path.Combine(folder, "ftp");
             Directory.CreateDirectory(input); Directory.CreateDirectory(ftpRoot);
-            var port = FreePort(); var dpi = new FakeDpi(ftpRoot);
-            var settings = new Settings { Host = "127.0.0.1", Port = port, DpiPort = dpi.Port, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/dumps", ImageDir = "/images", Connections = 1 };
+            var port = FreePort(); var dpi = new FakeDpi(ftpRoot); var hyper = new FakeHyperDpi(ftpRoot);
+            var settings = new Settings { Host = "127.0.0.1", Port = port, DpiPort = dpi.Port, HyperDpiPort = hyper.Port, HyperDpiWebPort = hyper.WebPort, User = "ps5", Password = "ps5pass", InputFolder = "", RemoteDir = "/dumps", ImageDir = "/images", Connections = 1 };
             var info = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var arg in new[] { Path.Combine(_root, "e2e", "ftpserver.py"), port.ToString(), ftpRoot, "appe", rate.ToString() }) info.ArgumentList.Add(arg);
             var ftp = Process.Start(info)!;
-            var s = new Scenario { Folder = folder, Input = input, FtpRoot = ftpRoot, Settings = settings, Engine = null!, Dpi = dpi, Ftp = ftp, _password = password ?? (_ => Task.FromResult<string?>(null)) };
+            var s = new Scenario { Folder = folder, Input = input, FtpRoot = ftpRoot, Settings = settings, Engine = null!, Dpi = dpi, Hyper = hyper, Ftp = ftp, _password = password ?? (_ => Task.FromResult<string?>(null)) };
             ftp.ErrorDataReceived += (_, ev) => { if (ev.Data != null) s.FtpLogs.Enqueue(ev.Data); }; ftp.BeginErrorReadLine();
             ftp.OutputDataReceived += (_, ev) => { if (ev.Data != null) s.FtpLogs.Enqueue(ev.Data); }; ftp.BeginOutputReadLine();
             try
@@ -645,7 +703,7 @@ static class PkgChecks
         public Engine NewEngine() => new(Settings, _engineLogs.Enqueue, _password) { StableSeconds = 0, QueueFile = Path.Combine(Folder, "queue.json") };
         public Task Run(Engine engine) { Engine = engine; _stop = new(); _run = engine.RunAsync(_stop.Token); return Task.CompletedTask; }
         public async Task Stop() { if (_stop == null) return; _stop.Cancel(); if (_run != null) await _run.WaitAsync(TimeSpan.FromSeconds(20)); _stop.Dispose(); _stop = null; }
-        public Task<Job> WaitJob() => Wait(j => j.Stage is Stage.Erro or Stage.Cancelado or Stage.InstalacaoSolicitada or Stage.VerifiqueNoPs5 or Stage.Verificado or Stage.PacotePronto);
+        public Task<Job> WaitJob() => Wait(j => j.Stage is Stage.Erro or Stage.Cancelado or Stage.InstalacaoSolicitada or Stage.Instalado or Stage.VerifiqueNoPs5 or Stage.Verificado or Stage.PacotePronto);
         // Represents a deliberate user action; the scenario never opts into automatic installation.
         public async Task<Job> RequestPrepared()
         {
@@ -665,7 +723,7 @@ static class PkgChecks
         public async ValueTask DisposeAsync()
         {
             Dpi.Release.TrySetResult();
-            await Stop(); await Dpi.DisposeAsync();
+            await Stop(); await Dpi.DisposeAsync(); await Hyper.DisposeAsync();
             if (!Ftp.HasExited) Ftp.Kill(true);
             await Ftp.WaitForExitAsync(); Ftp.Dispose();
         }
@@ -738,5 +796,81 @@ static class PkgChecks
             else await stream.WriteAsync(bytes, _stop.Token);
         }
         public async ValueTask DisposeAsync() { _stop.Cancel(); _listener.Stop(); await _run; _stop.Dispose(); }
+    }
+
+    sealed class FakeHyperDpi : IAsyncDisposable
+    {
+        readonly HttpListener _api = new(), _web = new();
+        readonly CancellationTokenSource _stop = new();
+        readonly string _ftpRoot;
+        readonly Task[] _run;
+        volatile string _phase = "idle", _error = "";
+        public string Mode = "success";
+        public bool Valid = true;
+        public readonly ConcurrentQueue<string> Installs = new();
+        public int Port { get; } = FreePort();
+        public int WebPort { get; } = FreePort();
+        public FakeHyperDpi(string ftpRoot)
+        {
+            _ftpRoot = ftpRoot;
+            _api.Prefixes.Add($"http://127.0.0.1:{Port}/"); _web.Prefixes.Add($"http://127.0.0.1:{WebPort}/");
+            _api.Start(); _web.Start();
+            _run = [Task.Run(() => Serve(_api, Api)), Task.Run(() => Serve(_web, Stream))];
+        }
+        async Task Serve(HttpListener listener, Func<HttpListenerContext, Task> handle)
+        {
+            while (!_stop.IsCancellationRequested)
+            {
+                HttpListenerContext context;
+                try { context = await listener.GetContextAsync(); } catch { break; }
+                _ = Task.Run(async () => { try { await handle(context); } catch { try { context.Response.Abort(); } catch { } } });
+            }
+        }
+        static async Task Reply(HttpListenerContext context, int status, string json)
+        {
+            var bytes = Encoding.UTF8.GetBytes(json);
+            context.Response.StatusCode = status; context.Response.ContentType = "application/json"; context.Response.ContentLength64 = bytes.Length;
+            await context.Response.OutputStream.WriteAsync(bytes); context.Response.Close();
+        }
+        async Task Api(HttpListenerContext context)
+        {
+            var request = context.Request;
+            if (request.Url!.AbsolutePath == "/ping") { await Reply(context, 200, """{"ok":true,"name":"pkg-server","version":"1.0.0","fw":10,"busy":false}"""); return; }
+            var query = System.Web.HttpUtility.ParseQueryString(request.Url.Query);
+            var name = query["name"] ?? "";
+            Installs.Enqueue(name);
+            var file = Path.Combine(_ftpRoot, "user", "data", "HyperHEN", "pkgs", name);
+            Valid &= request.HttpMethod == "POST" && request.Url.AbsolutePath == "/install" && query["finalize"] == "1" && request.ContentLength64 == 0
+                && System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z0-9._-]{1,96}$") && File.Exists(file)
+                && query["total"] == query["offset"] && new FileInfo(file).Length.ToString() == query["total"];
+            switch (Mode)
+            {
+                case "lost": context.Response.Abort(); return;
+                case "busy": await Reply(context, 503, """{"ok":false,"error":"busy"}"""); return;
+                case "reject": await Reply(context, 200, """{"ok":false,"installed":false,"error":"0x80990001"}"""); return;
+            }
+            _phase = "installing"; _error = "";
+            var failed = Mode == "error";
+            _ = Task.Run(async () => { await Task.Delay(700); _error = failed ? "0x80A30001" : ""; _phase = failed ? "error" : "complete"; });
+            await Reply(context, 200, """{"ok":true,"installed":false,"content_id":"CID","phase":"accepted"}""");
+        }
+        async Task Stream(HttpListenerContext context)
+        {
+            context.Response.ContentType = "text/event-stream";
+            var output = context.Response.OutputStream;
+            while (!_stop.IsCancellationRequested)
+            {
+                var phase = _phase;
+                var bytes = Encoding.UTF8.GetBytes($"data: {{\"ok\":true,\"phase\":\"{phase}\",\"error\":\"{_error}\",\"cid\":\"{(phase == "idle" ? "" : "CID")}\"}}\n\n");
+                await output.WriteAsync(bytes); await output.FlushAsync();
+                await Task.Delay(100, _stop.Token);
+            }
+        }
+        public async ValueTask DisposeAsync()
+        {
+            _stop.Cancel(); _api.Abort(); _web.Abort();
+            try { await Task.WhenAll(_run).WaitAsync(TimeSpan.FromSeconds(5)); } catch { }
+            _stop.Dispose();
+        }
     }
 }

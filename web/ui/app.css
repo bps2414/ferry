@@ -222,8 +222,8 @@ nav { margin-top: 44px; display: flex; flex-direction: column; }
 .job[data-stage=Verificado] { --c: var(--green); } .job[data-stage=Verificado] .stage { color: var(--green); }
 .job[data-stage=Pausado] { --c: var(--amber); } .job[data-stage=Pausado] .stage { color: var(--amber); }
 .job[data-stage=Erro] { --c: var(--red); } .job[data-stage=Erro] .stage, .job[data-stage=Erro] .detail { color: var(--red); }
-.job[data-stage=InstalacaoSolicitada] { --c: var(--green); }
-.job[data-stage=InstalacaoSolicitada] .stage { color: var(--green); }
+.job[data-stage=InstalacaoSolicitada], .job[data-stage=Instalado] { --c: var(--green); }
+.job[data-stage=InstalacaoSolicitada] .stage, .job[data-stage=Instalado] .stage { color: var(--green); }
 .job[data-stage=PacotePronto], .job[data-stage=VerifiqueNoPs5] { --c: var(--amber); }
 .job[data-stage=PacotePronto] .stage, .job[data-stage=VerifiqueNoPs5] .stage { color: var(--amber); }
 .job[data-stage=PacotePronto] .detail { white-space: pre-line; overflow-wrap: anywhere; }

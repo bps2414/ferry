@@ -228,6 +228,14 @@ public static class Ftp
         if (!r2.Success) throw new LocalizedException(new("core.ftp.renameFailed", from, to, r2.Code, r2.Message));
     }
 
+    public static async Task DeleteAsync(Settings s, string path, CancellationToken ct)
+    {
+        await using var c = await Open(s, ct);
+        var r = await c.Execute("DELE " + path, ct);
+        FileLog.Write($"DELE {path} → {r.Code}");
+        if (!r.Success) throw new LocalizedException(new("core.ftp.deleteFailed", path, r.Code, r.Message));
+    }
+
     /// <summary>Mensagens da exceção e de todas as internas ("See InnerException" não ajuda ninguém).</summary>
     public static string Flatten(Exception e)
     {
