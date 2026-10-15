@@ -11,6 +11,10 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- First stable release: the features of 1.7.0-beta.1, with no further changes.
+
 ## [1.7.0-beta.1] - 2026-10-14
 
 ### Added
