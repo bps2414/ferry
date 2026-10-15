@@ -11,6 +11,10 @@ Todas as mudanças relevantes do Ferry ficam aqui. O formato segue o [Keep a Cha
 
 ## [Não lançado]
 
+### Alterado
+
+- Logo novo: uma balsa atravessando uma onda, com animação de abertura mais curta (1,5 s) que toca uma vez e para. Novo ícone do app, favicon e logo do README para tema claro e escuro.
+
 ## [1.7.0] - 2026-10-15
 
 ### Alterado

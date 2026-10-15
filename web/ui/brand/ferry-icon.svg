@@ -1,26 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title" color="#E9EDF3">
 <title id="title">Ferry</title>
 
-<defs>
-  <linearGradient id="ferry-pearl" x1="68" y1="48" x2="152" y2="208" gradientUnits="userSpaceOnUse">
-    <stop stop-color="#FFFFFF"/><stop offset=".5" stop-color="#EEF2F8"/><stop offset="1" stop-color="#CDD8E8"/>
-  </linearGradient>
-  <linearGradient id="ferry-blue" x1="155" y1="85" x2="72" y2="205" gradientUnits="userSpaceOnUse">
-    <stop stop-color="#83B4FF"/><stop offset=".42" stop-color="#527FE8"/><stop offset="1" stop-color="#2852AC"/>
-  </linearGradient>
-  <linearGradient id="ferry-badge" x1="32" y1="8" x2="230" y2="248" gradientUnits="userSpaceOnUse">
-    <stop stop-color="#1A2535"/><stop offset=".55" stop-color="#101824"/><stop offset="1" stop-color="#0A0D12"/>
-  </linearGradient>
-  <linearGradient id="ferry-shine">
-    <stop stop-color="#80DFFF" stop-opacity="0"/><stop offset=".47" stop-color="#C7F4FF" stop-opacity=".1"/>
-    <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".72"/><stop offset="1" stop-color="#50E6FF" stop-opacity="0"/>
-  </linearGradient>
-  <clipPath id="ferry-silhouette"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z"/><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z"/><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z"/><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z"/><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z"/></clipPath>
-</defs><rect x="8" y="8" width="240" height="240" rx="57" fill="url(#ferry-badge)"/>
-<rect x="8.75" y="8.75" width="238.5" height="238.5" rx="56.25" fill="none" stroke="#8AA6CF" stroke-opacity=".13" stroke-width="1.5"/><g class="ribbon-stem" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L108 49 V181 Q108 185 104 188 L75 208 Q68 212 68 204 Z" fill="url(#ferry-pearl)"/></g>
-<g class="ribbon-fold" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M108 88 H158 Q162 88 166 84 L134 116 H108 Z" fill="url(#ferry-blue)"/></g>
-<g class="ribbon-crown" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 78 L100 51 Q104 48 110 48 H193 Q201 48 196 54 L167 83 Q162 88 157 88 H82 Z" fill="url(#ferry-pearl)"/></g>
-<g class="ribbon-return" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M94 148 H134 L108 174 V181 Q108 185 104 188 L75 208 Q68 212 68 204 V174 Z" fill="url(#ferry-blue)"/></g>
-<g class="ribbon-middle" opacity="1" transform="translate(0 0) translate(128 128) rotate(0) scale(1 1) translate(-128 -128)"><path d="M68 149 L100 119 Q104 116 110 116 H158 Q166 116 160 122 L137 145 Q134 148 129 148 H94 L68 174 Z" fill="url(#ferry-pearl)"/></g>
-<g class="ribbon-edges" opacity="1" fill="none" stroke="#C3DDFF" stroke-opacity=".38" stroke-width=".85"><path d="M108 89 H156 M96 149 H129"/></g>
+<rect x="9" y="9" width="238" height="238" rx="55" fill="#121821" stroke="#29323F" stroke-width="2"/>
+<g transform="translate(128 128) scale(0.78) translate(-128 -128)"><path class="brand-wave" d="M40 198 Q62 180 84 198 Q106 216 128 198 Q150 180 172 198 Q194 216 216 198" fill="none" stroke="#6F97FF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="197" stroke-dashoffset="0"/>
+<g class="brand-hull"><path d="M32 108 H224 L196 158 Q191 166 182 166 H74 Q65 166 60 158 Z" fill="#E9EDF3"/></g>
+<g class="brand-cabin"><path d="M104 48 H152 Q164 48 164 60 V84 Q164 96 152 96 H104 Q92 96 92 84 V60 Q92 48 104 48 Z" fill="#E9EDF3"/></g></g>
 </svg>

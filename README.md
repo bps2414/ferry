@@ -1,6 +1,9 @@
 <div align="center">
 
-  <img src="docs/brand/ferry-logo-animated.gif" width="340" alt="Ferry">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/brand/ferry-logo-animated-light.gif">
+    <img src="docs/brand/ferry-logo-animated.gif" width="340" alt="Ferry">
+  </picture>
 
   <p><b>Direct, zero-disk game pipeline for PS5</b></p>
 

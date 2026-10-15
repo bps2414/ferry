@@ -34,7 +34,7 @@ function introduceBrand(container) {
   if (!brand || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   brandIntroduced = true;
   brand.classList.add("brand-enter");
-  setTimeout(() => brand.classList.remove("brand-enter"), 2600);
+  setTimeout(() => brand.classList.remove("brand-enter"), 1500);
 }
 async function boot() {
   await loadTranslations();

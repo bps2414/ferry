@@ -1,6 +1,9 @@
 <div align="center">
 
-  <img src="docs/brand/ferry-logo-animated.gif" width="340" alt="Ferry">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/brand/ferry-logo-animated-light.gif">
+    <img src="docs/brand/ferry-logo-animated.gif" width="340" alt="Ferry">
+  </picture>
 
   <p><b>Envio direto de jogos para PS5 — sem gravar no disco</b></p>
 

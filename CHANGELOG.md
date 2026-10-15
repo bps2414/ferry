@@ -11,6 +11,10 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- New logo: a ferry crossing a wave, with a shorter opening animation (1.5 s) that plays once and stops. New app icon, favicon and README logo for light and dark themes.
+
 ## [1.7.0] - 2026-10-15
 
 ### Changed
