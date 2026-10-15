@@ -21,7 +21,7 @@
 
 <br>
 
-![Fila do Ferry](docs/screenshots/fila.png)
+![Fila do Ferry](docs/screenshots/fila.pt-BR.png)
 
 [![CI](https://github.com/bps2414/ferry/actions/workflows/ci.yml/badge.svg)](https://github.com/bps2414/ferry/actions/workflows/ci.yml)
 
