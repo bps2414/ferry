@@ -11,6 +11,8 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-15
+
 ### Changed
 
 - First stable release: the features of 1.7.0-beta.1, with no further changes.
@@ -174,7 +176,8 @@ All notable changes to Ferry are documented here. The format follows [Keep a Cha
 2. To release, pick the next number by the rules at the top and run `tools/release.ps1 -Version 1.7.0-beta.1`. It turns **Unreleased** into that version with today's date, updates `Directory.Build.props` and the links, commits and creates the tag `v1.7.0-beta.1`.
 3. `git push --follow-tags`. CI builds, tests and publishes the release with the notes from this file and from [CHANGELOG.pt-BR.md](CHANGELOG.pt-BR.md) (English first, then Portuguese). CI fails if the tag does not match `Directory.Build.props`, or if either changelog has no section for it.
 
-[Unreleased]: https://github.com/bps2414/ferry/compare/v1.7.0-beta.1...HEAD
+[Unreleased]: https://github.com/bps2414/ferry/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/bps2414/ferry/compare/v1.7.0-beta.1...v1.7.0
 [1.7.0-beta.1]: https://github.com/bps2414/ferry/compare/v1.6.2-beta.1...v1.7.0-beta.1
 [1.6.2-beta.1]: https://github.com/bps2414/ferry/compare/v1.6.0-beta.1...v1.6.2-beta.1
 [1.6.0-beta.1]: https://github.com/bps2414/ferry/compare/v1.5.1-beta.1...v1.6.0-beta.1
