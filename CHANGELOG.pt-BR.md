@@ -11,6 +11,8 @@ Todas as mudanças relevantes do Ferry ficam aqui. O formato segue o [Keep a Cha
 
 ## [Não lançado]
 
+## [1.7.0-beta.1] - 2026-10-14
+
 ### Adicionado
 
 - **HyperDPI** (HyperHEN) como segundo instalador de PKG, escolhido nas Configurações; o DPI v1 do etaHEN continua sendo o padrão. O Ferry envia o PKG por FTP para `/user/data/HyperHEN/pkgs`, pede a instalação, acompanha até o fim (novo estágio **Instalado**) e apaga o PKG do console depois da instalação confirmada.
@@ -168,7 +170,8 @@ Todas as mudanças relevantes do Ferry ficam aqui. O formato segue o [Keep a Cha
 2. Para lançar, escolha o próximo número pelas regras do topo e rode `tools/release.ps1 -Version 1.7.0-beta.1`. Ele transforma **Não lançado** nessa versão com a data de hoje, atualiza o `Directory.Build.props` e os links, faz o commit e cria a tag `v1.7.0-beta.1`.
 3. `git push --follow-tags`. A CI compila, testa e publica a release com as notas deste arquivo e do [CHANGELOG.md](CHANGELOG.md) (inglês primeiro, depois português). A CI falha se a tag não bater com o `Directory.Build.props` ou se algum dos changelogs não tiver a seção da versão.
 
-[Não lançado]: https://github.com/bps2414/ferry/compare/v1.6.2-beta.1...HEAD
+[Não lançado]: https://github.com/bps2414/ferry/compare/v1.7.0-beta.1...HEAD
+[1.7.0-beta.1]: https://github.com/bps2414/ferry/compare/v1.6.2-beta.1...v1.7.0-beta.1
 [1.6.2-beta.1]: https://github.com/bps2414/ferry/compare/v1.6.0-beta.1...v1.6.2-beta.1
 [1.6.0-beta.1]: https://github.com/bps2414/ferry/compare/v1.5.1-beta.1...v1.6.0-beta.1
 [1.5.1-beta.1]: https://github.com/bps2414/ferry/compare/v1.5.0-beta.3...v1.5.1-beta.1
